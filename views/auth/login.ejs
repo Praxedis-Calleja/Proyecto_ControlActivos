@@ -1,0 +1,14 @@
+<%- include('../layouts/base', { body: `
+  <section class="login">
+    <h2>Acceso administrativo</h2>
+    ${error ? `<div class="alert">${error}</div>` : ''}
+    <form method="post" action="/login">
+      <label>Correo</label>
+      <input type="email" name="correo" required>
+      <label>Contraseña</label>
+      <input type="password" name="contrasena" required>
+      <input type="hidden" name="_csrf" value="${csrfToken}">
+      <button>Ingresar</button>
+    </form>
+  </section>
+` }) %>
