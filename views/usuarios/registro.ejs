@@ -1,0 +1,35 @@
+<%- include('../layouts/base', { body: `
+  <section>
+    <h2>Registrar usuario</h2>
+
+    ${ok ? `<div class="ok">Usuario creado correctamente</div>` : '' }
+    ${error ? `<div class="alert">${error}</div>` : '' }
+
+    <form method="post" action="/usuarios/registro" novalidate>
+      <label>Nombre</label>
+      <input name="nombre" value="${(values && values.nombre) || ''}" required>
+
+      <label>Apellido</label>
+      <input name="apellido" value="${(values && values.apellido) || ''}">
+
+      <label>Correo</label>
+      <input type="email" name="correo" value="${(values && values.correo) || ''}" required>
+
+      <label>Rol</label>
+      <select name="rol" required>
+        ${['Administrador','Tecnico','Colaborador'].map(r => `
+          <option value="${r}" ${(values && values.rol === r) ? 'selected' : ''}>${r}</option>
+        `).join('')}
+      </select>
+
+      <label>Contraseña</label>
+      <input type="password" name="contrasena" required>
+
+      <label>Confirmar contraseña</label>
+      <input type="password" name="confirmar" required>
+
+      <input type="hidden" name="_csrf" value="${csrfToken}">
+      <button>Guardar</button>
+    </form>
+  </section>
+` }) %>

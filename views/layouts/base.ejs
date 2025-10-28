@@ -1,24 +1,29 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <title>Control de Activos</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/css/main.css" rel="stylesheet">
-</head>
-<body>
-  <header>
-    <h1>Control de Activos</h1>
-    <% if (user) { %>
-      <form action="/logout" method="post" style="display:inline">
-        <button>Salir (<%= user.Nombre %>)</button>
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      </form>
-    <% } %>
-  </header>
-  <main>
-    <%- typeof content === 'string' ? content : '' %>
-    <%- typeof body !== 'undefined' ? body : '' %>
-  </main>
-</body>
-</html>
+  <!doctype html>
+  <html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <title>Control de Activos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/css/main.css" rel="stylesheet">
+  </head>
+  <body>
+    <header>
+      <h1>Control de Activos</h1>
+      <% if (user && user.Rol === 'Administrador') { %>
+    <div style="margin: 1rem 0;">
+      <a href="/usuarios/registro"> ➕ Registrar usuario </a>
+    </div>
+  <% } %>
+  <% if (user) { %>
+  <form action="/logout" method="post" style="display:inline">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit">🚪 Cerrar sesión (<%= user.Nombre %>)</button>
+  </form>
+<% } %>
+    </header>
+    <main>
+      <%- typeof content === 'string' ? content : '' %>
+      <%- typeof body !== 'undefined' ? body : '' %>
+    </main>
+  </body>
+  </html>
