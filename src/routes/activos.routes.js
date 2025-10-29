@@ -6,8 +6,8 @@ const router = Router();
 
 router.get('/', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), getActivos);
 router.post('/', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), postNuevoActivo);
-router.get('/nuevo', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), getNuevoActivo);
-router.post('/nuevo', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), postNuevoActivo);
+router.get('/activos', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), getNuevoActivo);
+router.post('/activos', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), postNuevoActivo);
 
 export default router;
     

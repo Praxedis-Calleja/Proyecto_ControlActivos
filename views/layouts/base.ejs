@@ -14,9 +14,7 @@
           <a class="btn" href="/activos">📋 Lista de activos</a>
           <a class="btn" href="/activos?view=form">📝 Registrar activo</a>
         <% } %>
-        <% if (user && user.Rol === 'Administrador') { %>
-          <a class="btn" href="/usuarios/registro">➕ Registrar usuario</a>
-        <% } %>
+        
         <% if (user) { %>
           <form action="/logout" method="post" class="logout-form">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">

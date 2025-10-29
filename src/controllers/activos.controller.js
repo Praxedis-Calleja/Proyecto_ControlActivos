@@ -40,7 +40,7 @@ const obtenerActivos = async () => {
       c.nombre AS categoria,
       ar.nombre_area AS area
     FROM activos_fijos a
-    LEFT JOIN id_categoria_activos c ON c.id_categoria_activos = a.id_categoria_activos
+    LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
     LEFT JOIN areas ar ON ar.id_area = a.id_area
     ORDER BY a.precio_lista IS NULL, a.precio_lista DESC, a.estado ASC`
   );

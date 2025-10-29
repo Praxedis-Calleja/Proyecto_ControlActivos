@@ -10,6 +10,7 @@ import 'dotenv/config';
 
 import authRoutes from './routes/auth.routes.js';
 import activosRoutes from './routes/activos.routes.js';
+import usuariosRoutes from './routes/usuarios.routes.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -63,6 +64,10 @@ app.use((req, res, next) => {
 // Rutas
 app.use('/', authRoutes);
 app.use('/activos', activosRoutes);
+
+app.use('/', authRoutes);
+app.use('/usuarios', usuariosRoutes);
+
 
 // Home
 app.get('/', (req, res) => {
