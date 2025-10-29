@@ -1,0 +1,115 @@
+<%- include('../layouts/base', { body: `
+  <section>
+    <div class="activos-header">
+      <h2>Activos</h2>
+      <button type="button" id="toggleActivos" class="btn-toggle" data-view="${mostrarFormulario ? 'form' : 'list'}">
+        ${mostrarFormulario ? 'Ver lista' : 'Registrar activo'}
+      </button>
+    </div>
+
+    ${ok ? `<div class="ok">Activo guardado correctamente</div>` : ''}
+    ${errores && errores.length ? `<div class="alert">${errores.map(e => `<div>${e}</div>`).join('')}</div>` : ''}
+
+    <div id="panelListaActivos" class="${mostrarFormulario ? 'oculto' : ''}">
+      ${activos.length ? `
+        <div class="tabla-contenedor">
+          <table class="tabla-activos">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Categoría</th>
+                <th>Área</th>
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>Estado</th>
+                <th>Fecha adquisición</th>
+                <th>Precio lista</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${activos.map((activo, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${activo.Categoria || '—'}</td>
+                  <td>${activo.Area || '—'}</td>
+                  <td>${activo.Marca || '—'}</td>
+                  <td>${activo.Modelo || '—'}</td>
+                  <td>${activo.Estado || '—'}</td>
+                  <td>${activo.fechaAdquisicionTexto || '—'}</td>
+                  <td>${activo.precioListaTexto || (activo.Precio_Lista ?? '—')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : '<p>No hay activos registrados por el momento.</p>'}
+    </div>
+
+    <div id="panelFormularioActivos" class="${mostrarFormulario ? '' : 'oculto'}">
+      <h3>Registrar nuevo activo</h3>
+      <form method="post" action="/activos">
+        <label>Categoría</label>
+        <select name="ID_CategoriaActivos" required>
+          ${categorias.map(c => `
+            <option value="${c.ID_CategoriaActivos}" ${String((values && values.ID_CategoriaActivos) ?? '') === String(c.ID_CategoriaActivos) ? 'selected' : ''}>${c.Nombre}</option>
+          `).join('')}
+        </select>
+
+        <label>Área</label>
+        <select name="ID_Area" required>
+          ${areas.map(a => `
+            <option value="${a.ID_Area}" ${String((values && values.ID_Area) ?? '') === String(a.ID_Area) ? 'selected' : ''}>${a.Nombre_Area}</option>
+          `).join('')}
+        </select>
+
+        <label>Marca</label>
+        <input name="Marca" maxlength="50" value="${(values && values.Marca) ? values.Marca : ''}">
+
+        <label>Modelo</label>
+        <input name="Modelo" maxlength="50" value="${(values && values.Modelo) ? values.Modelo : ''}">
+
+        <label>Estado</label>
+        <input name="Estado" maxlength="50" required value="${(values && values.Estado) ? values.Estado : ''}">
+
+        <label>Fecha de adquisición</label>
+        <input type="date" name="Fecha_Adquisicion" value="${(values && values.Fecha_Adquisicion) ? values.Fecha_Adquisicion : ''}">
+
+        <label>Precio lista</label>
+        <input type="number" step="0.01" name="Precio_Lista" value="${(values && values.Precio_Lista) ? values.Precio_Lista : ''}">
+
+        <input type="hidden" name="_csrf" value="${csrfToken}">
+        <button>Guardar</button>
+      </form>
+    </div>
+  </section>
+  <script>
+    (() => {
+      const toggleBtn = document.getElementById('toggleActivos');
+      const lista = document.getElementById('panelListaActivos');
+      const formulario = document.getElementById('panelFormularioActivos');
+      if (!toggleBtn || !lista || !formulario) return;
+
+      let mostrandoFormulario = toggleBtn.dataset.view === 'form';
+
+      const actualizarVista = () => {
+        if (mostrandoFormulario) {
+          formulario.classList.remove('oculto');
+          lista.classList.add('oculto');
+          toggleBtn.textContent = 'Ver lista';
+        } else {
+          formulario.classList.add('oculto');
+          lista.classList.remove('oculto');
+          toggleBtn.textContent = 'Registrar activo';
+        }
+        toggleBtn.dataset.view = mostrandoFormulario ? 'form' : 'list';
+      };
+
+      actualizarVista();
+
+      toggleBtn.addEventListener('click', () => {
+        mostrandoFormulario = !mostrandoFormulario;
+        actualizarVista();
+      });
+    })();
+  </script>
+` }) %>
