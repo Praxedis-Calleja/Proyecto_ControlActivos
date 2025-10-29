@@ -49,33 +49,33 @@
       <h3>Registrar nuevo activo</h3>
       <form method="post" action="/activos">
         <label>Categoría</label>
-        <select name="ID_CategoriaActivos" required>
+        <select name="id_categoria_activos" required>
           ${categorias.map(c => `
-            <option value="${c.ID_CategoriaActivos}" ${String((values && values.ID_CategoriaActivos) ?? '') === String(c.ID_CategoriaActivos) ? 'selected' : ''}>${c.Nombre}</option>
+            <option value="${c.id_categoria_activos}" ${String((values && values.id_categoria_activos) ?? '') === String(c.id_categoria_activos) ? 'selected' : ''}>${c.Nombre}</option>
           `).join('')}
         </select>
 
         <label>Área</label>
-        <select name="ID_Area" required>
+        <select name="id_area" required>
           ${areas.map(a => `
-            <option value="${a.ID_Area}" ${String((values && values.ID_Area) ?? '') === String(a.ID_Area) ? 'selected' : ''}>${a.Nombre_Area}</option>
+            <option value="${a.id_area}" ${String((values && values.id_area) ?? '') === String(a.id_area) ? 'selected' : ''}>${a.Nombre_Area}</option>
           `).join('')}
         </select>
 
         <label>Marca</label>
-        <input name="Marca" maxlength="50" value="${(values && values.Marca) ? values.Marca : ''}">
+        <input name="marca" maxlength="50" value="${(values && values.marca) ? values.marca : ''}">
 
         <label>Modelo</label>
-        <input name="Modelo" maxlength="50" value="${(values && values.Modelo) ? values.Modelo : ''}">
+        <input name="modelo" maxlength="50" value="${(values && values.modelo) ? values.modelo : ''}">
 
         <label>Estado</label>
-        <input name="Estado" maxlength="50" required value="${(values && values.Estado) ? values.Estado : ''}">
+        <input name="estado" maxlength="50" required value="${(values && values.estado) ? values.estado : ''}">
 
         <label>Fecha de adquisición</label>
-        <input type="date" name="Fecha_Adquisicion" value="${(values && values.Fecha_Adquisicion) ? values.Fecha_Adquisicion : ''}">
+        <input type="date" name="fecha_compra" value="${(values && values.fecha_compra) ? values.fecha_compra : ''}">
 
         <label>Precio lista</label>
-        <input type="number" step="0.01" name="Precio_Lista" value="${(values && values.Precio_Lista) ? values.Precio_Lista : ''}">
+        <input type="number" step="0.01" name="precio_lista" value="${(values && values.precio_lista) ? values.precio_lista : ''}">
 
         <input type="hidden" name="_csrf" value="${csrfToken}">
         <button>Guardar</button>

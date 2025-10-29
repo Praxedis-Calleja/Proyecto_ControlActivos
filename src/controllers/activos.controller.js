@@ -13,10 +13,10 @@ const esquemaActivo = Joi.object({
 
 const obtenerCatalogos = async () => {
   const [categorias] = await pool.query(
-    'SELECT ID_CategoriaActivos, Nombre FROM CategoriasActivos ORDER BY Nombre'
+    'SELECT id_categoria_activos, nombre FROM categorias_activos ORDER BY nombre'
   );
   const [areas] = await pool.query(
-    'SELECT ID_Area, Nombre_Area FROM Areas ORDER BY Nombre_Area'
+    'SELECT id_area, nombre_area FROM Areas ORDER BY nombre_area'
   );
   return { categorias, areas };
 };
@@ -30,19 +30,19 @@ const formateadorMoneda = new Intl.NumberFormat('es-MX', {
 const obtenerActivos = async () => {
   const [activos] = await pool.query(
     `SELECT
-      a.ID_CategoriaActivos,
-      a.ID_Area,
-      a.Marca,
-      a.Modelo,
-      a.Estado,
-      a.Fecha_Adquisicion,
-      a.Precio_Lista,
-      c.Nombre AS Categoria,
-      ar.Nombre_Area AS Area
-    FROM ActivosFijos a
-    LEFT JOIN CategoriasActivos c ON c.ID_CategoriaActivos = a.ID_CategoriaActivos
-    LEFT JOIN Areas ar ON ar.ID_Area = a.ID_Area
-    ORDER BY a.Fecha_Adquisicion IS NULL, a.Fecha_Adquisicion DESC, a.Estado ASC`
+      a.id_categoria_activos,
+      a.id_area,
+      a.marca,
+      a.modelo,
+      a.estado,
+      a.fecha_compra,
+      a.precio_lista,
+      c.nombre AS categoria,
+      ar.nombre_area AS area
+    FROM activos_fijos a
+    LEFT JOIN id_categoria_activos c ON c.id_categoria_activos = a.id_categoria_activos
+    LEFT JOIN areas ar ON ar.id_area = a.id_area
+    ORDER BY a.precio_lista IS NULL, a.precio_lista DESC, a.estado ASC`
   );
 
   return activos.map((activo) => {
@@ -105,8 +105,8 @@ export const postNuevoActivo = async (req, res) => {
   const { ID_CategoriaActivos, ID_Area, Marca, Modelo, Estado, Fecha_Adquisicion, Precio_Lista } = value;
 
   await pool.query(
-    `INSERT INTO ActivosFijos
-    (ID_CategoriaActivos, ID_Area, Marca, Modelo, Estado, Fecha_Adquisicion, Precio_Lista)
+    `INSERT INTO activos_fijos
+    (id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista)
     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       ID_CategoriaActivos,
