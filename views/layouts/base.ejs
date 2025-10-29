@@ -9,17 +9,21 @@
   <body>
     <header>
       <h1>Control de Activos</h1>
-      <% if (user && user.Rol === 'Administrador') { %>
-    <div style="margin: 1rem 0;">
-      <a href="/usuarios/registro"> ➕ Registrar usuario </a>
-    </div>
-  <% } %>
-  <% if (user) { %>
-  <form action="/logout" method="post" style="display:inline">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <button type="submit">🚪 Cerrar sesión (<%= user.Nombre %>)</button>
-  </form>
-<% } %>
+      <div class="header-actions">
+        <% if (user && ['Administrador', 'Técnico', 'Tecnico'].includes(user.Rol)) { %>
+          <a class="btn" href="/activos">📋 Lista de activos</a>
+          <a class="btn" href="/activos?view=form">📝 Registrar activo</a>
+        <% } %>
+        <% if (user && user.Rol === 'Administrador') { %>
+          <a class="btn" href="/usuarios/registro">➕ Registrar usuario</a>
+        <% } %>
+        <% if (user) { %>
+          <form action="/logout" method="post" class="logout-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit">🚪 Cerrar sesión (<%= user.Nombre %>)</button>
+          </form>
+        <% } %>
+      </div>
     </header>
     <main>
       <%- typeof content === 'string' ? content : '' %>
