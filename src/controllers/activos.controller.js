@@ -30,9 +30,53 @@ const formateadorMoneda = new Intl.NumberFormat('es-MX', {
   currency: 'MXN'
 });
 
+const prepararActivo = (activo) => {
+  if (!activo) return null;
+
+  const fecha = activo.fecha_compra ? new Date(activo.fecha_compra) : null;
+  const precioNumero =
+    activo.precio_lista !== null && activo.precio_lista !== undefined
+      ? Number(activo.precio_lista)
+      : null;
+  const idNormalizado =
+    activo.id_activo ??
+    activo.ID_Activo ??
+    activo.id_activo_fijo ??
+    activo.ID_Activo_Fijo ??
+    activo.id ??
+    null;
+
+  return {
+    ...activo,
+    id_activo: idNormalizado,
+    fechaAdquisicionTexto: fecha ? formateadorFecha.format(fecha) : '—',
+    precioListaTexto: precioNumero !== null ? formateadorMoneda.format(precioNumero) : '—',
+    fecha_compra_formulario: fecha ? fecha.toISOString().slice(0, 10) : ''
+  };
+};
+
+const obtenerActivoPorId = async (idActivo) => {
+  const [filas] = await pool.query(
+    `SELECT
+      a.*,
+      c.nombre AS categoria,
+      ar.nombre_area AS area
+    FROM activos_fijos a
+    LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
+    LEFT JOIN areas ar ON ar.id_area = a.id_area
+    WHERE a.id_activo = ?
+    LIMIT 1`,
+    [idActivo]
+  );
+
+  if (!filas.length) return null;
+  return prepararActivo(filas[0]);
+};
+
 const obtenerActivos = async () => {
   const [activos] = await pool.query(
     `SELECT
+      a.id_activo,
       a.id_categoria_activos,
       a.id_area,
       a.marca,
@@ -49,19 +93,7 @@ const obtenerActivos = async () => {
     ORDER BY a.precio_lista IS NULL, a.precio_lista DESC, a.estado ASC`
   );
 
-  return activos.map((activo) => {
-    const fecha = activo.fecha_compra ? new Date(activo.fecha_compra) : null;
-    const precioNumero =
-      activo.precio_lista !== null && activo.precio_lista !== undefined
-        ? Number(activo.precio_lista)
-        : null;
-
-    return {
-      ...activo,
-      fechaAdquisicionTexto: fecha ? formateadorFecha.format(fecha) : '—',
-      precioListaTexto: precioNumero !== null ? formateadorMoneda.format(precioNumero) : '—'
-    };
-  });
+  return activos.map(prepararActivo);
 };
 
 const renderActivos = async (req, res, opciones = {}) => {
@@ -134,4 +166,154 @@ export const postNuevoActivo = async (req, res) => {
   );
 
   res.redirect('/activos?ok=1');
+};
+
+export const getDetalleActivo = async (req, res) => {
+  const idActivo = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(idActivo) || idActivo <= 0) {
+    return res.status(404).render('activos/detalle', { activo: null, ok: false });
+  }
+
+  const activo = await obtenerActivoPorId(idActivo);
+  if (!activo) {
+    return res.status(404).render('activos/detalle', { activo: null, ok: false });
+  }
+
+  return res.render('activos/detalle', {
+    activo,
+    ok: req.query.ok === '1'
+  });
+};
+
+const renderEditarActivo = async (req, res, opciones = {}) => {
+  const { id } = req.params;
+  const idActivo = Number.parseInt(id, 10);
+  if (!Number.isInteger(idActivo) || idActivo <= 0) {
+    return res.status(404).render('activos/editar', {
+      activo: null,
+      categorias: [],
+      areas: [],
+      errores: ['El identificador del activo no es válido'],
+      values: {},
+      activoId: id
+    });
+  }
+
+  const [{ categorias, areas }, activo] = await Promise.all([
+    obtenerCatalogos(),
+    obtenerActivoPorId(idActivo)
+  ]);
+
+  if (!activo) {
+    return res.status(404).render('activos/editar', {
+      activo: null,
+      categorias,
+      areas,
+      errores: ['El activo solicitado no fue encontrado'],
+      values: {},
+      activoId: idActivo
+    });
+  }
+
+  const valoresBase = {
+    id_categoria_activos: activo.id_categoria_activos,
+    id_area: activo.id_area,
+    marca: activo.marca || '',
+    modelo: activo.modelo || '',
+    estado: activo.estado || '',
+    fecha_compra: activo.fecha_compra_formulario || '',
+    precio_lista:
+      activo.precio_lista !== null && activo.precio_lista !== undefined
+        ? String(activo.precio_lista)
+        : '',
+    numero_serie: activo.numero_serie || ''
+  };
+
+  return res
+    .status(opciones.status || 200)
+    .render('activos/editar', {
+      activo,
+      categorias,
+      areas,
+      errores: opciones.errores || [],
+      values: { ...valoresBase, ...(opciones.values || {}) },
+      activoId: idActivo
+    });
+};
+
+export const getEditarActivo = async (req, res) => {
+  await renderEditarActivo(req, res);
+};
+
+export const postEditarActivo = async (req, res) => {
+  const idActivo = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(idActivo) || idActivo <= 0) {
+    return res.status(404).render('activos/editar', {
+      activo: null,
+      categorias: [],
+      areas: [],
+      errores: ['El identificador del activo no es válido'],
+      values: req.body,
+      activoId: req.params.id
+    });
+  }
+
+  const { error, value } = esquemaActivo.validate(req.body, { abortEarly: false });
+  if (error) {
+    const mensajes = error.details?.length
+      ? error.details.map((detalle) => detalle.message)
+      : [error.message];
+
+    return renderEditarActivo(req, res, {
+      status: 400,
+      errores: mensajes,
+      values: req.body
+    });
+  }
+
+  const {
+    id_categoria_activos,
+    id_area,
+    marca,
+    modelo,
+    estado,
+    fecha_compra,
+    precio_lista,
+    numero_serie
+  } = value;
+
+  const [resultado] = await pool.query(
+    `UPDATE activos_fijos
+     SET id_categoria_activos = ?,
+       id_area = ?,
+       marca = ?,
+       modelo = ?,
+       estado = ?,
+       fecha_compra = ?,
+       precio_lista = ?,
+       numero_serie = ?
+     WHERE id_activo = ?
+     LIMIT 1`,
+    [
+      id_categoria_activos,
+      id_area,
+      marca || null,
+      modelo || null,
+      estado,
+      fecha_compra || null,
+      precio_lista || null,
+      numero_serie || null,
+      idActivo
+    ]
+  );
+
+  if (!resultado.affectedRows) {
+    return renderEditarActivo(req, res, {
+      status: 404,
+      errores: ['No fue posible actualizar el activo solicitado'],
+      values: req.body
+    });
+  }
+
+  return res.redirect(`/activos/${idActivo}?ok=1`);
 };

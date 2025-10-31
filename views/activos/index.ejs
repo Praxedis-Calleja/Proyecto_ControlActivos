@@ -24,7 +24,8 @@
                 <th>Estado</th>
                 <th>Fecha adquisición</th>
                 <th>Precio lista</th>
-                <th>Numero de serie</th>
+                <th>Número de serie</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -39,7 +40,10 @@
                   <td>${activo.fechaAdquisicionTexto || '—'}</td>
                   <td>${activo.precioListaTexto || (activo.precio_lista ?? '—')}</td>
                   <td>${activo.numero_serie || '—'}</td>
-
+                  <td class="acciones">
+                    <a href="/activos/${activo.id_activo}" class="btn-accion">Ver</a>
+                    <a href="/activos/${activo.id_activo}/editar" class="btn-accion">Editar</a>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -79,9 +83,9 @@
 
         <label>Precio lista</label>
         <input type="number" step="0.01" name="precio_lista" value="${(values && values.precio_lista) ? values.precio_lista : ''}">
-        
-        <label>Numero de serie</label>
-        <input type="number" step="0.01" name="numero_serie" value="${(values && values.	numero_serie) ? values.	numero_serie : ''}">
+
+        <label>Número de serie</label>
+        <input name="numero_serie" maxlength="100" value="${(values && values.numero_serie) ? values.numero_serie : ''}">
 
         <input type="hidden" name="_csrf" value="${csrfToken}">
         <button>Guardar</button>
