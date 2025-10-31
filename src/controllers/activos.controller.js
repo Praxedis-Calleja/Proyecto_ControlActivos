@@ -2,14 +2,17 @@ import { pool } from '../db.js';
 import Joi from 'joi';
 
 const esquemaActivo = Joi.object({
-  ID_CategoriaActivos: Joi.number().integer().required(),
-  ID_Area: Joi.number().integer().required(),
-  Marca: Joi.string().max(50).allow(''),
-  Modelo: Joi.string().max(50).allow(''),
-  Estado: Joi.string().max(50).required(),
-  Fecha_Adquisicion: Joi.date().allow(null, ''),
-  Precio_Lista: Joi.number().precision(2).allow(null, '')
-});
+  id_categoria_activos: Joi.number().integer().required(),
+  id_area: Joi.number().integer().required(),
+  marca: Joi.string().max(50).allow(''),
+  modelo: Joi.string().max(50).allow(''),
+  estado: Joi.string().max(50).required(),
+  fecha_compra: Joi.alternatives().try(Joi.date(), Joi.string().valid('')).allow(null, ''),
+  precio_lista: Joi.alternatives()
+    .try(Joi.number().precision(2), Joi.string().valid(''))
+    .allow(null, ''),
+  numero_serie: Joi.string().max(100).allow('', null)
+}).unknown(true);
 
 const obtenerCatalogos = async () => {
   const [categorias] = await pool.query(
@@ -27,37 +30,58 @@ const formateadorMoneda = new Intl.NumberFormat('es-MX', {
   currency: 'MXN'
 });
 
+const columnasSelect = `
+  a.id_activo,
+  a.id_categoria_activos,
+  a.id_area,
+  a.marca,
+  a.modelo,
+  a.estado,
+  a.fecha_compra,
+  a.precio_lista,
+  a.numero_serie,
+  c.nombre AS categoria,
+  ar.nombre_area AS area
+`;
+
+const joinsActivos = `
+  FROM activos_fijos a
+  LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
+  LEFT JOIN areas ar ON ar.id_area = a.id_area
+`;
+
+const mapearActivoParaListado = (activo) => {
+  const fecha = activo.fecha_compra ? new Date(activo.fecha_compra) : null;
+  const precioNumero =
+    activo.precio_lista !== null && activo.precio_lista !== undefined
+      ? Number(activo.precio_lista)
+      : null;
+
+  return {
+    ...activo,
+    fechaAdquisicionTexto: fecha ? formateadorFecha.format(fecha) : '—',
+    precioListaTexto: precioNumero !== null ? formateadorMoneda.format(precioNumero) : '—'
+  };
+};
+
 const obtenerActivos = async () => {
   const [activos] = await pool.query(
-    `SELECT
-      a.id_categoria_activos,
-      a.id_area,
-      a.marca,
-      a.modelo,
-      a.estado,
-      a.fecha_compra,
-      a.precio_lista,
-      c.nombre AS categoria,
-      ar.nombre_area AS area
-    FROM activos_fijos a
-    LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
-    LEFT JOIN areas ar ON ar.id_area = a.id_area
+    `SELECT ${columnasSelect} ${joinsActivos}
     ORDER BY a.precio_lista IS NULL, a.precio_lista DESC, a.estado ASC`
   );
 
-  return activos.map((activo) => {
-    const fecha = activo.Fecha_Adquisicion ? new Date(activo.Fecha_Adquisicion) : null;
-    const precioNumero =
-      activo.Precio_Lista !== null && activo.Precio_Lista !== undefined
-        ? Number(activo.Precio_Lista)
-        : null;
+  return activos.map(mapearActivoParaListado);
+};
 
-    return {
-      ...activo,
-      fechaAdquisicionTexto: fecha ? formateadorFecha.format(fecha) : '—',
-      precioListaTexto: precioNumero !== null ? formateadorMoneda.format(precioNumero) : '—'
-    };
-  });
+const obtenerActivoPorId = async (id) => {
+  const [filas] = await pool.query(
+    `SELECT ${columnasSelect} ${joinsActivos}
+    WHERE a.id_activo = ?
+    LIMIT 1`,
+    [id]
+  );
+
+  return filas[0] || null;
 };
 
 const renderActivos = async (req, res, opciones = {}) => {
@@ -102,12 +126,21 @@ export const postNuevoActivo = async (req, res) => {
     });
   }
 
-  const { id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista } = value;
+  const {
+    id_categoria_activos,
+    id_area,
+    marca,
+    modelo,
+    estado,
+    fecha_compra,
+    precio_lista,
+    numero_serie
+  } = value;
 
   await pool.query(
     `INSERT INTO activos_fijos
-    (id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    (id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista, numero_serie)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id_categoria_activos,
       id_area,
@@ -115,9 +148,148 @@ export const postNuevoActivo = async (req, res) => {
       modelo || null,
       estado,
       fecha_compra || null,
-      precio_lista || null
+      precio_lista || null,
+      numero_serie || null
     ]
   );
 
   res.redirect('/activos?ok=1');
+};
+
+export const getDetalleActivo = async (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.redirect('/activos');
+  }
+
+  const [catalogos, activo] = await Promise.all([obtenerCatalogos(), obtenerActivoPorId(id)]);
+
+  if (!activo) {
+    return res.status(404).render('activos/detalle', {
+      categorias: catalogos.categorias,
+      areas: catalogos.areas,
+      activo: null,
+      errores: [`No se encontró el activo con identificador ${id}.`],
+      ok: false
+    });
+  }
+
+  const activoListado = mapearActivoParaListado(activo);
+
+  return res.render('activos/detalle', {
+    categorias: catalogos.categorias,
+    areas: catalogos.areas,
+    activo: activoListado,
+    errores: [],
+    ok: req.query.ok === '1'
+  });
+};
+
+export const getEditarActivo = async (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.redirect('/activos');
+  }
+
+  const [catalogos, activo] = await Promise.all([obtenerCatalogos(), obtenerActivoPorId(id)]);
+
+  if (!activo) {
+    return res.status(404).render('activos/editar', {
+      categorias: catalogos.categorias,
+      areas: catalogos.areas,
+      activo: null,
+      valores: {},
+      errores: [`No se encontró el activo con identificador ${id}.`]
+    });
+  }
+
+  return res.render('activos/editar', {
+    categorias: catalogos.categorias,
+    areas: catalogos.areas,
+    activo,
+    valores: activo,
+    errores: []
+  });
+};
+
+export const postEditarActivo = async (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.redirect('/activos');
+  }
+
+  const { error, value } = esquemaActivo.validate(req.body, { abortEarly: false });
+  const [catalogos, activoActual] = await Promise.all([obtenerCatalogos(), obtenerActivoPorId(id)]);
+
+  if (!activoActual) {
+    return res.status(404).render('activos/editar', {
+      categorias: catalogos.categorias,
+      areas: catalogos.areas,
+      activo: null,
+      valores: req.body,
+      errores: [`No se encontró el activo con identificador ${id}.`]
+    });
+  }
+
+  if (error) {
+    const mensajes = error.details?.length
+      ? error.details.map((detalle) => detalle.message)
+      : [error.message];
+
+    return res.status(400).render('activos/editar', {
+      categorias: catalogos.categorias,
+      areas: catalogos.areas,
+      activo: activoActual,
+      valores: req.body,
+      errores: mensajes
+    });
+  }
+
+  const {
+    id_categoria_activos,
+    id_area,
+    marca,
+    modelo,
+    estado,
+    fecha_compra,
+    precio_lista,
+    numero_serie
+  } = value;
+
+  const [resultado] = await pool.query(
+    `UPDATE activos_fijos
+      SET id_categoria_activos = ?,
+        id_area = ?,
+        marca = ?,
+        modelo = ?,
+        estado = ?,
+        fecha_compra = ?,
+        precio_lista = ?,
+        numero_serie = ?
+      WHERE id_activo = ?
+      LIMIT 1`,
+    [
+      id_categoria_activos,
+      id_area,
+      marca || null,
+      modelo || null,
+      estado,
+      fecha_compra || null,
+      precio_lista || null,
+      numero_serie || null,
+      id
+    ]
+  );
+
+  if (resultado.affectedRows === 0) {
+    return res.status(404).render('activos/editar', {
+      categorias: catalogos.categorias,
+      areas: catalogos.areas,
+      activo: null,
+      valores: req.body,
+      errores: [`No se encontró el activo con identificador ${id}.`]
+    });
+  }
+
+  return res.redirect(`/activos/${id}?ok=1`);
 };

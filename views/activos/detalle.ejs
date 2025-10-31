@@ -1,0 +1,52 @@
+<%- include('../layouts/base', { body: `
+  <section class="activo-detalle">
+    <a class="btn-volver" href="/activos">← Regresar</a>
+
+    ${ok ? `<div class="ok">Activo actualizado correctamente</div>` : ''}
+    ${errores && errores.length ? `<div class="alert">${errores.map(e => `<div>${e}</div>`).join('')}</div>` : ''}
+
+    ${activo ? `
+      <header class="detalle-encabezado">
+        <h2>Activo #${activo.id_activo}</h2>
+        <div class="detalle-acciones">
+          <a class="btn" href="/activos/${activo.id_activo}/editar">Editar</a>
+        </div>
+      </header>
+
+      <dl class="detalle-lista">
+        <div>
+          <dt>Categoría</dt>
+          <dd>${activo.categoria || '—'}</dd>
+        </div>
+        <div>
+          <dt>Área</dt>
+          <dd>${activo.area || '—'}</dd>
+        </div>
+        <div>
+          <dt>Marca</dt>
+          <dd>${activo.marca || '—'}</dd>
+        </div>
+        <div>
+          <dt>Modelo</dt>
+          <dd>${activo.modelo || '—'}</dd>
+        </div>
+        <div>
+          <dt>Estado</dt>
+          <dd>${activo.estado || '—'}</dd>
+        </div>
+        <div>
+          <dt>Fecha de adquisición</dt>
+          <dd>${activo.fechaAdquisicionTexto || '—'}</dd>
+        </div>
+        <div>
+          <dt>Precio lista</dt>
+          <dd>${activo.precioListaTexto || (activo.precio_lista ?? '—')}</dd>
+        </div>
+        <div>
+          <dt>Número de serie</dt>
+          <dd>${activo.numero_serie || '—'}</dd>
+        </div>
+      </dl>
+    ` : '<p>No hay información para mostrar.</p>'}
+  </section>
+` }) %>

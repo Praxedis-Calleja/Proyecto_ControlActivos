@@ -1,0 +1,48 @@
+<%- include('../layouts/base', { body: `
+  <section class="activo-editar">
+    <a class="btn-volver" href="/activos/${activo ? activo.id_activo : ''}">← Regresar al detalle</a>
+
+    <h2>${activo ? `Editar activo #${activo.id_activo}` : 'Editar activo'}</h2>
+
+    ${errores && errores.length ? `<div class="alert">${errores.map(e => `<div>${e}</div>`).join('')}</div>` : ''}
+
+    ${activo ? `
+      <form method="post" action="/activos/${activo.id_activo}/editar" class="formulario-activo">
+        <label>Categoría</label>
+        <select name="id_categoria_activos" required>
+          ${categorias.map(c => `
+            <option value="${c.id_categoria_activos}" ${String((valores && valores.id_categoria_activos) ?? '') === String(c.id_categoria_activos) ? 'selected' : ''}>${c.nombre}</option>
+          `).join('')}
+        </select>
+
+        <label>Área</label>
+        <select name="id_area" required>
+          ${areas.map(a => `
+            <option value="${a.id_area}" ${String((valores && valores.id_area) ?? '') === String(a.id_area) ? 'selected' : ''}>${a.nombre_area}</option>
+          `).join('')}
+        </select>
+
+        <label>Marca</label>
+        <input name="marca" maxlength="50" value="${(valores && valores.marca) ? valores.marca : ''}">
+
+        <label>Modelo</label>
+        <input name="modelo" maxlength="50" value="${(valores && valores.modelo) ? valores.modelo : ''}">
+
+        <label>Estado</label>
+        <input name="estado" maxlength="50" required value="${(valores && valores.estado) ? valores.estado : ''}">
+
+        <label>Fecha de adquisición</label>
+        <input type="date" name="fecha_compra" value="${(valores && valores.fecha_compra) ? valores.fecha_compra : ''}">
+
+        <label>Precio lista</label>
+        <input type="number" step="0.01" name="precio_lista" value="${(valores && valores.precio_lista) ? valores.precio_lista : ''}">
+
+        <label>Número de serie</label>
+        <input name="numero_serie" maxlength="100" value="${(valores && valores.numero_serie) ? valores.numero_serie : ''}">
+
+        <input type="hidden" name="_csrf" value="${csrfToken}">
+        <button type="submit">Guardar cambios</button>
+      </form>
+    ` : '<p>No fue posible cargar la información del activo.</p>'}
+  </section>
+` }) %>
