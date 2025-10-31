@@ -55,6 +55,26 @@ a.btn:hover {
   vertical-align: top;
 }
 
+.tabla-activos td.acciones {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.tabla-activos td.acciones .btn-accion {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  margin: 0 0.15rem;
+  border-radius: 6px;
+  background: #f0f4ff;
+  color: #0d6efd;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.tabla-activos td.acciones .btn-accion:hover {
+  background: #dbe7ff;
+}
+
 .tabla-activos th {
   background: #f5f5f5;
   font-weight: 600;
@@ -80,4 +100,50 @@ a.btn:hover {
 
 #panelFormularioActivos form {
   max-width: 480px;
+}
+
+.detalle-activo,
+.editar-activo {
+  max-width: 600px;
+}
+
+.detalle-activo .detalle-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.detalle-activo .detalle-lista div {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.detalle-activo dt {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.detalle-activo dd {
+  margin: 0;
+}
+
+.detalle-acciones {
+  margin-top: 1.5rem;
+}
+
+.btn-regresar {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.btn-regresar:hover {
+  text-decoration: underline;
+}
+
+.formulario-activo {
+  max-width: 520px;
 }
