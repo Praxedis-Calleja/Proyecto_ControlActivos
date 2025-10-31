@@ -2,14 +2,17 @@ import { pool } from '../db.js';
 import Joi from 'joi';
 
 const esquemaActivo = Joi.object({
-  ID_CategoriaActivos: Joi.number().integer().required(),
-  ID_Area: Joi.number().integer().required(),
-  Marca: Joi.string().max(50).allow(''),
-  Modelo: Joi.string().max(50).allow(''),
-  Estado: Joi.string().max(50).required(),
-  Fecha_Adquisicion: Joi.date().allow(null, ''),
-  Precio_Lista: Joi.number().precision(2).allow(null, '')
-});
+  id_categoria_activos: Joi.number().integer().required(),
+  id_area: Joi.number().integer().required(),
+  marca: Joi.string().max(50).allow(''),
+  modelo: Joi.string().max(50).allow(''),
+  estado: Joi.string().max(50).required(),
+  fecha_compra: Joi.alternatives().try(Joi.date(), Joi.string().valid('')).allow(null, ''),
+  precio_lista: Joi.alternatives()
+    .try(Joi.number().precision(2), Joi.string().valid(''))
+    .allow(null, ''),
+  numero_serie: Joi.string().max(100).allow('', null)
+}).unknown(true);
 
 const obtenerCatalogos = async () => {
   const [categorias] = await pool.query(
@@ -37,6 +40,7 @@ const obtenerActivos = async () => {
       a.estado,
       a.fecha_compra,
       a.precio_lista,
+      a.numero_serie,
       c.nombre AS categoria,
       ar.nombre_area AS area
     FROM activos_fijos a
@@ -46,10 +50,10 @@ const obtenerActivos = async () => {
   );
 
   return activos.map((activo) => {
-    const fecha = activo.Fecha_Adquisicion ? new Date(activo.Fecha_Adquisicion) : null;
+    const fecha = activo.fecha_compra ? new Date(activo.fecha_compra) : null;
     const precioNumero =
-      activo.Precio_Lista !== null && activo.Precio_Lista !== undefined
-        ? Number(activo.Precio_Lista)
+      activo.precio_lista !== null && activo.precio_lista !== undefined
+        ? Number(activo.precio_lista)
         : null;
 
     return {
@@ -102,12 +106,21 @@ export const postNuevoActivo = async (req, res) => {
     });
   }
 
-  const { id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista } = value;
+  const {
+    id_categoria_activos,
+    id_area,
+    marca,
+    modelo,
+    estado,
+    fecha_compra,
+    precio_lista,
+    numero_serie
+  } = value;
 
   await pool.query(
     `INSERT INTO activos_fijos
-    (id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    (id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista, numero_serie)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id_categoria_activos,
       id_area,
@@ -115,7 +128,8 @@ export const postNuevoActivo = async (req, res) => {
       modelo || null,
       estado,
       fecha_compra || null,
-      precio_lista || null
+      precio_lista || null,
+      numero_serie || null
     ]
   );
 
