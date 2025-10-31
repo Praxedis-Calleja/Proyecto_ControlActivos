@@ -102,20 +102,20 @@ export const postNuevoActivo = async (req, res) => {
     });
   }
 
-  const { ID_CategoriaActivos, ID_Area, Marca, Modelo, Estado, Fecha_Adquisicion, Precio_Lista } = value;
+  const { id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista } = value;
 
   await pool.query(
     `INSERT INTO activos_fijos
     (id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista)
     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
-      ID_CategoriaActivos,
-      ID_Area,
-      Marca || null,
-      Modelo || null,
-      Estado,
-      Fecha_Adquisicion || null,
-      Precio_Lista || null
+      id_categoria_activos,
+      id_area,
+      marca || null,
+      modelo || null,
+      estado,
+      fecha_compra || null,
+      precio_lista || null
     ]
   );
 

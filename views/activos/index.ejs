@@ -31,13 +31,13 @@
               ${activos.map((activo, index) => `
                 <tr>
                   <td>${index + 1}</td>
-                  <td>${activo.Categoria || '—'}</td>
-                  <td>${activo.Area || '—'}</td>
-                  <td>${activo.Marca || '—'}</td>
-                  <td>${activo.Modelo || '—'}</td>
-                  <td>${activo.Estado || '—'}</td>
+                  <td>${activo.categoria || '—'}</td>
+                  <td>${activo.area || '—'}</td>
+                  <td>${activo.marca || '—'}</td>
+                  <td>${activo.modelo || '—'}</td>
+                  <td>${activo.estado || '—'}</td>
                   <td>${activo.fechaAdquisicionTexto || '—'}</td>
-                  <td>${activo.precioListaTexto || (activo.Precio_Lista ?? '—')}</td>
+                  <td>${activo.precioListaTexto || (activo.precio_lista ?? '—')}</td>
                   <td>${activo.numero_serie || '—'}</td>
 
                 </tr>
