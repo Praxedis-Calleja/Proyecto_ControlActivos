@@ -24,6 +24,7 @@
                 <th>Estado</th>
                 <th>Fecha adquisición</th>
                 <th>Precio lista</th>
+                <th>Numero de serie</th>
               </tr>
             </thead>
             <tbody>
@@ -37,6 +38,8 @@
                   <td>${activo.Estado || '—'}</td>
                   <td>${activo.fechaAdquisicionTexto || '—'}</td>
                   <td>${activo.precioListaTexto || (activo.Precio_Lista ?? '—')}</td>
+                  <td>${activo.numero_serie || '—'}</td>
+
                 </tr>
               `).join('')}
             </tbody>
@@ -51,14 +54,14 @@
         <label>Categoría</label>
         <select name="id_categoria_activos" required>
           ${categorias.map(c => `
-            <option value="${c.id_categoria_activos}" ${String((values && values.id_categoria_activos) ?? '') === String(c.id_categoria_activos) ? 'selected' : ''}>${c.Nombre}</option>
+            <option value="${c.id_categoria_activos}" ${String((values && values.id_categoria_activos) ?? '') === String(c.id_categoria_activos) ? 'selected' : ''}>${c.nombre}</option>
           `).join('')}
         </select>
 
         <label>Área</label>
         <select name="id_area" required>
           ${areas.map(a => `
-            <option value="${a.id_area}" ${String((values && values.id_area) ?? '') === String(a.id_area) ? 'selected' : ''}>${a.Nombre_Area}</option>
+            <option value="${a.id_area}" ${String((values && values.id_area) ?? '') === String(a.id_area) ? 'selected' : ''}>${a.nombre_area}</option>
           `).join('')}
         </select>
 
@@ -76,6 +79,9 @@
 
         <label>Precio lista</label>
         <input type="number" step="0.01" name="precio_lista" value="${(values && values.precio_lista) ? values.precio_lista : ''}">
+        
+        <label>Numero de serie</label>
+        <input type="number" step="0.01" name="numero_serie" value="${(values && values.	numero_serie) ? values.	numero_serie : ''}">
 
         <input type="hidden" name="_csrf" value="${csrfToken}">
         <button>Guardar</button>

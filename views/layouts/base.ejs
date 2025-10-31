@@ -10,9 +10,8 @@
     <header>
       <h1>Control de Activos</h1>
       <div class="header-actions">
-        <% if (user && ['Administrador', 'Técnico', 'Tecnico'].includes(user.Rol)) { %>
+        <% if (user) { %>
           <a class="btn" href="/activos">📋 Lista de activos</a>
-          <a class="btn" href="/activos?view=form">📝 Registrar activo</a>
         <% } %>
         
         <% if (user) { %>
