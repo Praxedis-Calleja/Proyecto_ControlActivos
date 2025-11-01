@@ -80,6 +80,51 @@ a.btn:hover {
   font-weight: 600;
 }
 
+.buscador-activos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.buscador-activos input[type="search"] {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+.buscador-activos button {
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  transition: background 0.2s;
+}
+
+.buscador-activos button:hover {
+  background: #0a58ca;
+}
+
+.btn-limpiar-busqueda {
+  color: #6c757d;
+  text-decoration: none;
+}
+
+.btn-limpiar-busqueda:hover {
+  text-decoration: underline;
+}
+
+.resultado-busqueda {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+}
+
+.resultado-busqueda strong {
+  font-weight: 600;
+}
+
 .btn-toggle {
   background: #0d6efd;
   color: #fff;

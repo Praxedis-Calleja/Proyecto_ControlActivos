@@ -11,6 +11,27 @@
     ${errores && errores.length ? `<div class="alert">${errores.map(e => `<div>${e}</div>`).join('')}</div>` : ''}
 
     <div id="panelListaActivos" class="${mostrarFormulario ? 'oculto' : ''}">
+      <form method="get" action="/activos" class="buscador-activos">
+        <input
+          type="search"
+          name="q"
+          placeholder="Buscar por categoría, área, marca o número de serie"
+          value="${busqueda || ''}"
+        >
+        <button type="submit">Buscar</button>
+        ${busquedaActiva ? `<a class="btn-limpiar-busqueda" href="/activos">Limpiar</a>` : ''}
+      </form>
+
+      ${busquedaActiva ? `
+        <p class="resultado-busqueda">
+          ${totalCoincidencias
+            ? totalCoincidencias === 1
+              ? `Se encontró <strong>1</strong> resultado para "${busqueda}".`
+              : `Se encontraron <strong>${totalCoincidencias}</strong> resultados para "${busqueda}".`
+            : `No se encontraron activos que coincidan con "${busqueda}".`}
+        </p>
+      ` : ''}
+
       ${activos.length ? `
         <div class="tabla-contenedor">
           <table class="tabla-activos">
@@ -49,7 +70,9 @@
             </tbody>
           </table>
         </div>
-      ` : '<p>No hay activos registrados por el momento.</p>'}
+      ` : busquedaActiva
+        ? ''
+        : '<p>No hay activos registrados por el momento.</p>'}
     </div>
 
     <div id="panelFormularioActivos" class="${mostrarFormulario ? '' : 'oculto'}">
