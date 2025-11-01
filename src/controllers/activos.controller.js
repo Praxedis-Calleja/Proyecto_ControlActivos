@@ -73,9 +73,18 @@ const obtenerActivoPorId = async (idActivo) => {
   return prepararActivo(filas[0]);
 };
 
-const obtenerActivos = async () => {
-  const [activos] = await pool.query(
-    `SELECT
+const escaparHtml = (texto = '') =>
+  String(texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const obtenerActivos = async (busqueda = '') => {
+  const termino = typeof busqueda === 'string' ? busqueda.trim() : '';
+
+  let consulta = `SELECT
       a.id_activo,
       a.id_categoria_activos,
       a.id_area,
@@ -89,18 +98,55 @@ const obtenerActivos = async () => {
       ar.nombre_area AS area
     FROM activos_fijos a
     LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
-    LEFT JOIN areas ar ON ar.id_area = a.id_area
-    ORDER BY a.precio_lista IS NULL, a.precio_lista DESC, a.estado ASC`
-  );
+    LEFT JOIN areas ar ON ar.id_area = a.id_area`;
+
+  const parametros = [];
+
+  if (termino) {
+    const like = `%${termino}%`;
+    const condiciones = [
+      'a.marca LIKE ?',
+      'a.modelo LIKE ?',
+      'a.estado LIKE ?',
+      'a.numero_serie LIKE ?',
+      'c.nombre LIKE ?',
+      'ar.nombre_area LIKE ?'
+    ];
+
+    parametros.push(like, like, like, like, like, like);
+
+    const numero = Number.parseInt(termino, 10);
+    if (Number.isInteger(numero)) {
+      condiciones.push('a.id_activo = ?');
+      parametros.push(numero);
+    }
+
+    consulta += `
+    WHERE ${condiciones.map((condicion) => `(${condicion})`).join(' OR ')}`;
+  }
+
+  consulta += `
+    ORDER BY a.precio_lista IS NULL, a.precio_lista DESC, a.estado ASC`;
+
+  const [activos] = await pool.query(consulta, parametros);
 
   return activos.map(prepararActivo);
 };
 
 const renderActivos = async (req, res, opciones = {}) => {
+  const busquedaOriginal =
+    opciones.busqueda ?? req.query?.q ?? req.query?.busqueda ?? '';
+  const busquedaTexto =
+    typeof busquedaOriginal === 'string' ? busquedaOriginal : '';
+  const busquedaNormalizada = busquedaTexto.trim();
+
   const [{ categorias, areas }, activos] = await Promise.all([
     obtenerCatalogos(),
-    obtenerActivos()
+    obtenerActivos(busquedaNormalizada)
   ]);
+
+  const busquedaActiva = busquedaNormalizada.length > 0;
+  const busquedaParaVista = escaparHtml(busquedaTexto);
 
   return res
     .status(opciones.status || 200)
@@ -110,6 +156,9 @@ const renderActivos = async (req, res, opciones = {}) => {
       activos,
       errores: opciones.errores || [],
       values: opciones.values || {},
+      busqueda: busquedaParaVista,
+      busquedaActiva,
+      totalCoincidencias: activos.length,
       ok: opciones.ok ?? (req.query.ok === '1'),
       mostrarFormulario: opciones.mostrarFormulario ?? false
     });
