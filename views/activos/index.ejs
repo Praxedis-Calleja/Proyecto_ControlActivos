@@ -39,13 +39,17 @@
               <tr>
                 <th>#</th>
                 <th>Categoría</th>
+                <th>Departamento</th>
                 <th>Área</th>
                 <th>Marca</th>
                 <th>Modelo</th>
                 <th>Estado</th>
                 <th>Fecha adquisición</th>
                 <th>Precio lista</th>
+                <th>Placa</th>
                 <th>Número de serie</th>
+                <th>Propietario</th>
+                <th>Contacto propietario</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -54,13 +58,17 @@
                 <tr>
                   <td>${index + 1}</td>
                   <td>${activo.categoria || '—'}</td>
+                  <td>${activo.departamento || '—'}</td>
                   <td>${activo.area || '—'}</td>
                   <td>${activo.marca || '—'}</td>
                   <td>${activo.modelo || '—'}</td>
                   <td>${activo.estado || '—'}</td>
                   <td>${activo.fechaAdquisicionTexto || '—'}</td>
                   <td>${activo.precioListaTexto || (activo.precio_lista ?? '—')}</td>
+                  <td>${activo.placa_activo || '—'}</td>
                   <td>${activo.numero_serie || '—'}</td>
+                  <td>${activo.propietario_nombre_completo || '—'}</td>
+                  <td>${activo.propietario_contacto || '—'}</td>
                   <td class="acciones">
                     <a href="/activos/${activo.id_activo}" class="btn-accion">Ver</a>
                     <a href="/activos/${activo.id_activo}/editar" class="btn-accion">Editar</a>
@@ -85,12 +93,24 @@
           `).join('')}
         </select>
 
-        <label>Área</label>
-        <select name="id_area" required>
-          ${areas.map(a => `
-            <option value="${a.id_area}" ${String((values && values.id_area) ?? '') === String(a.id_area) ? 'selected' : ''}>${a.nombre_area}</option>
+        <label>Departamento</label>
+        <select name="departamento_form">
+          <option value="">Selecciona un departamento</option>
+          ${departamentos.map(d => `
+            <option value="${d.id_departamento}" ${String((values && values.departamento_form) ?? '') === String(d.id_departamento) ? 'selected' : ''}>${d.nombre_departamento}</option>
           `).join('')}
         </select>
+
+        <label>Área</label>
+        <select name="id_area" required data-selected="${String((values && values.id_area) ?? '')}">
+          <option value="">Selecciona un área</option>
+          ${areas.map(a => `
+            <option value="${a.id_area}" data-departamento="${a.id_departamento}" ${String((values && values.id_area) ?? '') === String(a.id_area) ? 'selected' : ''}>${a.nombre_area}</option>
+          `).join('')}
+        </select>
+
+        <label>Placa del activo</label>
+        <input name="placa_activo" maxlength="100" value="${(values && values.placa_activo) ? values.placa_activo : ''}">
 
         <label>Marca</label>
         <input name="marca" maxlength="50" value="${(values && values.marca) ? values.marca : ''}">
@@ -106,6 +126,12 @@
 
         <label>Precio lista</label>
         <input type="number" step="0.01" name="precio_lista" value="${(values && values.precio_lista) ? values.precio_lista : ''}">
+
+        <label>Propietario (nombre completo)</label>
+        <input name="propietario_nombre_completo" maxlength="150" value="${(values && values.propietario_nombre_completo) ? values.propietario_nombre_completo : ''}">
+
+        <label>Contacto del propietario</label>
+        <input name="propietario_contacto" maxlength="100" value="${(values && values.propietario_contacto) ? values.propietario_contacto : ''}">
 
         <label>Número de serie</label>
         <input name="numero_serie" maxlength="100" value="${(values && values.numero_serie) ? values.numero_serie : ''}">
@@ -143,6 +169,54 @@
         mostrandoFormulario = !mostrandoFormulario;
         actualizarVista();
       });
+    })();
+
+    (() => {
+      const formulario = document.querySelector('#panelFormularioActivos form');
+      if (!formulario) return;
+
+      const selectDepartamento = formulario.querySelector('select[name="departamento_form"]');
+      const selectArea = formulario.querySelector('select[name="id_area"]');
+      if (!selectDepartamento || !selectArea) return;
+
+      const obtenerDepartamentoDeArea = (idArea) => {
+        const opcion = selectArea.querySelector(`option[value="${idArea}"]`);
+        return opcion ? opcion.dataset.departamento || '' : '';
+      };
+
+      const ajustarAreas = () => {
+        const departamentoSeleccionado = selectDepartamento.value;
+        const opciones = Array.from(selectArea.options);
+        opciones.forEach((opcion) => {
+          if (!opcion.value) return;
+          const pertenece = !departamentoSeleccionado || opcion.dataset.departamento === departamentoSeleccionado;
+          opcion.hidden = !pertenece;
+          opcion.disabled = !pertenece;
+        });
+
+        const opcionActiva = selectArea.options[selectArea.selectedIndex];
+        if (
+          departamentoSeleccionado &&
+          opcionActiva &&
+          opcionActiva.value &&
+          opcionActiva.dataset.departamento !== departamentoSeleccionado
+        ) {
+          selectArea.value = '';
+        }
+      };
+
+      const areaInicial = selectArea.dataset.selected || '';
+      if (areaInicial && !selectArea.value) {
+        selectArea.value = areaInicial;
+      }
+
+      if (!selectDepartamento.value && selectArea.value) {
+        selectDepartamento.value = obtenerDepartamentoDeArea(selectArea.value);
+      }
+
+      ajustarAreas();
+
+      selectDepartamento.addEventListener('change', ajustarAreas);
     })();
   </script>
 ` }) %>
