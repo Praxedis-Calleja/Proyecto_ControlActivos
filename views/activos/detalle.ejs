@@ -3,6 +3,7 @@
     <a href="/activos" class="btn-regresar">← Volver a activos</a>
 
     ${ok ? `<div class="ok">El activo se actualizó correctamente.</div>` : ''}
+    ${error ? `<div class="alert">${error}</div>` : ''}
 
     ${!activo ? `
       <div class="alert">El activo solicitado no fue encontrado.</div>
@@ -65,7 +66,30 @@
 
       <div class="detalle-acciones">
         <a class="btn" href="/activos/${activo.id_activo ?? ''}/editar">✏️ Editar activo</a>
+        <form
+          class="form-eliminar-activo"
+          method="post"
+          action="/activos/${activo.id_activo ?? ''}/eliminar"
+        >
+          <input type="hidden" name="_csrf" value="${csrfToken}">
+          <button type="submit" class="btn btn-eliminar">🗑️ Eliminar activo</button>
+        </form>
       </div>
     `}
   </section>
+  <script>
+    (() => {
+      const form = document.querySelector('.form-eliminar-activo');
+      if (!form) return;
+
+      form.addEventListener('submit', (event) => {
+        const confirmado = window.confirm(
+          '¿Deseas eliminar este activo? Esta acción no se puede deshacer.'
+        );
+        if (!confirmado) {
+          event.preventDefault();
+        }
+      });
+    })();
+  </script>
 ` }) %>

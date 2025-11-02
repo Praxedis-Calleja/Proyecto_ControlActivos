@@ -16,6 +16,10 @@
     <div class="ok">Activo guardado correctamente</div>
   <% } %>
 
+  <% if (eliminado) { %>
+    <div class="ok">Activo eliminado correctamente</div>
+  <% } %>
+
   <% if (errores && errores.length) { %>
     <div class="alert">
       <% errores.forEach((error) => { %>
