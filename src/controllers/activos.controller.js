@@ -4,6 +4,9 @@ import Joi from 'joi';
 const esquemaActivo = Joi.object({
   id_categoria_activos: Joi.number().integer().required(),
   id_area: Joi.number().integer().required(),
+  placa_activo: Joi.string().max(100).allow('', null),
+  propietario_nombre_completo: Joi.string().max(150).allow('', null),
+  propietario_contacto: Joi.string().max(100).allow('', null),
   marca: Joi.string().max(50).allow(''),
   modelo: Joi.string().max(50).allow(''),
   estado: Joi.string().max(50).required(),
@@ -19,9 +22,12 @@ const obtenerCatalogos = async () => {
     'SELECT id_categoria_activos, nombre FROM categorias_activos ORDER BY nombre'
   );
   const [areas] = await pool.query(
-    'SELECT id_area, nombre_area FROM Areas ORDER BY nombre_area'
+    'SELECT id_area, nombre_area, id_departamento FROM Areas ORDER BY nombre_area'
   );
-  return { categorias, areas };
+  const [departamentos] = await pool.query(
+    'SELECT id_departamento, nombre_departamento FROM Departamentos ORDER BY nombre_departamento'
+  );
+  return { categorias, areas, departamentos };
 };
 
 const formateadorFecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' });
@@ -60,10 +66,13 @@ const obtenerActivoPorId = async (idActivo) => {
     `SELECT
       a.*,
       c.nombre AS categoria,
-      ar.nombre_area AS area
+      ar.nombre_area AS area,
+      ar.id_departamento,
+      d.nombre_departamento AS departamento
     FROM activos_fijos a
     LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
     LEFT JOIN areas ar ON ar.id_area = a.id_area
+    LEFT JOIN departamentos d ON d.id_departamento = ar.id_departamento
     WHERE a.id_activo = ?
     LIMIT 1`,
     [idActivo]
@@ -88,6 +97,9 @@ const obtenerActivos = async (busqueda = '') => {
       a.id_activo,
       a.id_categoria_activos,
       a.id_area,
+      a.placa_activo,
+      a.propietario_nombre_completo,
+      a.propietario_contacto,
       a.marca,
       a.modelo,
       a.estado,
@@ -95,10 +107,13 @@ const obtenerActivos = async (busqueda = '') => {
       a.precio_lista,
       a.numero_serie,
       c.nombre AS categoria,
-      ar.nombre_area AS area
+      ar.nombre_area AS area,
+      ar.id_departamento,
+      d.nombre_departamento AS departamento
     FROM activos_fijos a
     LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
-    LEFT JOIN areas ar ON ar.id_area = a.id_area`;
+    LEFT JOIN areas ar ON ar.id_area = a.id_area
+    LEFT JOIN departamentos d ON d.id_departamento = ar.id_departamento`;
 
   const parametros = [];
 
@@ -109,11 +124,13 @@ const obtenerActivos = async (busqueda = '') => {
       'a.modelo LIKE ?',
       'a.estado LIKE ?',
       'a.numero_serie LIKE ?',
+      'a.placa_activo LIKE ?',
+      'a.propietario_nombre_completo LIKE ?',
       'c.nombre LIKE ?',
       'ar.nombre_area LIKE ?'
     ];
 
-    parametros.push(like, like, like, like, like, like);
+    parametros.push(like, like, like, like, like, like, like, like);
 
     const numero = Number.parseInt(termino, 10);
     if (Number.isInteger(numero)) {
@@ -140,10 +157,24 @@ const renderActivos = async (req, res, opciones = {}) => {
     typeof busquedaOriginal === 'string' ? busquedaOriginal : '';
   const busquedaNormalizada = busquedaTexto.trim();
 
-  const [{ categorias, areas }, activos] = await Promise.all([
+  const [{ categorias, areas, departamentos }, activos] = await Promise.all([
     obtenerCatalogos(),
     obtenerActivos(busquedaNormalizada)
   ]);
+
+  const valoresOriginales = opciones.values || {};
+  const areaSeleccionada = valoresOriginales.id_area ?? '';
+  const departamentoPorArea =
+    areaSeleccionada
+      ? areas.find((area) => String(area.id_area) === String(areaSeleccionada))
+      : null;
+  const departamentoSeleccionado =
+    valoresOriginales.departamento_form ??
+    (departamentoPorArea ? String(departamentoPorArea.id_departamento ?? '') : '');
+  const valoresConDepartamento = {
+    ...valoresOriginales,
+    departamento_form: departamentoSeleccionado
+  };
 
   const busquedaActiva = busquedaNormalizada.length > 0;
   const busquedaParaVista = escaparHtml(busquedaTexto);
@@ -153,9 +184,10 @@ const renderActivos = async (req, res, opciones = {}) => {
     .render('activos/index', {
       categorias,
       areas,
+      departamentos,
       activos,
       errores: opciones.errores || [],
-      values: opciones.values || {},
+      values: valoresConDepartamento,
       busqueda: busquedaParaVista,
       busquedaActiva,
       totalCoincidencias: activos.length,
@@ -190,6 +222,9 @@ export const postNuevoActivo = async (req, res) => {
   const {
     id_categoria_activos,
     id_area,
+    placa_activo,
+    propietario_nombre_completo,
+    propietario_contacto,
     marca,
     modelo,
     estado,
@@ -200,11 +235,14 @@ export const postNuevoActivo = async (req, res) => {
 
   await pool.query(
     `INSERT INTO activos_fijos
-    (id_categoria_activos, id_area, marca, modelo, estado, fecha_compra, precio_lista, numero_serie)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    (id_categoria_activos, id_area, placa_activo, propietario_nombre_completo, propietario_contacto, marca, modelo, estado, fecha_compra, precio_lista, numero_serie)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id_categoria_activos,
       id_area,
+      placa_activo || null,
+      propietario_nombre_completo || null,
+      propietario_contacto || null,
       marca || null,
       modelo || null,
       estado,
@@ -242,13 +280,14 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       activo: null,
       categorias: [],
       areas: [],
+      departamentos: [],
       errores: ['El identificador del activo no es válido'],
       values: {},
       activoId: id
     });
   }
 
-  const [{ categorias, areas }, activo] = await Promise.all([
+  const [{ categorias, areas, departamentos }, activo] = await Promise.all([
     obtenerCatalogos(),
     obtenerActivoPorId(idActivo)
   ]);
@@ -258,6 +297,7 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       activo: null,
       categorias,
       areas,
+      departamentos,
       errores: ['El activo solicitado no fue encontrado'],
       values: {},
       activoId: idActivo
@@ -267,6 +307,9 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
   const valoresBase = {
     id_categoria_activos: activo.id_categoria_activos,
     id_area: activo.id_area,
+    placa_activo: activo.placa_activo || '',
+    propietario_nombre_completo: activo.propietario_nombre_completo || '',
+    propietario_contacto: activo.propietario_contacto || '',
     marca: activo.marca || '',
     modelo: activo.modelo || '',
     estado: activo.estado || '',
@@ -275,7 +318,25 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       activo.precio_lista !== null && activo.precio_lista !== undefined
         ? String(activo.precio_lista)
         : '',
-    numero_serie: activo.numero_serie || ''
+    numero_serie: activo.numero_serie || '',
+    departamento_form:
+      (() => {
+        const area = areas.find((areaItem) => String(areaItem.id_area) === String(activo.id_area));
+        return area ? String(area.id_departamento ?? '') : '';
+      })()
+  };
+
+  const valoresCombinados = { ...valoresBase, ...(opciones.values || {}) };
+  const areaSeleccionada = valoresCombinados.id_area ?? '';
+  const departamentoDerivado =
+    areaSeleccionada
+      ? areas.find((areaItem) => String(areaItem.id_area) === String(areaSeleccionada))
+      : null;
+  const valoresConDepartamento = {
+    ...valoresCombinados,
+    departamento_form:
+      valoresCombinados.departamento_form ??
+      (departamentoDerivado ? String(departamentoDerivado.id_departamento ?? '') : '')
   };
 
   return res
@@ -284,8 +345,9 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       activo,
       categorias,
       areas,
+      departamentos,
       errores: opciones.errores || [],
-      values: { ...valoresBase, ...(opciones.values || {}) },
+      values: valoresConDepartamento,
       activoId: idActivo
     });
 };
@@ -301,6 +363,7 @@ export const postEditarActivo = async (req, res) => {
       activo: null,
       categorias: [],
       areas: [],
+      departamentos: [],
       errores: ['El identificador del activo no es válido'],
       values: req.body,
       activoId: req.params.id
@@ -323,6 +386,9 @@ export const postEditarActivo = async (req, res) => {
   const {
     id_categoria_activos,
     id_area,
+    placa_activo,
+    propietario_nombre_completo,
+    propietario_contacto,
     marca,
     modelo,
     estado,
@@ -335,6 +401,9 @@ export const postEditarActivo = async (req, res) => {
     `UPDATE activos_fijos
      SET id_categoria_activos = ?,
        id_area = ?,
+       placa_activo = ?,
+       propietario_nombre_completo = ?,
+       propietario_contacto = ?,
        marca = ?,
        modelo = ?,
        estado = ?,
@@ -346,6 +415,9 @@ export const postEditarActivo = async (req, res) => {
     [
       id_categoria_activos,
       id_area,
+      placa_activo || null,
+      propietario_nombre_completo || null,
+      propietario_contacto || null,
       marca || null,
       modelo || null,
       estado,
