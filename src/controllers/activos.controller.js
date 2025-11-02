@@ -192,6 +192,7 @@ const renderActivos = async (req, res, opciones = {}) => {
       busquedaActiva,
       totalCoincidencias: activos.length,
       ok: opciones.ok ?? (req.query.ok === '1'),
+      eliminado: opciones.eliminado ?? (req.query.deleted === '1'),
       mostrarFormulario: opciones.mostrarFormulario ?? false
     });
 };
@@ -258,17 +259,22 @@ export const postNuevoActivo = async (req, res) => {
 export const getDetalleActivo = async (req, res) => {
   const idActivo = Number.parseInt(req.params.id, 10);
   if (!Number.isInteger(idActivo) || idActivo <= 0) {
-    return res.status(404).render('activos/detalle', { activo: null, ok: false });
+    return res
+      .status(404)
+      .render('activos/detalle', { activo: null, ok: false, error: null });
   }
 
   const activo = await obtenerActivoPorId(idActivo);
   if (!activo) {
-    return res.status(404).render('activos/detalle', { activo: null, ok: false });
+    return res
+      .status(404)
+      .render('activos/detalle', { activo: null, ok: false, error: null });
   }
 
   return res.render('activos/detalle', {
     activo,
-    ok: req.query.ok === '1'
+    ok: req.query.ok === '1',
+    error: null
   });
 };
 
@@ -437,4 +443,35 @@ export const postEditarActivo = async (req, res) => {
   }
 
   return res.redirect(`/activos/${idActivo}?ok=1`);
+};
+
+export const postEliminarActivo = async (req, res) => {
+  const idActivo = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(idActivo) || idActivo <= 0) {
+    return res
+      .status(404)
+      .render('activos/detalle', { activo: null, ok: false, error: null });
+  }
+
+  const activo = await obtenerActivoPorId(idActivo);
+  if (!activo) {
+    return res
+      .status(404)
+      .render('activos/detalle', { activo: null, ok: false, error: null });
+  }
+
+  const [resultado] = await pool.query(
+    'DELETE FROM activos_fijos WHERE id_activo = ? LIMIT 1',
+    [idActivo]
+  );
+
+  if (!resultado.affectedRows) {
+    return res.status(500).render('activos/detalle', {
+      activo,
+      ok: false,
+      error: 'No fue posible eliminar el activo. Inténtalo nuevamente más tarde.'
+    });
+  }
+
+  return res.redirect('/activos?deleted=1');
 };

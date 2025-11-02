@@ -6,7 +6,8 @@ import {
   postNuevoActivo,
   getDetalleActivo,
   getEditarActivo,
-  postEditarActivo
+  postEditarActivo,
+  postEliminarActivo
 } from '../controllers/activos.controller.js';
 
 const router = Router();
@@ -18,6 +19,6 @@ router.post('/activos', requiereLogin, requiereRol(['Administrador', 'Técnico',
 router.get('/:id/editar', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), getEditarActivo);
 router.post('/:id/editar', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), postEditarActivo);
 router.get('/:id', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), getDetalleActivo);
+router.post('/:id/eliminar', requiereLogin, requiereRol(['Administrador', 'Técnico', 'Tecnico']), postEliminarActivo);
 
 export default router;
-    
