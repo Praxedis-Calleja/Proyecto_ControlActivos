@@ -1,0 +1,251 @@
+<% const formValues = values || {}; %>
+<section>
+  <div class="activos-header">
+    <h2>Activos</h2>
+    <button
+      type="button"
+      id="toggleActivos"
+      class="btn-toggle"
+      data-view="<%= mostrarFormulario ? 'form' : 'list' %>"
+    >
+      <%= mostrarFormulario ? 'Ver lista' : 'Registrar activo' %>
+    </button>
+  </div>
+
+  <% if (ok) { %>
+    <div class="ok">Activo guardado correctamente</div>
+  <% } %>
+
+  <% if (errores && errores.length) { %>
+    <div class="alert">
+      <% errores.forEach((error) => { %>
+        <div><%= error %></div>
+      <% }); %>
+    </div>
+  <% } %>
+
+  <div id="panelListaActivos" class="<%= mostrarFormulario ? 'oculto' : '' %>">
+    <form method="get" action="/activos" class="buscador-activos">
+      <input
+        type="search"
+        name="q"
+        placeholder="Buscar por categoría, área, marca o número de serie"
+        value="<%= busqueda || '' %>"
+      >
+      <button type="submit">Buscar</button>
+      <% if (busquedaActiva) { %>
+        <a class="btn-limpiar-busqueda" href="/activos">Limpiar</a>
+      <% } %>
+    </form>
+
+    <% if (busquedaActiva) { %>
+      <p class="resultado-busqueda">
+        <% if (totalCoincidencias) { %>
+          <% if (totalCoincidencias === 1) { %>
+            Se encontró <strong>1</strong> resultado para "<%= busqueda %>".
+          <% } else { %>
+            Se encontraron <strong><%= totalCoincidencias %></strong> resultados para "<%= busqueda %>".
+          <% } %>
+        <% } else { %>
+          No se encontraron activos que coincidan con "<%= busqueda %>".
+        <% } %>
+      </p>
+    <% } %>
+
+    <% if (activos && activos.length) { %>
+      <div class="tabla-contenedor">
+        <table class="tabla-activos">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Categoría</th>
+              <th>Departamento</th>
+              <th>Área</th>
+              <th>Marca</th>
+              <th>Modelo</th>
+              <th>Estado</th>
+              <th>Fecha adquisición</th>
+              <th>Precio lista</th>
+              <th>Placa</th>
+              <th>Número de serie</th>
+              <th>Propietario</th>
+              <th>Contacto propietario</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% activos.forEach((activo, index) => { %>
+              <tr>
+                <td><%= index + 1 %></td>
+                <td><%= activo.categoria || '—' %></td>
+                <td><%= activo.departamento || '—' %></td>
+                <td><%= activo.area || '—' %></td>
+                <td><%= activo.marca || '—' %></td>
+                <td><%= activo.modelo || '—' %></td>
+                <td><%= activo.estado || '—' %></td>
+                <td><%= activo.fechaAdquisicionTexto || '—' %></td>
+                <td><%= activo.precioListaTexto || (activo.precio_lista ?? '—') %></td>
+                <td><%= activo.placa_activo || '—' %></td>
+                <td><%= activo.numero_serie || '—' %></td>
+                <td><%= activo.propietario_nombre_completo || '—' %></td>
+                <td><%= activo.propietario_contacto || '—' %></td>
+                <td class="acciones">
+                  <a href="/activos/<%= activo.id_activo %>" class="btn-accion">Ver</a>
+                  <a href="/activos/<%= activo.id_activo %>/editar" class="btn-accion">Editar</a>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } else if (!busquedaActiva) { %>
+      <p>No hay activos registrados por el momento.</p>
+    <% } %>
+  </div>
+
+  <div id="panelFormularioActivos" class="<%= mostrarFormulario ? '' : 'oculto' %>">
+    <h3>Registrar nuevo activo</h3>
+    <form method="post" action="/activos">
+      <label>Categoría</label>
+      <select name="id_categoria_activos" required>
+        <% (categorias || []).forEach((categoria) => { %>
+          <% const categoriaSeleccionada = String(formValues.id_categoria_activos ?? '') === String(categoria.id_categoria_activos); %>
+          <option value="<%= categoria.id_categoria_activos %>" <%= categoriaSeleccionada ? 'selected' : '' %>><%= categoria.nombre %></option>
+        <% }); %>
+      </select>
+
+      <label>Departamento</label>
+      <select name="departamento_form">
+        <option value="">Selecciona un departamento</option>
+        <% (departamentos || []).forEach((departamento) => { %>
+          <% const deptoSeleccionado = String(formValues.departamento_form ?? '') === String(departamento.id_departamento); %>
+          <option value="<%= departamento.id_departamento %>" <%= deptoSeleccionado ? 'selected' : '' %>><%= departamento.nombre_departamento %></option>
+        <% }); %>
+      </select>
+
+      <label>Área</label>
+      <select name="id_area" required data-selected="<%= String(formValues.id_area ?? '') %>">
+        <option value="">Selecciona un área</option>
+        <% (areas || []).forEach((area) => { %>
+          <% const areaSeleccionada = String(formValues.id_area ?? '') === String(area.id_area); %>
+          <option
+            value="<%= area.id_area %>"
+            data-departamento="<%= area.id_departamento %>"
+            <%= areaSeleccionada ? 'selected' : '' %>
+          >
+            <%= area.nombre_area %>
+          </option>
+        <% }); %>
+      </select>
+
+      <label>Placa del activo</label>
+      <input name="placa_activo" maxlength="100" value="<%= formValues.placa_activo ? formValues.placa_activo : '' %>">
+
+      <label>Marca</label>
+      <input name="marca" maxlength="50" value="<%= formValues.marca ? formValues.marca : '' %>">
+
+      <label>Modelo</label>
+      <input name="modelo" maxlength="50" value="<%= formValues.modelo ? formValues.modelo : '' %>">
+
+      <label>Estado</label>
+      <input name="estado" maxlength="50" required value="<%= formValues.estado ? formValues.estado : '' %>">
+
+      <label>Fecha de adquisición</label>
+      <input type="date" name="fecha_compra" value="<%= formValues.fecha_compra ? formValues.fecha_compra : '' %>">
+
+      <label>Precio lista</label>
+      <input type="number" step="0.01" name="precio_lista" value="<%= formValues.precio_lista ? formValues.precio_lista : '' %>">
+
+      <label>Propietario (nombre completo)</label>
+      <input name="propietario_nombre_completo" maxlength="150" value="<%= formValues.propietario_nombre_completo ? formValues.propietario_nombre_completo : '' %>">
+
+      <label>Contacto del propietario</label>
+      <input name="propietario_contacto" maxlength="100" value="<%= formValues.propietario_contacto ? formValues.propietario_contacto : '' %>">
+
+      <label>Número de serie</label>
+      <input name="numero_serie" maxlength="100" value="<%= formValues.numero_serie ? formValues.numero_serie : '' %>">
+
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button>Guardar</button>
+    </form>
+  </div>
+</section>
+
+<script>
+  (() => {
+    const toggleBtn = document.getElementById('toggleActivos');
+    const lista = document.getElementById('panelListaActivos');
+    const formulario = document.getElementById('panelFormularioActivos');
+    if (!toggleBtn || !lista || !formulario) return;
+
+    let mostrandoFormulario = toggleBtn.dataset.view === 'form';
+
+    const actualizarVista = () => {
+      if (mostrandoFormulario) {
+        formulario.classList.remove('oculto');
+        lista.classList.add('oculto');
+        toggleBtn.textContent = 'Ver lista';
+      } else {
+        formulario.classList.add('oculto');
+        lista.classList.remove('oculto');
+        toggleBtn.textContent = 'Registrar activo';
+      }
+      toggleBtn.dataset.view = mostrandoFormulario ? 'form' : 'list';
+    };
+
+    actualizarVista();
+
+    toggleBtn.addEventListener('click', () => {
+      mostrandoFormulario = !mostrandoFormulario;
+      actualizarVista();
+    });
+  })();
+
+  (() => {
+    const formulario = document.querySelector('#panelFormularioActivos form');
+    if (!formulario) return;
+
+    const selectDepartamento = formulario.querySelector('select[name="departamento_form"]');
+    const selectArea = formulario.querySelector('select[name="id_area"]');
+    if (!selectDepartamento || !selectArea) return;
+
+    const obtenerDepartamentoDeArea = (idArea) => {
+      const opcion = selectArea.querySelector(`option[value="${idArea}"]`);
+      return opcion ? opcion.dataset.departamento || '' : '';
+    };
+
+    const ajustarAreas = () => {
+      const departamentoSeleccionado = selectDepartamento.value;
+      const opciones = Array.from(selectArea.options);
+      opciones.forEach((opcion) => {
+        if (!opcion.value) return;
+        const pertenece = !departamentoSeleccionado || opcion.dataset.departamento === departamentoSeleccionado;
+        opcion.hidden = !pertenece;
+        opcion.disabled = !pertenece;
+      });
+
+      const opcionActiva = selectArea.options[selectArea.selectedIndex];
+      if (
+        departamentoSeleccionado &&
+        opcionActiva &&
+        opcionActiva.value &&
+        opcionActiva.dataset.departamento !== departamentoSeleccionado
+      ) {
+        selectArea.value = '';
+      }
+    };
+
+    const areaInicial = selectArea.dataset.selected || '';
+    if (areaInicial && !selectArea.value) {
+      selectArea.value = areaInicial;
+    }
+
+    if (!selectDepartamento.value && selectArea.value) {
+      selectDepartamento.value = obtenerDepartamentoDeArea(selectArea.value);
+    }
+
+    ajustarAreas();
+
+    selectDepartamento.addEventListener('change', ajustarAreas);
+  })();
+</script>
