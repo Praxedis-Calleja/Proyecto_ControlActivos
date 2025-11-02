@@ -16,12 +16,24 @@
           `).join('')}
         </select>
 
-        <label for="area">Área</label>
-        <select id="area" name="id_area" required>
-          ${areas.map(a => `
-            <option value="${a.id_area}" ${String(values.id_area) === String(a.id_area) ? 'selected' : ''}>${a.nombre_area}</option>
+        <label for="departamento">Departamento</label>
+        <select id="departamento" name="departamento_form">
+          <option value="">Selecciona un departamento</option>
+          ${departamentos.map(d => `
+            <option value="${d.id_departamento}" ${String(values.departamento_form ?? '') === String(d.id_departamento) ? 'selected' : ''}>${d.nombre_departamento}</option>
           `).join('')}
         </select>
+
+        <label for="area">Área</label>
+        <select id="area" name="id_area" required data-selected="${String(values.id_area ?? '')}">
+          <option value="">Selecciona un área</option>
+          ${areas.map(a => `
+            <option value="${a.id_area}" data-departamento="${a.id_departamento}" ${String(values.id_area) === String(a.id_area) ? 'selected' : ''}>${a.nombre_area}</option>
+          `).join('')}
+        </select>
+
+        <label for="placa_activo">Placa del activo</label>
+        <input id="placa_activo" name="placa_activo" maxlength="100" value="${values.placa_activo ?? ''}">
 
         <label for="marca">Marca</label>
         <input id="marca" name="marca" maxlength="50" value="${values.marca ?? ''}">
@@ -38,6 +50,12 @@
         <label for="precio_lista">Precio lista</label>
         <input id="precio_lista" type="number" step="0.01" name="precio_lista" value="${values.precio_lista ?? ''}">
 
+        <label for="propietario_nombre_completo">Propietario (nombre completo)</label>
+        <input id="propietario_nombre_completo" name="propietario_nombre_completo" maxlength="150" value="${values.propietario_nombre_completo ?? ''}">
+
+        <label for="propietario_contacto">Contacto del propietario</label>
+        <input id="propietario_contacto" name="propietario_contacto" maxlength="100" value="${values.propietario_contacto ?? ''}">
+
         <label for="numero_serie">Número de serie</label>
         <input id="numero_serie" name="numero_serie" maxlength="100" value="${values.numero_serie ?? ''}">
 
@@ -46,4 +64,54 @@
       </form>
     `}
   </section>
+  <script>
+    (() => {
+      const formulario = document.querySelector('.formulario-activo');
+      if (!formulario) return;
+
+      const selectDepartamento = formulario.querySelector('select[name="departamento_form"]');
+      const selectArea = formulario.querySelector('select[name="id_area"]');
+      if (!selectDepartamento || !selectArea) return;
+
+      const obtenerDepartamentoDeArea = (idArea) => {
+        const selector = 'option[value="' + idArea + '"]';
+        const opcion = selectArea.querySelector(selector);
+        return opcion ? opcion.dataset.departamento || '' : '';
+      };
+
+      const ajustarAreas = () => {
+        const departamentoSeleccionado = selectDepartamento.value;
+        const opciones = Array.from(selectArea.options);
+        opciones.forEach((opcion) => {
+          if (!opcion.value) return;
+          const pertenece = !departamentoSeleccionado || opcion.dataset.departamento === departamentoSeleccionado;
+          opcion.hidden = !pertenece;
+          opcion.disabled = !pertenece;
+        });
+
+        const opcionActiva = selectArea.options[selectArea.selectedIndex];
+        if (
+          departamentoSeleccionado &&
+          opcionActiva &&
+          opcionActiva.value &&
+          opcionActiva.dataset.departamento !== departamentoSeleccionado
+        ) {
+          selectArea.value = '';
+        }
+      };
+
+      const areaInicial = selectArea.dataset.selected || '';
+      if (areaInicial && !selectArea.value) {
+        selectArea.value = areaInicial;
+      }
+
+      if (!selectDepartamento.value && selectArea.value) {
+        selectDepartamento.value = obtenerDepartamentoDeArea(selectArea.value);
+      }
+
+      ajustarAreas();
+
+      selectDepartamento.addEventListener('change', ajustarAreas);
+    })();
+  </script>
 ` }) %>
