@@ -101,7 +101,11 @@ export const getNuevaIncidencia = async (req, res) => {
 
 export const postNuevaIncidencia = async (req, res) => {
   try {
-    const { error, value } = esquemaIncidencia.validate(req.body, { abortEarly: false });
+    const { error, value } = esquemaIncidencia.validate(req.body, {
+      abortEarly: false,
+      allowUnknown: true,
+      stripUnknown: true
+    });
 
     if (error) {
       const catalogos = await obtenerCatalogos();
