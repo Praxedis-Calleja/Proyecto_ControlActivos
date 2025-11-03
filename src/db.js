@@ -2,10 +2,10 @@ import mysql from 'mysql2/promise';
 import 'dotenv/config';
 
 const {
-  DB_HOST = '127.0.0.1',
+  DB_HOST = 'localhost',
   DB_USER = 'root',
   DB_PASS = '',
-  DB_NAME,
+  DB_NAME = 'controlactivos',
   DB_PORT = '3306'
 } = process.env;
 
