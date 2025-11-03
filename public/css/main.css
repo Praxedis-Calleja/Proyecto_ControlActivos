@@ -10,6 +10,44 @@ input, select, button{padding:.5rem;margin-top:.2rem}
 .ok{background:#d6ffe0;padding:.5rem;margin:.6rem 0}
 .login{max-width:420px;margin:2rem auto}
 
+.incidencias-form {
+  max-width: 640px;
+}
+
+.form-incidencia .campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+}
+
+.form-incidencia input,
+.form-incidencia select,
+.form-incidencia textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-incidencia textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-incidencia button {
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0.55rem 1.2rem;
+  margin-top: 1.2rem;
+  transition: background 0.2s;
+}
+
+.form-incidencia button:hover {
+  background: #0a58ca;
+}
+
 a.btn {
   display: inline-block;
   background: #007bff;

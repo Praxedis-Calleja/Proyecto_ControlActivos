@@ -183,18 +183,30 @@ CREATE TABLE `reportesbaja` (
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER trg_generar_folio_baja
-AFTER INSERT ON ReportesBaja
-FOR EACH ROW
-BEGIN
-  UPDATE ReportesBaja
-  SET Folio = CONCAT(
-      'BAJ-',
-      DATE_FORMAT(NEW.Fecha_Baja, '%Y%m%d'),
-      '-',
-      LPAD(NEW.ID_Baja, 6, '0')
-  )
-  WHERE ID_Baja = NEW.ID_Baja;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER trg_generar_folio_baja
+
+AFTER INSERT ON ReportesBaja
+
+FOR EACH ROW
+
+BEGIN
+
+  UPDATE ReportesBaja
+
+  SET Folio = CONCAT(
+
+      'BAJ-',
+
+      DATE_FORMAT(NEW.Fecha_Baja, '%Y%m%d'),
+
+      '-',
+
+      LPAD(NEW.ID_Baja, 6, '0')
+
+  )
+
+  WHERE ID_Baja = NEW.ID_Baja;
+
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
