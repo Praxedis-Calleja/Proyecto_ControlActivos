@@ -1,0 +1,209 @@
+<%- include('../layouts/base', { body: `
+  <section class="incidencias-form">
+    <h2>Registrar incidencia</h2>
+
+    ${ok ? `<div class="ok">Incidencia registrada correctamente</div>` : ''}
+
+    ${(errores && errores.length)
+      ? `<div class="alert">${errores.map((err) => `<div>${err}</div>`).join('')}</div>`
+      : ''}
+
+    <form method="post" action="/incidencias/nueva" class="form-incidencia">
+      <div class="campo">
+        <label for="id_activo">Activo involucrado</label>
+        <select name="id_activo" id="id_activo" required>
+          <option value="">Selecciona un activo</option>
+          ${(activos || [])
+            .map((activo) => {
+              const texto = [activo.marca, activo.modelo, activo.numero_serie]
+                .filter(Boolean)
+                .join(' · ') || `Activo #${activo.id_activo}`;
+              const seleccionado = String((values && values.id_activo) || '') === String(activo.id_activo);
+              return `<option value="${activo.id_activo}" ${seleccionado ? 'selected' : ''}>${texto}</option>`;
+            })
+            .join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="id_departamento">Departamento</label>
+        <select name="id_departamento" id="id_departamento" required>
+          <option value="">Selecciona un departamento</option>
+          ${(departamentos || [])
+            .map((depto) => {
+              const seleccionado = String((values && values.id_departamento) || '') === String(depto.id_departamento);
+              return `<option value="${depto.id_departamento}" ${seleccionado ? 'selected' : ''}>${depto.nombre_departamento}</option>`;
+            })
+            .join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="id_area">Área</label>
+        <select name="id_area" id="id_area" required data-selected="${(values && values.id_area) || ''}">
+          <option value="">Selecciona un área</option>
+          ${(areas || [])
+            .map((area) => {
+              return `<option value="${area.id_area}" data-departamento="${area.id_departamento}">${area.nombre_area}</option>`;
+            })
+            .join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="id_reporta">Reporta</label>
+        <select name="id_reporta" id="id_reporta" required>
+          <option value="">Selecciona quien reporta</option>
+          ${(usuarios || [])
+            .map((usuario) => {
+              const nombre = [usuario.Nombre, usuario.Apellido].filter(Boolean).join(' ');
+              const seleccionado = String((values && values.id_reporta) || '') === String(usuario.ID_Usuario);
+              return `<option value="${usuario.ID_Usuario}" ${seleccionado ? 'selected' : ''}>${nombre || `Usuario #${usuario.ID_Usuario}`} (${usuario.Rol})</option>`;
+            })
+            .join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="id_tecnico_asignado">Técnico asignado</label>
+        <select name="id_tecnico_asignado" id="id_tecnico_asignado">
+          <option value="">Sin asignar</option>
+          ${(usuarios || [])
+            .filter((usuario) => usuario.Rol === 'Tecnico' || usuario.Rol === 'Administrador')
+            .map((usuario) => {
+              const nombre = [usuario.Nombre, usuario.Apellido].filter(Boolean).join(' ');
+              const seleccionado = String((values && values.id_tecnico_asignado) || '') === String(usuario.ID_Usuario);
+              return `<option value="${usuario.ID_Usuario}" ${seleccionado ? 'selected' : ''}>${nombre || `Usuario #${usuario.ID_Usuario}`} (${usuario.Rol})</option>`;
+            })
+            .join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="titulo">Título</label>
+        <input
+          type="text"
+          id="titulo"
+          name="titulo"
+          maxlength="150"
+          required
+          value="${(values && values.titulo) || ''}"
+        >
+      </div>
+
+      <div class="campo">
+        <label for="descripcion">Descripción detallada</label>
+        <textarea id="descripcion" name="descripcion" rows="4" required>${(values && values.descripcion) || ''}</textarea>
+      </div>
+
+      <div class="campo">
+        <label for="prioridad">Prioridad</label>
+        <select name="prioridad" id="prioridad" required>
+          <option value="">Selecciona prioridad</option>
+          ${(prioridades || [])
+            .map((prioridad) => {
+              const seleccionado = String((values && values.prioridad) || '') === prioridad;
+              return `<option value="${prioridad}" ${seleccionado ? 'selected' : ''}>${prioridad}</option>`;
+            })
+            .join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="estado">Estado</label>
+        <select name="estado" id="estado" required>
+          <option value="">Selecciona estado</option>
+          ${(estados || [])
+            .map((estado) => {
+              const seleccionado = String((values && values.estado) || '') === estado;
+              return `<option value="${estado}" ${seleccionado ? 'selected' : ''}>${estado}</option>`;
+            })
+            .join('')}
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="fecha_reporte">Fecha de reporte</label>
+        <input
+          type="date"
+          id="fecha_reporte"
+          name="fecha_reporte"
+          required
+          value="${(values && values.fecha_reporte) || ''}"
+        >
+      </div>
+
+      <div class="campo">
+        <label for="fecha_resolucion">Fecha de resolución (opcional)</label>
+        <input
+          type="date"
+          id="fecha_resolucion"
+          name="fecha_resolucion"
+          value="${(values && values.fecha_resolucion) || ''}"
+        >
+      </div>
+
+      <div class="campo">
+        <label for="causa_raiz">Causa raíz (opcional)</label>
+        <textarea id="causa_raiz" name="causa_raiz" rows="3">${(values && values.causa_raiz) || ''}</textarea>
+      </div>
+
+      <div class="campo">
+        <label for="acciones_realizadas">Acciones realizadas (opcional)</label>
+        <textarea id="acciones_realizadas" name="acciones_realizadas" rows="3">${(values && values.acciones_realizadas) || ''}</textarea>
+      </div>
+
+      <div class="campo">
+        <label for="observaciones">Observaciones (opcional)</label>
+        <textarea id="observaciones" name="observaciones" rows="3">${(values && values.observaciones) || ''}</textarea>
+      </div>
+
+      <input type="hidden" name="_csrf" value="${csrfToken}">
+      <button type="submit">Guardar incidencia</button>
+    </form>
+  </section>
+` }) %>
+
+<script>
+  (() => {
+    const selectDepartamento = document.getElementById('id_departamento');
+    const selectArea = document.getElementById('id_area');
+    if (!selectDepartamento || !selectArea) return;
+
+    const opcionesArea = Array.from(selectArea.options).slice(1);
+    let valorPersistente = selectArea.dataset.selected || '';
+
+    const filtrarAreas = () => {
+      const depto = selectDepartamento.value;
+      selectArea.innerHTML = '<option value="">Selecciona un área</option>';
+
+      opcionesArea.forEach((opcion) => {
+        const coincide = !depto || opcion.dataset.departamento === depto;
+        if (coincide) {
+          selectArea.appendChild(opcion.cloneNode(true));
+        }
+      });
+
+      if (valorPersistente) {
+        Array.from(selectArea.options).forEach((opcion) => {
+          if (opcion.value === valorPersistente) {
+            opcion.selected = true;
+          }
+        });
+      }
+    };
+
+    selectDepartamento.addEventListener('change', () => {
+      valorPersistente = '';
+      selectArea.dataset.selected = '';
+      filtrarAreas();
+    });
+
+    selectArea.addEventListener('change', () => {
+      valorPersistente = selectArea.value;
+      selectArea.dataset.selected = selectArea.value;
+    });
+
+    filtrarAreas();
+  })();
+</script>
