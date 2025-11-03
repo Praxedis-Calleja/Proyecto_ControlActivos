@@ -1,0 +1,141 @@
+<% const formValues = values || {}; %>
+<section class="editar-activo">
+  <a href="/activos/<%= activoId %>" class="btn-regresar">← Volver al detalle</a>
+  <h2>Editar activo</h2>
+
+  <% if (errores && errores.length) { %>
+    <div class="alert">
+      <% errores.forEach((error) => { %>
+        <div><%= error %></div>
+      <% }); %>
+    </div>
+  <% } %>
+
+  <% if (!activo) { %>
+    <p>No fue posible cargar la información del activo solicitado.</p>
+  <% } else { %>
+    <form method="post" action="/activos/<%= activoId %>/editar" class="formulario-activo">
+      <label for="categoria">Categoría</label>
+      <select id="categoria" name="id_categoria_activos" required>
+        <% (categorias || []).forEach((categoria) => { %>
+          <% const categoriaSeleccionada = String(formValues.id_categoria_activos ?? '') === String(categoria.id_categoria_activos); %>
+          <option value="<%= categoria.id_categoria_activos %>" <%= categoriaSeleccionada ? 'selected' : '' %>><%= categoria.nombre %></option>
+        <% }); %>
+      </select>
+
+      <label for="departamento">Departamento</label>
+      <select id="departamento" name="departamento_form">
+        <option value="">Selecciona un departamento</option>
+        <% (departamentos || []).forEach((departamento) => { %>
+          <% const departamentoSeleccionado = String(formValues.departamento_form ?? '') === String(departamento.id_departamento); %>
+          <option value="<%= departamento.id_departamento %>" <%= departamentoSeleccionado ? 'selected' : '' %>><%= departamento.nombre_departamento %></option>
+        <% }); %>
+      </select>
+
+      <label for="area">Área</label>
+      <select id="area" name="id_area" required data-selected="<%= String(formValues.id_area ?? '') %>">
+        <option value="">Selecciona un área</option>
+        <% (areas || []).forEach((area) => { %>
+          <% const areaSeleccionada = String(formValues.id_area ?? '') === String(area.id_area); %>
+          <option
+            value="<%= area.id_area %>"
+            data-departamento="<%= area.id_departamento %>"
+            <%= areaSeleccionada ? 'selected' : '' %>
+          >
+            <%= area.nombre_area %>
+          </option>
+        <% }); %>
+      </select>
+
+      <label for="placa_activo">Placa del activo</label>
+      <input id="placa_activo" name="placa_activo" maxlength="100" value="<%= formValues.placa_activo ?? '' %>">
+
+      <label for="marca">Marca</label>
+      <input id="marca" name="marca" maxlength="50" value="<%= formValues.marca ?? '' %>">
+
+      <label for="modelo">Modelo</label>
+      <input id="modelo" name="modelo" maxlength="50" value="<%= formValues.modelo ?? '' %>">
+
+      <label for="estado">Estado</label>
+      <input id="estado" name="estado" maxlength="50" required value="<%= formValues.estado ?? '' %>">
+
+      <label for="fecha_compra">Fecha de adquisición</label>
+      <input id="fecha_compra" type="date" name="fecha_compra" value="<%= formValues.fecha_compra ?? '' %>">
+
+      <label for="precio_lista">Precio lista</label>
+      <input id="precio_lista" type="number" step="0.01" name="precio_lista" value="<%= formValues.precio_lista ?? '' %>">
+
+      <label for="propietario_nombre_completo">Propietario (nombre completo)</label>
+      <input
+        id="propietario_nombre_completo"
+        name="propietario_nombre_completo"
+        maxlength="150"
+        value="<%= formValues.propietario_nombre_completo ?? '' %>"
+      >
+
+      <label for="propietario_contacto">Contacto del propietario</label>
+      <input
+        id="propietario_contacto"
+        name="propietario_contacto"
+        maxlength="100"
+        value="<%= formValues.propietario_contacto ?? '' %>"
+      >
+
+      <label for="numero_serie">Número de serie</label>
+      <input id="numero_serie" name="numero_serie" maxlength="100" value="<%= formValues.numero_serie ?? '' %>">
+
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit">Guardar cambios</button>
+    </form>
+  <% } %>
+</section>
+
+<script>
+  (() => {
+    const formulario = document.querySelector('.formulario-activo');
+    if (!formulario) return;
+
+    const selectDepartamento = formulario.querySelector('select[name="departamento_form"]');
+    const selectArea = formulario.querySelector('select[name="id_area"]');
+    if (!selectDepartamento || !selectArea) return;
+
+    const obtenerDepartamentoDeArea = (idArea) => {
+      const opcion = selectArea.querySelector(`option[value="${idArea}"]`);
+      return opcion ? opcion.dataset.departamento || '' : '';
+    };
+
+    const ajustarAreas = () => {
+      const departamentoSeleccionado = selectDepartamento.value;
+      const opciones = Array.from(selectArea.options);
+      opciones.forEach((opcion) => {
+        if (!opcion.value) return;
+        const pertenece = !departamentoSeleccionado || opcion.dataset.departamento === departamentoSeleccionado;
+        opcion.hidden = !pertenece;
+        opcion.disabled = !pertenece;
+      });
+
+      const opcionActiva = selectArea.options[selectArea.selectedIndex];
+      if (
+        departamentoSeleccionado &&
+        opcionActiva &&
+        opcionActiva.value &&
+        opcionActiva.dataset.departamento !== departamentoSeleccionado
+      ) {
+        selectArea.value = '';
+      }
+    };
+
+    const areaInicial = selectArea.dataset.selected || '';
+    if (areaInicial && !selectArea.value) {
+      selectArea.value = areaInicial;
+    }
+
+    if (!selectDepartamento.value && selectArea.value) {
+      selectDepartamento.value = obtenerDepartamentoDeArea(selectArea.value);
+    }
+
+    ajustarAreas();
+
+    selectDepartamento.addEventListener('change', ajustarAreas);
+  })();
+</script>
