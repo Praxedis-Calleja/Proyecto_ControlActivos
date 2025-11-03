@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import csurf from 'csurf';
 import morgan from 'morgan';
 import 'dotenv/config';
+import { dbConfig, pool } from './db.js';
 
 import authRoutes from './routes/auth.routes.js';
 import activosRoutes from './routes/activos.routes.js';
@@ -33,16 +34,25 @@ app.use(helmet({
 
 // Sesiones en MySQL
 const MySQLStore = MySQLStoreFactory(session);
+const sessionStore = new MySQLStore(
+  {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    password: dbConfig.password,
+    database: dbConfig.database,
+    createDatabaseTable: true
+  },
+  pool
+);
+
+sessionStore.on('error', (error) => {
+  console.error('[SESSION STORE] Error de conexión a MySQL:', error.message);
+});
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
-  store: new MySQLStore({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
-    createDatabaseTable: true
-  }),
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -85,3 +95,4 @@ app.use((err, req, res, next) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Servidor en http://localhost:${port}`));
+
