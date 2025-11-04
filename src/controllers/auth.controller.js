@@ -58,6 +58,7 @@ export const postLogin = async (req, res) => {
     req.session.user = {
       id_usuario: user.id_usuario,
       nombre: user.nombre,
+      apellido: user.apellido,
       correo: user.correo,
       rol: user.rol
     };

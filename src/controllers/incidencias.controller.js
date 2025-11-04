@@ -1,10 +1,44 @@
 import Joi from 'joi';
+import PDFDocument from 'pdfkit';
 import { pool } from '../db.js';
 
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
 const ESTADOS = ['ABIERTA', 'EN_PROCESO', 'CERRADA', 'CANCELADA'];
 const TIPOS_INCIDENCIA = ['CORRECTIVO', 'PREVENTIVO', 'INSTALACION', 'OTRO'];
 const ORIGENES_INCIDENCIA = ['USUARIO', 'SISTEMA', 'MANTENIMIENTO', 'OTRO'];
+
+const esquemaDiagnostico = Joi.object({
+  descripcion_trabajo: Joi.string()
+    .trim()
+    .min(10)
+    .required()
+    .messages({
+      'string.empty': 'Describe las acciones realizadas por el técnico.',
+      'string.min': 'La descripción del trabajo debe tener al menos 10 caracteres.'
+    }),
+  diagnostico: Joi.string()
+    .trim()
+    .min(10)
+    .required()
+    .messages({
+      'string.empty': 'Captura el diagnóstico del técnico.',
+      'string.min': 'El diagnóstico debe tener al menos 10 caracteres.'
+    }),
+  fecha_diagnostico: Joi.date()
+    .required()
+    .messages({
+      'date.base': 'Proporciona una fecha de diagnóstico válida.',
+      'any.required': 'La fecha de diagnóstico es obligatoria.'
+    }),
+  firma_tecnico: Joi.string()
+    .trim()
+    .min(3)
+    .required()
+    .messages({
+      'string.empty': 'Captura la firma del técnico.',
+      'string.min': 'La firma debe tener al menos 3 caracteres.'
+    })
+});
 
 const esquemaIncidencia = Joi.object({
   id_activo: Joi.number().integer().required(),
@@ -55,6 +89,106 @@ const normalizarValores = (datos = {}) => {
     ...valores,
     cerrada_en: cerrada
   };
+};
+
+const normalizarValoresDiagnostico = (datos = {}, tecnicoActual = '') => ({
+  descripcion_trabajo: datos.descripcion_trabajo ?? '',
+  diagnostico: datos.diagnostico ?? '',
+  fecha_diagnostico: datos.fecha_diagnostico
+    ? String(datos.fecha_diagnostico).slice(0, 10)
+    : '',
+  firma_tecnico: datos.firma_tecnico ?? tecnicoActual
+});
+
+const formatearFecha = (valor) => {
+  if (!valor) return '';
+  try {
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return fecha.toISOString().slice(0, 10);
+  } catch (error) {
+    return '';
+  }
+};
+
+const formatearFechaLarga = (valor) => {
+  if (!valor) return '';
+  try {
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return new Intl.DateTimeFormat('es-MX', {
+      dateStyle: 'long'
+    }).format(fecha);
+  } catch (error) {
+    return '';
+  }
+};
+
+const formatearFechaHoraCorta = (valor) => {
+  if (!valor) return '';
+  try {
+    const fecha = new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return new Intl.DateTimeFormat('es-MX', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(fecha);
+  } catch (error) {
+    return '';
+  }
+};
+
+const obtenerIncidenciaPorId = async (idIncidencia) => {
+  const [rows] = await pool.query(
+    `SELECT
+       i.id_incidencia,
+       i.descripcion_problema,
+       i.estado,
+       i.tipo_incidencia,
+       i.origen_incidencia,
+       i.prioridad,
+       i.id_usuario,
+       i.id_activo,
+       i.creada_en,
+       a.marca,
+       a.modelo,
+       a.numero_serie,
+       a.placa_activo,
+       a.propietario_contacto,
+       CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
+       CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta
+     FROM incidencias i
+     INNER JOIN activos_fijos a ON a.id_activo = i.id_activo
+     LEFT JOIN usuarios u ON u.id_usuario = i.id_usuario
+     WHERE i.id_incidencia = ?
+     LIMIT 1`,
+    [idIncidencia]
+  );
+
+  return rows[0] || null;
+};
+
+const obtenerHistorialIncidencia = async (idIncidencia) => {
+  const [rows] = await pool.query(
+    `SELECT
+       h.id_historial,
+       h.descripcion,
+       h.diagnostico,
+       h.fecha_diagnostico,
+       h.creado_en,
+       CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre
+     FROM historial h
+     LEFT JOIN usuarios ut ON ut.id_usuario = h.id_usuario_tecnico
+     WHERE h.id_incidencia = ?
+     ORDER BY h.creado_en DESC`,
+    [idIncidencia]
+  );
+
+  return rows.map((registro) => ({
+    ...registro,
+    fecha_diagnostico_fmt: formatearFechaLarga(registro.fecha_diagnostico) || 'Sin fecha',
+    creado_en_fmt: formatearFechaHoraCorta(registro.creado_en) || 'Sin fecha'
+  }));
 };
 
 const formatearFechaHora = (valor) => {
@@ -185,5 +319,286 @@ export const postNuevaIncidencia = async (req, res) => {
         ok: false
       });
     }
+  }
+};
+
+export const getDiagnosticoIncidencia = async (req, res) => {
+  const idIncidencia = Number(req.params.id);
+
+  if (!Number.isInteger(idIncidencia) || idIncidencia <= 0) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  try {
+    const incidencia = await obtenerIncidenciaPorId(idIncidencia);
+
+    if (!incidencia) {
+      return res.status(404).send('Incidencia no encontrada');
+    }
+
+    const historial = await obtenerHistorialIncidencia(idIncidencia);
+    const nombreTecnico = [req.session.user?.nombre, req.session.user?.apellido]
+      .filter(Boolean)
+      .join(' ');
+
+    const values = normalizarValoresDiagnostico(
+      {},
+      nombreTecnico
+    );
+
+    if (!values.fecha_diagnostico) {
+      values.fecha_diagnostico = formatearFecha(new Date());
+    }
+
+    return res.render('incidencias/diagnostico', {
+      incidencia,
+      historial,
+      errores: [],
+      values,
+      ok: req.query.ok === '1',
+      historialIdCreado:
+        Number.isInteger(Number(req.query.h)) && Number(req.query.h) > 0
+          ? Number(req.query.h)
+          : null
+    });
+  } catch (error) {
+    console.error('Error al cargar formulario de diagnóstico:', error);
+    return res.status(500).send('Error al cargar el formulario de diagnóstico.');
+  }
+};
+
+export const postDiagnosticoIncidencia = async (req, res) => {
+  const idIncidencia = Number(req.params.id);
+
+  if (!Number.isInteger(idIncidencia) || idIncidencia <= 0) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  const tecnicoId = req.session.user?.id_usuario;
+  if (!tecnicoId) {
+    return res.redirect('/login');
+  }
+
+  let incidencia;
+  try {
+    incidencia = await obtenerIncidenciaPorId(idIncidencia);
+  } catch (error) {
+    console.error('Error al recuperar incidencia:', error);
+    return res.status(500).send('Error al recuperar la incidencia.');
+  }
+
+  if (!incidencia) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  const { error, value } = esquemaDiagnostico.validate(req.body, {
+    abortEarly: false,
+    allowUnknown: true,
+    stripUnknown: true
+  });
+
+  if (error) {
+    try {
+      const historial = await obtenerHistorialIncidencia(idIncidencia);
+      const nombreTecnico = [req.session.user?.nombre, req.session.user?.apellido]
+        .filter(Boolean)
+        .join(' ');
+
+      return res.status(400).render('incidencias/diagnostico', {
+        incidencia,
+        historial,
+        errores: error.details.map((detalle) => detalle.message),
+        values: normalizarValoresDiagnostico(req.body, nombreTecnico),
+        ok: false,
+        historialIdCreado: null
+      });
+    } catch (historialError) {
+      console.error('Error al recuperar historial:', historialError);
+      return res.status(500).send('Error al validar el diagnóstico.');
+    }
+  }
+
+  const {
+    descripcion_trabajo,
+    diagnostico,
+    fecha_diagnostico,
+    firma_tecnico
+  } = value;
+
+  try {
+    const fechaNormalizada = formatearFecha(fecha_diagnostico) || null;
+
+    const [resultado] = await pool.query(
+      `INSERT INTO historial (
+         id_activo,
+         id_incidencia,
+         id_usuario_tecnico,
+         descripcion,
+         diagnostico,
+         fecha_diagnostico
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        incidencia.id_activo,
+        idIncidencia,
+        tecnicoId,
+        descripcion_trabajo,
+        diagnostico,
+        fechaNormalizada
+      ]
+    );
+
+    const historialId = resultado.insertId;
+
+    if (!req.session.diagnosticSignatures) {
+      req.session.diagnosticSignatures = {};
+    }
+
+    req.session.diagnosticSignatures[String(historialId)] = firma_tecnico;
+
+    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?ok=1&h=${historialId}`);
+  } catch (errorGuardado) {
+    console.error('Error al guardar diagnóstico:', errorGuardado);
+    try {
+      const historial = await obtenerHistorialIncidencia(idIncidencia);
+      const nombreTecnico = [req.session.user?.nombre, req.session.user?.apellido]
+        .filter(Boolean)
+        .join(' ');
+
+      return res.status(500).render('incidencias/diagnostico', {
+        incidencia,
+        historial,
+        errores: ['Ocurrió un error al guardar el diagnóstico. Inténtalo nuevamente.'],
+        values: normalizarValoresDiagnostico(req.body, nombreTecnico),
+        ok: false,
+        historialIdCreado: null
+      });
+    } catch (historialError) {
+      console.error('Error adicional al recuperar historial:', historialError);
+      return res.status(500).send('Error grave al guardar el diagnóstico.');
+    }
+  }
+};
+
+export const getDiagnosticoPdf = async (req, res) => {
+  const idIncidencia = Number(req.params.id);
+  const idHistorial = Number(req.params.historialId);
+
+  if (!Number.isInteger(idIncidencia) || idIncidencia <= 0) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  if (!Number.isInteger(idHistorial) || idHistorial <= 0) {
+    return res.status(404).send('Registro de diagnóstico no encontrado');
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT
+         h.id_historial,
+         h.descripcion,
+         h.diagnostico,
+         h.fecha_diagnostico,
+         h.creado_en,
+         i.id_incidencia,
+         i.descripcion_problema,
+         i.tipo_incidencia,
+         i.origen_incidencia,
+         i.prioridad,
+         i.estado,
+         i.creada_en AS incidencia_creada_en,
+         a.marca,
+         a.modelo,
+         a.numero_serie,
+         a.placa_activo,
+         a.propietario_contacto,
+         CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
+         CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico
+       FROM historial h
+       INNER JOIN incidencias i ON i.id_incidencia = h.id_incidencia
+       INNER JOIN activos_fijos a ON a.id_activo = h.id_activo
+       LEFT JOIN usuarios u ON u.id_usuario = i.id_usuario
+       LEFT JOIN usuarios ut ON ut.id_usuario = h.id_usuario_tecnico
+       WHERE h.id_historial = ? AND h.id_incidencia = ?
+       LIMIT 1`,
+      [idHistorial, idIncidencia]
+    );
+
+    const registro = rows[0];
+
+    if (!registro) {
+      return res.status(404).send('El diagnóstico solicitado no existe.');
+    }
+
+    const firmasSesion = req.session.diagnosticSignatures || {};
+    const firmaSesion = firmasSesion[String(idHistorial)];
+    if (firmaSesion) {
+      delete firmasSesion[String(idHistorial)];
+    }
+    req.session.diagnosticSignatures = firmasSesion;
+
+    const firma = firmaSesion || registro.nombre_tecnico || 'Firma no registrada';
+
+    const doc = new PDFDocument({ margin: 50 });
+    const nombreArchivo = `diagnostico_incidencia_${registro.id_incidencia}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${nombreArchivo}"`);
+
+    doc.pipe(res);
+
+    doc.font('Helvetica-Bold').fontSize(18).text('Reporte de diagnóstico', {
+      align: 'center'
+    });
+
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').fontSize(12).text('Datos de la incidencia');
+    doc.font('Helvetica').fontSize(11);
+    doc.text(`Incidencia #${registro.id_incidencia}`);
+    doc.text(`Estado actual: ${registro.estado || 'Sin estado'}`);
+    doc.text(`Prioridad: ${registro.prioridad || 'Sin prioridad'}`);
+    doc.text(`Tipo: ${registro.tipo_incidencia || 'Sin tipo'}`);
+    doc.text(`Origen: ${registro.origen_incidencia || 'Sin origen'}`);
+    doc.text(`Reportada por: ${registro.nombre_reporta || 'No registrado'}`);
+    doc.moveDown(0.5);
+    doc.text('Descripción del problema:');
+    doc.moveDown(0.2);
+    doc.font('Helvetica-Oblique').text(registro.descripcion_problema || 'Sin descripción');
+
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').text('Datos del activo');
+    doc.font('Helvetica');
+    const nombreActivo = (registro.marca || registro.modelo)
+      ? [registro.marca, registro.modelo].filter(Boolean).join(' ')
+      : 'Activo sin nombre';
+    doc.text(`Activo: ${nombreActivo}`);
+    doc.text(`Número de serie: ${registro.numero_serie || 'No registrado'}`);
+    doc.text(`Placa: ${registro.placa_activo || 'No registrada'}`);
+    doc.text(`Contacto propietario: ${registro.propietario_contacto || 'No registrado'}`);
+
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').text('Diagnóstico del técnico');
+    doc.font('Helvetica');
+    doc.text(`Fecha de diagnóstico: ${formatearFechaLarga(registro.fecha_diagnostico) || 'No registrada'}`);
+    doc.moveDown(0.5);
+    doc.text('Descripción del trabajo realizado:');
+    doc.moveDown(0.2);
+    doc.font('Helvetica-Oblique').text(registro.descripcion || 'Sin información');
+    doc.moveDown();
+    doc.font('Helvetica').text('Diagnóstico final:');
+    doc.moveDown(0.2);
+    doc.font('Helvetica-Oblique').text(registro.diagnostico || 'Sin información');
+
+    doc.moveDown(2);
+    doc.font('Helvetica-Bold').text('Firma del técnico:');
+    doc.moveDown(0.7);
+    doc.font('Helvetica').fontSize(14).text(firma);
+
+    doc.end();
+  } catch (error) {
+    console.error('Error al generar PDF:', error);
+    return res.status(500).send('No se pudo generar el PDF del diagnóstico.');
   }
 };

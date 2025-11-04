@@ -230,3 +230,161 @@ a.btn:hover {
 .formulario-activo {
   max-width: 520px;
 }
+
+.diagnostico-incidencia {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.diagnostico-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.resumen-incidencia {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb;
+}
+
+.resumen-incidencia dl {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.resumen-incidencia dl > div {
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #f1f1f1;
+}
+
+.resumen-incidencia dt {
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.resumen-incidencia dd {
+  margin: 0;
+}
+
+.descripcion-problema {
+  margin-top: 1.2rem;
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.75rem;
+  border: 1px solid #f1f1f1;
+}
+
+.descripcion-problema h4 {
+  margin: 0 0 0.5rem;
+}
+
+.form-diagnostico {
+  background: #fdfdfd;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.form-diagnostico .campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-diagnostico textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.form-diagnostico button {
+  background: #198754;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.form-diagnostico button:hover {
+  background: #157347;
+}
+
+.form-diagnostico small {
+  color: #6c757d;
+}
+
+.btn-secundario {
+  display: inline-block;
+  margin-top: 0.5rem;
+  background: #0d6efd;
+  color: #fff;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+}
+
+.btn-secundario:hover {
+  background: #0a58ca;
+}
+
+.historial-diagnosticos {
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 1.25rem;
+}
+
+.historial-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.historial-item {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.historial-item header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.historial-item header strong {
+  font-size: 1rem;
+}
+
+.historial-item .detalle {
+  margin-top: 0.5rem;
+}
+
+.historial-item .detalle h4 {
+  margin: 0 0 0.35rem;
+}
+
+.historial-item .detalle p {
+  margin: 0;
+  line-height: 1.4;
+}

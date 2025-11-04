@@ -18,7 +18,7 @@
         <% if (user) { %>
           <form action="/logout" method="post" class="logout-form">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit">🚪 Cerrar sesión (<%= user.Nombre %>)</button>
+            <button type="submit">🚪 Cerrar sesión (<%= [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.nombre || 'Cuenta' %>)</button>
           </form>
         <% } %>
       </div>

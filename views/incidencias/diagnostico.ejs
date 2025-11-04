@@ -1,0 +1,170 @@
+<%- include('../layouts/base', { body: `
+  <section class="diagnostico-incidencia">
+    <h2>Diagnóstico de la incidencia #${incidencia.id_incidencia}</h2>
+
+    ${ok
+      ? `<div class="ok">
+          Diagnóstico registrado correctamente.
+          ${historialIdCreado
+            ? `<a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${historialIdCreado}" target="_blank" rel="noopener">Descargar reporte en PDF</a>`
+            : ''}
+        </div>`
+      : ''}
+
+    ${(errores && errores.length)
+      ? `<div class="alert">${errores.map((err) => `<div>${err}</div>`).join('')}</div>`
+      : ''}
+
+    ${(() => {
+      const escapeHtml = (texto = '') =>
+        String(texto)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+      const escapeAttr = (texto = '') => escapeHtml(texto);
+
+      const formatearFechaVista = (valor) => {
+        if (!valor) return 'Sin registro';
+        try {
+          const fecha = new Date(valor);
+          if (Number.isNaN(fecha.getTime())) return escapeHtml(valor);
+          return new Intl.DateTimeFormat('es-MX', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+          }).format(fecha);
+        } catch (error) {
+          return escapeHtml(valor);
+        }
+      };
+
+      const multilinea = (texto = '') =>
+        escapeHtml(texto).replace(/\r?\n/g, '<br>');
+
+      const infoIncidencia = `
+        <article class="resumen-incidencia">
+          <h3>Resumen de la incidencia</h3>
+          <dl>
+            <div>
+              <dt>Activo</dt>
+              <dd>${escapeHtml(incidencia.activo_nombre || 'Sin información')}</dd>
+            </div>
+            <div>
+              <dt>Número de serie</dt>
+              <dd>${escapeHtml(incidencia.numero_serie || 'No registrado')}</dd>
+            </div>
+            <div>
+              <dt>Placa</dt>
+              <dd>${escapeHtml(incidencia.placa_activo || 'No registrada')}</dd>
+            </div>
+            <div>
+              <dt>Reportada por</dt>
+              <dd>${escapeHtml(incidencia.nombre_reporta || 'No registrado')}</dd>
+            </div>
+            <div>
+              <dt>Estado</dt>
+              <dd>${escapeHtml(incidencia.estado || 'Sin estado')}</dd>
+            </div>
+            <div>
+              <dt>Prioridad</dt>
+              <dd>${escapeHtml(incidencia.prioridad || 'Sin prioridad')}</dd>
+            </div>
+            <div>
+              <dt>Tipo / Origen</dt>
+              <dd>${escapeHtml(incidencia.tipo_incidencia || 'Sin tipo')} · ${escapeHtml(incidencia.origen_incidencia || 'Sin origen')}</dd>
+            </div>
+            <div>
+              <dt>Creada en</dt>
+              <dd>${formatearFechaVista(incidencia.creada_en)}</dd>
+            </div>
+          </dl>
+          <div class="descripcion-problema">
+            <h4>Descripción reportada</h4>
+            <p>${multilinea(incidencia.descripcion_problema || 'Sin descripción')}</p>
+          </div>
+        </article>
+      `;
+
+      const formulario = `
+        <form method="post" action="/incidencias/${incidencia.id_incidencia}/diagnostico" class="form-diagnostico">
+          <div class="campo">
+            <label for="fecha_diagnostico">Fecha de diagnóstico</label>
+            <input
+              type="date"
+              id="fecha_diagnostico"
+              name="fecha_diagnostico"
+              value="${escapeAttr(values.fecha_diagnostico || '')}"
+              required
+            >
+          </div>
+
+          <div class="campo">
+            <label for="descripcion_trabajo">Trabajo realizado</label>
+            <textarea id="descripcion_trabajo" name="descripcion_trabajo" rows="4" required>${escapeHtml(values.descripcion_trabajo || '')}</textarea>
+          </div>
+
+          <div class="campo">
+            <label for="diagnostico">Diagnóstico técnico</label>
+            <textarea id="diagnostico" name="diagnostico" rows="4" required>${escapeHtml(values.diagnostico || '')}</textarea>
+          </div>
+
+          <div class="campo">
+            <label for="firma_tecnico">Firma del técnico</label>
+            <input
+              type="text"
+              id="firma_tecnico"
+              name="firma_tecnico"
+              value="${escapeAttr(values.firma_tecnico || '')}"
+              required
+            >
+            <small>Esta firma se imprimirá en el reporte PDF.</small>
+          </div>
+
+          <input type="hidden" name="_csrf" value="${csrfToken}">
+          <button type="submit">Guardar diagnóstico</button>
+        </form>
+      `;
+
+      const listadoHistorial = `
+        <section class="historial-diagnosticos">
+          <h3>Historial de diagnósticos</h3>
+          ${historial && historial.length
+            ? `<ul class="historial-lista">
+                ${historial
+                  .map((registro) => `
+                    <li class="historial-item">
+                      <header>
+                        <strong>Diagnóstico #${registro.id_historial}</strong>
+                        <span>${escapeHtml(registro.tecnico_nombre || 'Técnico desconocido')}</span>
+                      </header>
+                      <p><strong>Registrado:</strong> ${escapeHtml(registro.creado_en_fmt)}</p>
+                      <p><strong>Fecha de diagnóstico:</strong> ${escapeHtml(registro.fecha_diagnostico_fmt)}</p>
+                      <div class="detalle">
+                        <h4>Trabajo realizado</h4>
+                        <p>${multilinea(registro.descripcion || 'Sin información')}</p>
+                      </div>
+                      <div class="detalle">
+                        <h4>Diagnóstico</h4>
+                        <p>${multilinea(registro.diagnostico || 'Sin información')}</p>
+                      </div>
+                      <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_historial}" target="_blank" rel="noopener">Generar PDF</a>
+                    </li>
+                  `)
+                  .join('')}
+              </ul>`
+            : '<p>Aún no hay diagnósticos registrados para esta incidencia.</p>'}
+        </section>
+      `;
+
+      return `
+        <div class="diagnostico-grid">
+          ${infoIncidencia}
+          ${formulario}
+        </div>
+        ${listadoHistorial}
+      `;
+    })()}
+  </section>
+` }) %>
