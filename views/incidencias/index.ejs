@@ -1,0 +1,119 @@
+<%- include('../layouts/base', { body: `
+  <section class="incidencias-lista">
+    <header class="incidencias-lista__header">
+      <div>
+        <h2>Incidencias registradas</h2>
+        <p class="incidencias-lista__descripcion">Consulta las incidencias activas y registra diagnósticos desde un solo lugar.</p>
+      </div>
+      <a class="btn" href="/incidencias/nueva">➕ Registrar incidencia</a>
+    </header>
+
+    ${error ? `<div class="alert">${error}</div>` : ''}
+
+    ${(() => {
+      const escapeHtml = (texto = '') =>
+        String(texto)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+      const multilinea = (texto = '') =>
+        escapeHtml(texto).replace(/\r?\n/g, '<br>');
+
+      const formatearEtiqueta = (valor = '') =>
+        String(valor)
+          .toLowerCase()
+          .split('_')
+          .map((segmento) => segmento.charAt(0).toUpperCase() + segmento.slice(1))
+          .join(' ');
+
+      if (!Array.isArray(incidencias) || incidencias.length === 0) {
+        if (error) {
+          return `
+            <div class="incidencias-vacia">
+              <p>No pudimos cargar la lista de incidencias en este momento.</p>
+            </div>
+          `;
+        }
+        return `
+          <div class="incidencias-vacia">
+            <p>Aún no hay incidencias registradas.</p>
+            <a class="btn" href="/incidencias/nueva">Registrar la primera incidencia</a>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="incidencias-grid">
+          ${incidencias
+            .map((incidencia) => {
+              const idIncidencia = incidencia.id_incidencia ?? '';
+              const totalDiagnosticos = Number(incidencia.total_diagnosticos) || 0;
+              const ultimoDiagnostico = incidencia.ultimo_diagnostico_fmt
+                ? `<p><strong>Último diagnóstico:</strong> ${escapeHtml(incidencia.ultimo_diagnostico_fmt)}</p>`
+                : '';
+              const estadoNormalizado = String(incidencia.estado || '').toLowerCase();
+              const claseEstado = estadoNormalizado
+                ? ` incidencia-card__estado--${escapeHtml(estadoNormalizado)}`
+                : '';
+
+              return `
+                <article class="incidencia-card">
+                  <header class="incidencia-card__header">
+                    <div>
+                      <h3>Incidencia #${escapeHtml(idIncidencia)}</h3>
+                      <p class="incidencia-card__activo">${escapeHtml(incidencia.activo_nombre || 'Activo sin nombre')}</p>
+                    </div>
+                    <span class="incidencia-card__estado${claseEstado}">
+                      ${escapeHtml(formatearEtiqueta(incidencia.estado || ''))}
+                    </span>
+                  </header>
+
+                  <dl class="incidencia-card__datos">
+                    <div>
+                      <dt>Prioridad</dt>
+                      <dd>${escapeHtml(formatearEtiqueta(incidencia.prioridad || ''))}</dd>
+                    </div>
+                    <div>
+                      <dt>Tipo</dt>
+                      <dd>${escapeHtml(formatearEtiqueta(incidencia.tipo_incidencia || ''))}</dd>
+                    </div>
+                    <div>
+                      <dt>Origen</dt>
+                      <dd>${escapeHtml(formatearEtiqueta(incidencia.origen_incidencia || ''))}</dd>
+                    </div>
+                    <div>
+                      <dt>Número de serie</dt>
+                      <dd>${escapeHtml(incidencia.numero_serie || 'No registrado')}</dd>
+                    </div>
+                    <div>
+                      <dt>Placa</dt>
+                      <dd>${escapeHtml(incidencia.placa_activo || 'No registrada')}</dd>
+                    </div>
+                  </dl>
+
+                  <div class="incidencia-card__descripcion">
+                    <h4>Descripción del problema</h4>
+                    <p>${multilinea(incidencia.descripcion_problema || 'Sin descripción')}</p>
+                  </div>
+
+                  <footer class="incidencia-card__footer">
+                    <div class="incidencia-card__detalles">
+                      <p><strong>Reportada por:</strong> ${escapeHtml(incidencia.usuario_reporta || 'No registrado')}</p>
+                      <p><strong>Registrada:</strong> ${escapeHtml(incidencia.creada_en_fmt || 'Sin fecha')}</p>
+                      ${ultimoDiagnostico}
+                      <p><strong>Diagnósticos registrados:</strong> ${totalDiagnosticos}</p>
+                    </div>
+                    <a class="btn-secundario" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico">Registrar diagnóstico</a>
+                  </footer>
+                </article>
+              `;
+            })
+            .join('')}
+        </div>
+      `;
+    })()}
+  </section>
+` }) %>
