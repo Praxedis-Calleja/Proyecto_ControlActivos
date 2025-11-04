@@ -388,3 +388,150 @@ a.btn:hover {
   margin: 0;
   line-height: 1.4;
 }
+
+.incidencias-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.incidencias-lista__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.incidencias-lista__header h2 {
+  margin: 0;
+}
+
+.incidencias-lista__descripcion {
+  margin: 0.35rem 0 0;
+  color: #6c757d;
+}
+
+.incidencias-vacia {
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.incidencias-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.incidencia-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  gap: 1rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.incidencia-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.incidencia-card__header h3 {
+  margin: 0;
+}
+
+.incidencia-card__activo {
+  margin: 0.35rem 0 0;
+  color: #6c757d;
+}
+
+.incidencia-card__estado {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.incidencia-card__estado--abierta {
+  background: rgba(13, 110, 253, 0.12);
+  color: #0d6efd;
+}
+
+.incidencia-card__estado--en_proceso {
+  background: rgba(255, 193, 7, 0.15);
+  color: #b68900;
+}
+
+.incidencia-card__estado--cerrada {
+  background: rgba(25, 135, 84, 0.15);
+  color: #157347;
+}
+
+.incidencia-card__estado--cancelada {
+  background: rgba(220, 53, 69, 0.12);
+  color: #dc3545;
+}
+
+.incidencia-card__datos {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.incidencia-card__datos > div {
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+
+.incidencia-card__datos dt {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.incidencia-card__datos dd {
+  margin: 0;
+  color: #495057;
+}
+
+.incidencia-card__descripcion h4 {
+  margin: 0 0 0.4rem;
+}
+
+.incidencia-card__descripcion p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.incidencia-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.incidencia-card__detalles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #495057;
+}

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requiereLogin } from '../middleware/auth.js';
 import {
+  getListadoIncidencias,
   getDiagnosticoIncidencia,
   getDiagnosticoPdf,
   getNuevaIncidencia,
@@ -10,6 +11,7 @@ import {
 
 const router = Router();
 
+router.get('/', requiereLogin, getListadoIncidencias);
 router.get('/:id/diagnostico/pdf/:historialId', requiereLogin, getDiagnosticoPdf);
 router.get('/:id/diagnostico', requiereLogin, getDiagnosticoIncidencia);
 router.post('/:id/diagnostico', requiereLogin, postDiagnosticoIncidencia);

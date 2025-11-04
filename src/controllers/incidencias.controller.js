@@ -191,6 +191,62 @@ const obtenerHistorialIncidencia = async (idIncidencia) => {
   }));
 };
 
+export const getListadoIncidencias = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT
+         i.id_incidencia,
+         i.descripcion_problema,
+         i.estado,
+         i.tipo_incidencia,
+         i.origen_incidencia,
+         i.prioridad,
+         i.creada_en,
+         a.marca,
+         a.modelo,
+         a.numero_serie,
+         a.placa_activo,
+         CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
+         CONCAT_WS(' ', u.nombre, u.apellido) AS usuario_reporta,
+         COALESCE(h.total_diagnosticos, 0) AS total_diagnosticos,
+         h.ultimo_diagnostico
+       FROM incidencias i
+       INNER JOIN activos_fijos a ON a.id_activo = i.id_activo
+       LEFT JOIN usuarios u ON u.id_usuario = i.id_usuario
+       LEFT JOIN (
+         SELECT id_incidencia, COUNT(*) AS total_diagnosticos, MAX(creado_en) AS ultimo_diagnostico
+         FROM historial
+         GROUP BY id_incidencia
+       ) h ON h.id_incidencia = i.id_incidencia
+       ORDER BY i.creada_en DESC`
+    );
+
+    const incidencias = rows.map((incidencia) => ({
+      ...incidencia,
+      creada_en_fmt: formatearFechaHoraCorta(incidencia.creada_en) || 'Sin fecha',
+      ultimo_diagnostico_fmt: incidencia.ultimo_diagnostico
+        ? formatearFechaHoraCorta(incidencia.ultimo_diagnostico)
+        : '',
+      descripcion_problema: incidencia.descripcion_problema || '',
+      usuario_reporta: incidencia.usuario_reporta || 'No registrado',
+      activo_nombre: incidencia.activo_nombre || 'Activo sin nombre',
+      numero_serie: incidencia.numero_serie || '',
+      placa_activo: incidencia.placa_activo || ''
+    }));
+
+    return res.render('incidencias/index', {
+      incidencias,
+      error: null
+    });
+  } catch (error) {
+    console.error('Error al listar incidencias:', error);
+    return res.status(500).render('incidencias/index', {
+      incidencias: [],
+      error: 'No se pudieron cargar las incidencias registradas. Intenta nuevamente más tarde.'
+    });
+  }
+};
+
 const formatearFechaHora = (valor) => {
   if (valor === undefined || valor === null) return null;
   const texto = String(valor).trim();
