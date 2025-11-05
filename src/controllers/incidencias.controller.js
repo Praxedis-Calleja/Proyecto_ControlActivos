@@ -1,6 +1,7 @@
 import Joi from 'joi';
 import PDFDocument from 'pdfkit';
 import { pool } from '../db.js';
+import { generarFolioBaja } from '../utils/folioBaja.js';
 
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
 const ESTADOS = ['ABIERTA', 'EN_PROCESO', 'CERRADA', 'CANCELADA'];
@@ -612,7 +613,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
           ]
         );
       } else {
-        await connection.query(
+        const [resultadoBaja] = await connection.query(
           `INSERT INTO reportesbaja (
              ID_Activo,
              ElaboradoPor,
@@ -632,6 +633,33 @@ export const postDiagnosticoIncidencia = async (req, res) => {
             observacionesLimpias || null
           ]
         );
+
+        const idBajaCreado = resultadoBaja.insertId;
+        if (idBajaCreado) {
+          const [datosBaja] = await connection.query(
+            `SELECT Fecha_Baja AS fecha_baja, Folio AS folio
+               FROM reportesbaja
+              WHERE ID_Baja = ?
+              LIMIT 1`,
+            [idBajaCreado]
+          );
+
+          const registroBaja = datosBaja?.[0] ?? {};
+          const folioGenerado = generarFolioBaja({
+            folio: registroBaja.folio,
+            fechaBaja: registroBaja.fecha_baja,
+            idBaja: idBajaCreado
+          });
+
+          if (folioGenerado && folioGenerado !== (registroBaja.folio ?? '').trim()) {
+            await connection.query(
+              `UPDATE reportesbaja
+                  SET Folio = ?
+                WHERE ID_Baja = ?`,
+              [folioGenerado, idBajaCreado]
+            );
+          }
+        }
       }
 
       reporteBajaUrl = rutaPdf;
