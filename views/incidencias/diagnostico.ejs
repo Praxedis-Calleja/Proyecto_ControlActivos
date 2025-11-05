@@ -8,6 +8,9 @@
           ${historialIdCreado
             ? `<a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${historialIdCreado}" target="_blank" rel="noopener">Descargar reporte en PDF</a>`
             : ''}
+          ${reporteBajaCreado
+            ? `<a class="btn-secundario" href="${reporteBajaCreado}" target="_blank" rel="noopener">Reporte de baja en PDF</a>`
+            : ''}
         </div>`
       : ''}
 
@@ -110,6 +113,51 @@
             <textarea id="diagnostico" name="diagnostico" rows="4" required>${escapeHtml(values.diagnostico || '')}</textarea>
           </div>
 
+          <fieldset class="campo">
+            <legend>¿El activo debe darse de baja?</legend>
+            <div class="opciones">
+              <label>
+                <input type="radio" name="requiere_baja" value="SI" ${values.requiere_baja === 'SI' ? 'checked' : ''}>
+                Sí
+              </label>
+              <label>
+                <input type="radio" name="requiere_baja" value="NO" ${values.requiere_baja !== 'SI' ? 'checked' : ''}>
+                No
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="campo">
+            <label for="motivo_baja">Motivo de baja <small>(requerido si aplica)</small></label>
+            <textarea id="motivo_baja" name="motivo_baja" rows="3">${escapeHtml(values.motivo_baja || '')}</textarea>
+          </div>
+
+          <div class="campo">
+            <label for="autorizado_por">Autorizado por <small>(requerido si aplica)</small></label>
+            <input
+              type="text"
+              id="autorizado_por"
+              name="autorizado_por"
+              value="${escapeAttr(values.autorizado_por || '')}"
+            >
+          </div>
+
+          <div class="campo">
+            <label for="observaciones_baja">Observaciones adicionales</label>
+            <textarea id="observaciones_baja" name="observaciones_baja" rows="3">${escapeHtml(values.observaciones_baja || '')}</textarea>
+          </div>
+
+          <div class="campo">
+            <label for="evidencia_url">Evidencia (URL opcional)</label>
+            <input
+              type="url"
+              id="evidencia_url"
+              name="evidencia_url"
+              value="${escapeAttr(values.evidencia_url || '')}"
+              placeholder="https://..."
+            >
+          </div>
+
           <div class="campo">
             <label for="firma_tecnico">Firma del técnico</label>
             <input
@@ -149,7 +197,17 @@
                         <h4>Diagnóstico</h4>
                         <p>${multilinea(registro.diagnostico || 'Sin información')}</p>
                       </div>
+                      ${registro.reporte_baja
+                        ? `<div class="detalle">
+                            <h4>Resumen de baja</h4>
+                            <p><strong>Autorizado por:</strong> ${escapeHtml(registro.reporte_baja.autorizado_por || 'No registrado')}</p>
+                            <p><strong>Fecha de baja:</strong> ${escapeHtml(registro.reporte_baja.fecha_baja_fmt || 'Sin fecha')}</p>
+                          </div>`
+                        : ''}
                       <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_historial}" target="_blank" rel="noopener">Generar PDF</a>
+                      ${registro.reporte_baja && registro.reporte_baja.url
+                        ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
+                        : ''}
                     </li>
                   `)
                   .join('')}
