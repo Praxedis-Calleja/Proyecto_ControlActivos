@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.routes.js';
 import activosRoutes from './routes/activos.routes.js';
 import usuariosRoutes from './routes/usuarios.routes.js';
 import incidenciasRoutes from './routes/incidencias.routes.js';
+import bajasRoutes from './routes/bajas.routes.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -79,6 +80,7 @@ app.use('/activos', activosRoutes);
 app.use('/', authRoutes);
 app.use('/usuarios', usuariosRoutes);
 app.use('/incidencias', incidenciasRoutes);
+app.use('/bajas', bajasRoutes);
 
 
 // Home

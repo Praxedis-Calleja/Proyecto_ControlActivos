@@ -535,3 +535,125 @@ a.btn:hover {
   gap: 0.35rem;
   color: #495057;
 }
+
+.bajas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.bajas-lista__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.bajas-lista__descripcion {
+  margin: 0.35rem 0 0;
+  color: #6c757d;
+}
+
+.bajas-vacia {
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bajas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.baja-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  gap: 1.25rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.baja-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.baja-card__header h3 {
+  margin: 0;
+}
+
+.baja-card__fecha {
+  margin: 0.35rem 0 0;
+  color: #6c757d;
+}
+
+.baja-card__acciones {
+  display: flex;
+  align-items: flex-start;
+}
+
+.baja-card__contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.baja-card__bloque {
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.baja-card__datos {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.baja-card__datos > div {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 0.6rem 0.75rem;
+}
+
+.baja-card__datos dt {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.baja-card__datos dd {
+  margin: 0;
+  color: #495057;
+}
+
+.baja-card__bloque p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.baja-card__link {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.baja-card__link:hover {
+  text-decoration: underline;
+}
