@@ -1,11 +1,48 @@
 import Joi from 'joi';
 import PDFDocument from 'pdfkit';
 import { pool } from '../db.js';
+import { generarFolioBaja } from '../utils/folioBaja.js';
 
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
 const ESTADOS = ['ABIERTA', 'EN_PROCESO', 'CERRADA', 'CANCELADA'];
 const TIPOS_INCIDENCIA = ['CORRECTIVO', 'PREVENTIVO', 'INSTALACION', 'OTRO'];
 const ORIGENES_INCIDENCIA = ['USUARIO', 'SISTEMA', 'MANTENIMIENTO', 'OTRO'];
+
+const limpiarLineasFolio = (texto = '') =>
+  texto
+    .split(/\r?\n/)
+    .map((linea) => linea.trim())
+    .filter((linea) => linea && !/^Folio generado:/i.test(linea));
+
+const construirObservacionesDiagnostico = ({
+  observaciones,
+  evidenciaUrl,
+  historialId
+}) => {
+  const lineas = limpiarLineasFolio(observaciones);
+
+  if (evidenciaUrl) {
+    lineas.push(`Evidencia: ${evidenciaUrl}`);
+  }
+
+  lineas.push(`Diagnóstico relacionado #${historialId}`);
+
+  return lineas.join('\n');
+};
+
+const agregarFolioAObservaciones = (observaciones, folio) => {
+  const partes = [];
+
+  if (observaciones) {
+    partes.push(observaciones);
+  }
+
+  if (folio) {
+    partes.push(`Folio generado: ${folio}`);
+  }
+
+  return partes.length ? partes.join('\n') : null;
+};
 
 const esquemaDiagnostico = Joi.object({
   descripcion_trabajo: Joi.string()
@@ -575,16 +612,15 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     let reporteBajaUrl = null;
     if (requiere_baja === 'SI') {
       const rutaPdf = `/incidencias/${idIncidencia}/diagnostico/baja/pdf/${historialId}`;
-      const observacionesLimpias = [
-        observaciones_baja?.trim() || '',
-        evidencia_url ? `Evidencia: ${evidencia_url}` : '',
-        `Diagnóstico relacionado #${historialId}`
-      ]
-        .filter(Boolean)
-        .join('\n');
+      const evidenciaNormalizada = evidencia_url?.trim() || '';
+      const observacionesBase = construirObservacionesDiagnostico({
+        observaciones: observaciones_baja || '',
+        evidenciaUrl: evidenciaNormalizada,
+        historialId
+      });
 
       const [existentes] = await connection.query(
-        `SELECT ID_Baja
+        `SELECT ID_Baja, Fecha_Baja AS fecha_baja
            FROM reportesbaja
           WHERE ID_Activo = ?
           LIMIT 1`,
@@ -592,6 +628,16 @@ export const postDiagnosticoIncidencia = async (req, res) => {
       );
 
       if (existentes.length) {
+        const bajaExistente = existentes[0];
+        const folioGenerado = generarFolioBaja({
+          fechaBaja: bajaExistente.fecha_baja,
+          idBaja: bajaExistente.ID_Baja
+        });
+        const observacionesConFolio = agregarFolioAObservaciones(
+          observacionesBase,
+          folioGenerado
+        );
+
         await connection.query(
           `UPDATE reportesbaja
              SET ElaboradoPor = ?,
@@ -606,13 +652,13 @@ export const postDiagnosticoIncidencia = async (req, res) => {
             autorizado_por,
             motivo_baja,
             fechaNormalizada,
-            observacionesLimpias || null,
+            observacionesConFolio ?? null,
             rutaPdf,
-            existentes[0].ID_Baja
+            bajaExistente.ID_Baja
           ]
         );
       } else {
-        await connection.query(
+        const [resultadoBaja] = await connection.query(
           `INSERT INTO reportesbaja (
              ID_Activo,
              ElaboradoPor,
@@ -629,9 +675,38 @@ export const postDiagnosticoIncidencia = async (req, res) => {
             motivo_baja,
             fechaNormalizada,
             rutaPdf,
-            observacionesLimpias || null
+            observacionesBase || null
           ]
         );
+
+        const idBajaCreado = resultadoBaja.insertId;
+        if (idBajaCreado) {
+          const [datosBaja] = await connection.query(
+            `SELECT Fecha_Baja AS fecha_baja
+               FROM reportesbaja
+              WHERE ID_Baja = ?
+              LIMIT 1`,
+            [idBajaCreado]
+          );
+
+          const registroBaja = datosBaja?.[0] ?? {};
+          const folioGenerado = generarFolioBaja({
+            fechaBaja: registroBaja.fecha_baja,
+            idBaja: idBajaCreado
+          });
+
+          const observacionesConFolio = agregarFolioAObservaciones(
+            observacionesBase,
+            folioGenerado
+          );
+
+          await connection.query(
+            `UPDATE reportesbaja
+                SET Observaciones = ?
+              WHERE ID_Baja = ?`,
+            [observacionesConFolio ?? null, idBajaCreado]
+          );
+        }
       }
 
       reporteBajaUrl = rutaPdf;
