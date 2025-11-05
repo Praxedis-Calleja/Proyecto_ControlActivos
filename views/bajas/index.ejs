@@ -1,0 +1,135 @@
+<%- include('../layouts/base', { body: `
+  <section class="bajas-lista">
+    <header class="bajas-lista__header">
+      <div>
+        <h2>Reportes de baja</h2>
+        <p class="bajas-lista__descripcion">Consulta los activos dados de baja, revisa el diagnóstico que los originó y descarga el reporte en PDF.</p>
+      </div>
+    </header>
+
+    ${error ? `<div class="alert">${error}</div>` : ''}
+
+    ${(() => {
+      const escapeHtml = (texto = '') =>
+        String(texto)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+      const escapeAttr = (texto = '') =>
+        String(texto)
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/'/g, '&#39;');
+
+      const multilinea = (texto = '') => escapeHtml(texto).replace(/\r?\n/g, '<br>');
+
+      if (!Array.isArray(bajas) || bajas.length === 0) {
+        if (error) {
+          return `
+            <div class="bajas-vacia">
+              <p>No pudimos cargar los reportes de baja en este momento.</p>
+            </div>
+          `;
+        }
+        return `
+          <div class="bajas-vacia">
+            <p>Aún no hay activos dados de baja.</p>
+            <p>Cuando registres una baja desde el diagnóstico de una incidencia aparecerá en esta sección.</p>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="bajas-grid">
+          ${bajas
+            .map((baja) => {
+              const pdf = baja.pdfUrl
+                ? `<a class="btn-secundario" href="${escapeAttr(baja.pdfUrl)}" target="_blank" rel="noopener">Ver reporte PDF</a>`
+                : '';
+
+              const incidencia = baja.incidencia
+                ? `<p><strong>Incidencia relacionada:</strong> <a href="/incidencias/${escapeAttr(baja.incidencia.id)}/diagnostico" class="baja-card__link">#${escapeHtml(baja.incidencia.id)}</a></p>
+                    <p><strong>Descripción:</strong> ${escapeHtml(baja.incidencia.descripcion)}</p>`
+                : '<p><strong>Incidencia relacionada:</strong> No disponible</p>';
+
+              return `
+                <article class="baja-card">
+                  <header class="baja-card__header">
+                    <div>
+                      <h3>${escapeHtml(baja.folio)}</h3>
+                      <p class="baja-card__fecha"><strong>Fecha de baja:</strong> ${escapeHtml(baja.fechaBajaTexto)}</p>
+                      <p class="baja-card__fecha"><strong>Fecha del diagnóstico:</strong> ${escapeHtml(baja.fechaDiagnosticoTexto)}</p>
+                    </div>
+                    <div class="baja-card__acciones">
+                      ${pdf}
+                    </div>
+                  </header>
+
+                  <section class="baja-card__contenido">
+                    <div class="baja-card__bloque">
+                      <h4>Datos del activo</h4>
+                      <dl class="baja-card__datos">
+                        <div>
+                          <dt>Activo</dt>
+                          <dd>${escapeHtml(baja.activo.nombre)}</dd>
+                        </div>
+                        <div>
+                          <dt>Número de serie</dt>
+                          <dd>${escapeHtml(baja.activo.numeroSerie)}</dd>
+                        </div>
+                        <div>
+                          <dt>Placa</dt>
+                          <dd>${escapeHtml(baja.activo.placa)}</dd>
+                        </div>
+                        <div>
+                          <dt>Categoría</dt>
+                          <dd>${escapeHtml(baja.activo.categoria)}</dd>
+                        </div>
+                        <div>
+                          <dt>Área</dt>
+                          <dd>${escapeHtml(baja.activo.area)}</dd>
+                        </div>
+                        <div>
+                          <dt>Departamento</dt>
+                          <dd>${escapeHtml(baja.activo.departamento)}</dd>
+                        </div>
+                        <div>
+                          <dt>Propietario</dt>
+                          <dd>${escapeHtml(baja.activo.propietario)}</dd>
+                        </div>
+                        <div>
+                          <dt>Contacto</dt>
+                          <dd>${escapeHtml(baja.activo.contacto)}</dd>
+                        </div>
+                      </dl>
+                    </div>
+
+                    <div class="baja-card__bloque">
+                      <h4>Resumen de la baja</h4>
+                      <p><strong>Autorizado por:</strong> ${escapeHtml(baja.autorizadoPor)}</p>
+                      <p><strong>Motivo:</strong> ${multilinea(baja.motivo)}</p>
+                      <p><strong>Observaciones:</strong> ${multilinea(baja.observaciones)}</p>
+                      <p><strong>Elaborado por:</strong> ${escapeHtml(baja.elaboradoPor)}</p>
+                    </div>
+
+                    <div class="baja-card__bloque">
+                      <h4>Diagnóstico asociado</h4>
+                      ${incidencia}
+                      <p><strong>Diagnóstico técnico:</strong></p>
+                      <p>${multilinea(baja.diagnostico)}</p>
+                    </div>
+                  </section>
+                </article>
+              `;
+            })
+            .join('')}
+        </div>
+      `;
+    })()}
+  </section>
+` }) %>
