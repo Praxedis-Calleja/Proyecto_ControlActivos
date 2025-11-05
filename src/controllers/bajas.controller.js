@@ -1,4 +1,5 @@
 import { pool } from '../db.js';
+import { generarFolioBaja } from '../utils/folioBaja.js';
 
 const formateadorFecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' });
 
@@ -7,23 +8,6 @@ const formatearFecha = (valor) => {
   const fecha = valor instanceof Date ? valor : new Date(valor);
   if (Number.isNaN(fecha.getTime())) return null;
   return formateadorFecha.format(fecha);
-};
-
-const generarFolio = (registro) => {
-  const folio = typeof registro.folio === 'string' ? registro.folio.trim() : '';
-  if (folio) return folio;
-
-  const fecha = registro.fecha_baja ? new Date(registro.fecha_baja) : null;
-  const fechaTexto =
-    fecha && !Number.isNaN(fecha.getTime())
-      ? `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}${String(fecha.getDate()).padStart(2, '0')}`
-      : 'SINFECHA';
-
-  const idTexto = String(registro.id_baja ?? '')
-    .replace(/[^0-9]/g, '')
-    .padStart(6, '0');
-
-  return `BAJ-${fechaTexto}-${idTexto}`;
 };
 
 const prepararBaja = (registro) => {
@@ -37,7 +21,11 @@ const prepararBaja = (registro) => {
 
   return {
     id: registro.id_baja,
-    folio: generarFolio(registro),
+    folio: generarFolioBaja({
+      folio: registro.folio,
+      fechaBaja: registro.fecha_baja,
+      idBaja: registro.id_baja
+    }),
     fechaBajaTexto,
     fechaDiagnosticoTexto,
     autorizadoPor: registro.autorizado_por || 'No registrado',
