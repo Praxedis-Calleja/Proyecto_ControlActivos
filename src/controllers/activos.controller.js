@@ -4,8 +4,8 @@ import Joi from 'joi';
 const esquemaActivo = Joi.object({
   id_categoria_activos: Joi.number().integer().required(),
   id_area: Joi.number().integer().required(),
-  placa_activo: Joi.string().max(100).allow('', null),
-  propietario_nombre_completo: Joi.string().max(150).allow('', null),
+  placa_activo: Joi.string().allow('', null),
+  propietario_nombre_completo: Joi.string().allow('', null),
   propietario_contacto: Joi.string().max(100).allow('', null),
   marca: Joi.string().max(50).allow(''),
   modelo: Joi.string().max(50).allow(''),

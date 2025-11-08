@@ -48,7 +48,7 @@
       </select>
 
       <label for="placa_activo">Placa del activo</label>
-      <input id="placa_activo" name="placa_activo" maxlength="100" value="<%= formValues.placa_activo ?? '' %>">
+      <input id="placa_activo" name="placa_activo" value="<%= formValues.placa_activo ?? '' %>">
 
       <label for="marca">Marca</label>
       <input id="marca" name="marca" maxlength="50" value="<%= formValues.marca ?? '' %>">
@@ -69,7 +69,6 @@
       <input
         id="propietario_nombre_completo"
         name="propietario_nombre_completo"
-        maxlength="150"
         value="<%= formValues.propietario_nombre_completo ?? '' %>"
       >
 
