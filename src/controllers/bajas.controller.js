@@ -10,6 +10,24 @@ const formatearFecha = (valor) => {
   return formateadorFecha.format(fecha);
 };
 
+let columnasReportesBaja;
+
+const obtenerColumnasReportesBaja = async () => {
+  if (columnasReportesBaja) return columnasReportesBaja;
+
+  const [columnas] = await pool.query('SHOW COLUMNS FROM reportesbaja');
+  columnasReportesBaja = new Set(
+    columnas.map(({ Field }) => String(Field).toLowerCase())
+  );
+
+  return columnasReportesBaja;
+};
+
+const seleccionarColumnaBaja = (columnas, nombreColumna, alias) => {
+  const existe = columnas.has(String(nombreColumna).toLowerCase());
+  return existe ? `b.${nombreColumna} AS ${alias}` : `NULL AS ${alias}`;
+};
+
 const prepararBaja = (registro) => {
   const fechaBajaTexto = formatearFecha(registro.fecha_baja) || 'Sin fecha';
   const fechaDiagnosticoTexto = formatearFecha(registro.fecha_diagnostico) || 'Sin fecha';
@@ -56,15 +74,32 @@ const prepararBaja = (registro) => {
 
 export const getBajas = async (req, res) => {
   try {
+    const columnasDisponibles = await obtenerColumnasReportesBaja();
+    const columnaMotivo = seleccionarColumnaBaja(
+      columnasDisponibles,
+      'Motivo',
+      'motivo'
+    );
+    const columnaFechaDiagnostico = seleccionarColumnaBaja(
+      columnasDisponibles,
+      'Fecha_Diagnostico',
+      'fecha_diagnostico'
+    );
+    const columnaObservaciones = seleccionarColumnaBaja(
+      columnasDisponibles,
+      'Observaciones',
+      'observaciones'
+    );
+
     const [rows] = await pool.query(
       `SELECT
          b.ID_Baja AS id_baja,
          b.ID_Activo AS id_activo,
          b.AutorizadoPor AS autorizado_por,
-         b.Motivo AS motivo,
-         b.Fecha_Diagnostico AS fecha_diagnostico,
+         ${columnaMotivo},
+         ${columnaFechaDiagnostico},
          b.Fecha_Baja AS fecha_baja,
-         b.Observaciones AS observaciones,
+         ${columnaObservaciones},
          b.EvidenciaURL AS evidencia_url,
          b.Folio AS folio,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS elaborado_por,
