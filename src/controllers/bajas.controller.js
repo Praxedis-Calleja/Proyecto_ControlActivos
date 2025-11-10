@@ -10,6 +10,24 @@ const formatearFecha = (valor) => {
   return formateadorFecha.format(fecha);
 };
 
+let columnasReportesBaja;
+
+const obtenerColumnasReportesBaja = async () => {
+  if (columnasReportesBaja) return columnasReportesBaja;
+
+  const [columnas] = await pool.query('SHOW COLUMNS FROM reportesbaja');
+  columnasReportesBaja = new Set(
+    columnas.map(({ Field }) => String(Field).toLowerCase())
+  );
+
+  return columnasReportesBaja;
+};
+
+const seleccionarColumnaBaja = (columnas, nombreColumna, alias) => {
+  const existe = columnas.has(String(nombreColumna).toLowerCase());
+  return existe ? `b.${nombreColumna} AS ${alias}` : `NULL AS ${alias}`;
+};
+
 const prepararBaja = (registro) => {
   const fechaBajaTexto = formatearFecha(registro.fecha_baja) || 'Sin fecha';
   const fechaDiagnosticoTexto =
@@ -89,6 +107,23 @@ const prepararBaja = (registro) => {
 
 export const getBajas = async (req, res) => {
   try {
+    const columnasDisponibles = await obtenerColumnasReportesBaja();
+    const columnaMotivo = seleccionarColumnaBaja(
+      columnasDisponibles,
+      'Motivo',
+      'motivo'
+    );
+    const columnaFechaDiagnostico = seleccionarColumnaBaja(
+      columnasDisponibles,
+      'Fecha_Diagnostico',
+      'fecha_diagnostico'
+    );
+    const columnaObservaciones = seleccionarColumnaBaja(
+      columnasDisponibles,
+      'Observaciones',
+      'observaciones'
+    );
+
     const [rows] = await pool.query(
       `SELECT
          b.ID_Baja AS id_baja,
