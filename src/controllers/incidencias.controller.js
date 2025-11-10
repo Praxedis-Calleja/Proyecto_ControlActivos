@@ -1,5 +1,7 @@
 import Joi from 'joi';
 import PDFDocument from 'pdfkit';
+import fs from 'node:fs';
+import path from 'node:path';
 import { pool } from '../db.js';
 import { generarFolioBaja } from '../utils/folioBaja.js';
 
@@ -872,20 +874,42 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          a.numero_serie,
          a.placa_activo,
          a.propietario_contacto,
+         a.propietario_nombre_completo,
+         a.fecha_compra,
+         a.fecha_garantia,
+         a.procesador AS activo_procesador,
+         a.memoria_ram AS activo_memoria_ram,
+         a.almacenamiento AS activo_almacenamiento,
+         ar.nombre_area AS area_nombre,
+         ar.ubicacion AS area_ubicacion,
+         d.nombre_departamento AS departamento_nombre,
+         ca.nombre AS categoria_nombre,
          CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico,
+         CONCAT_WS(' ', ue.nombre, ue.apellido) AS nombre_elabora,
          b.ID_Baja AS baja_id,
+         b.Folio AS baja_folio,
+         b.ElaboradoPor AS baja_elaborado_por_id,
          b.AutorizadoPor AS baja_autorizado_por,
          b.Motivo AS baja_motivo,
          b.Fecha_Diagnostico AS baja_fecha_diagnostico,
          b.Fecha_Baja AS baja_fecha,
+         b.Fecha_Reimpresion AS baja_fecha_reimpresion,
          b.Observaciones AS baja_observaciones,
+         b.Procesador AS baja_procesador,
+         b.Memoria_Ram AS baja_memoria_ram,
+         b.Almacenamiento AS baja_almacenamiento,
+         b.Tiempo_Uso AS baja_tiempo_uso,
          b.EvidenciaURL AS baja_url
        FROM historial h
        INNER JOIN incidencias i ON i.id_incidencia = h.id_incidencia
        INNER JOIN activos_fijos a ON a.id_activo = h.id_activo
+       LEFT JOIN areas ar ON ar.id_area = a.id_area
+       LEFT JOIN departamentos d ON d.id_departamento = ar.id_departamento
+       LEFT JOIN categorias_activos ca ON ca.id_categoria_activos = a.id_categoria_activos
        LEFT JOIN usuarios u ON u.id_usuario = i.id_usuario
        LEFT JOIN usuarios ut ON ut.id_usuario = h.id_usuario_tecnico
+       LEFT JOIN usuarios ue ON ue.id_usuario = b.ElaboradoPor
        INNER JOIN reportesbaja b ON b.ID_Activo = h.id_activo AND b.EvidenciaURL = ?
        WHERE h.id_historial = ? AND h.id_incidencia = ?
        LIMIT 1`,
@@ -898,78 +922,342 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
       return res.status(404).send('El reporte de baja solicitado no existe.');
     }
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
     const nombreArchivo = `baja_activo_${registro.id_incidencia}_${registro.baja_id}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${nombreArchivo}"`);
 
+    doc.info.Title = `Reporte de baja ${registro.baja_folio || registro.baja_id}`;
+    doc.info.Subject = 'Formato de baja de equipo de cómputo';
+    doc.info.Creator = 'Sistema de Control de Activos';
+
     doc.pipe(res);
 
-    doc.font('Helvetica-Bold').fontSize(18).text('Reporte de baja de activo', {
+    const leftMargin = doc.page.margins.left;
+    const usableWidth = doc.page.width - leftMargin - doc.page.margins.right;
+    const formatDate = (value) => formatearFechaLarga(value) || 'N/A';
+    const formatInlineValue = (value) => {
+      if (value === undefined || value === null) {
+        return 'N/A';
+      }
+      const texto = String(value).replace(/\s+/g, ' ').trim();
+      return texto.length ? texto : 'N/A';
+    };
+    const formatParagraph = (value, fallback) => {
+      if (value === undefined || value === null) {
+        return fallback;
+      }
+      const texto = String(value).trim();
+      if (!texto.length) {
+        return fallback;
+      }
+      return texto
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n');
+    };
+
+    const drawSectionTitle = (texto) => {
+      doc.fillColor('#0f2d52');
+      doc.font('Helvetica-Bold').fontSize(12).text(texto, leftMargin, doc.y, {
+        width: usableWidth
+      });
+      doc.fillColor('#000000');
+      doc.moveDown(0.1);
+      doc.strokeColor('#c7c7c7')
+        .lineWidth(0.6)
+        .moveTo(leftMargin, doc.y)
+        .lineTo(leftMargin + usableWidth, doc.y)
+        .stroke();
+      doc.strokeColor('#000000').lineWidth(0.5);
+      doc.moveDown(0.5);
+    };
+
+    const drawRow = (pairs = []) => {
+      const columnas = pairs.filter(Boolean);
+      if (!columnas.length) return;
+
+      const startY = doc.y;
+      const columnWidth = usableWidth / columnas.length;
+      let maxHeight = 0;
+
+      columnas.forEach((pair, index) => {
+        const x = leftMargin + index * columnWidth;
+        const value = formatInlineValue(pair.value);
+        const columnText = `${pair.label}: ${value}`;
+        const height = doc.heightOfString(columnText, { width: columnWidth });
+
+        doc.font('Helvetica-Bold').fontSize(10).text(`${pair.label}:`, x, startY, {
+          width: columnWidth,
+          continued: true
+        });
+        doc.font('Helvetica').fontSize(10).text(` ${value}`, {
+          width: columnWidth
+        });
+
+        doc.y = startY;
+        doc.x = leftMargin;
+        maxHeight = Math.max(maxHeight, height);
+      });
+
+      const lineHeight = maxHeight || doc.currentLineHeight();
+      doc.y = startY + lineHeight + 6;
+    };
+
+    const logoPath = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
+    const headerTop = doc.y;
+    if (fs.existsSync(logoPath)) {
+      try {
+        doc.image(logoPath, leftMargin, headerTop, { width: 120 });
+      } catch (error) {
+        console.warn('No se pudo cargar el logo para el reporte de baja:', error);
+      }
+    }
+
+    const headerTextX = leftMargin + 135;
+    const headerWidth = Math.max(usableWidth - 135, 200);
+
+    doc.fillColor('#0f2d52');
+    doc.font('Helvetica-Bold').fontSize(16).text('Hotel Xcaret Arte', headerTextX, headerTop, {
+      width: headerWidth,
+      align: 'right'
+    });
+    doc.font('Helvetica').fontSize(11).text('Dirección de Tecnología', headerTextX, doc.y, {
+      width: headerWidth,
+      align: 'right'
+    });
+    doc.text('Sistemas · Soporte Técnico', headerTextX, doc.y, {
+      width: headerWidth,
+      align: 'right'
+    });
+    doc.fillColor('#000000');
+
+    const headerBottom = Math.max(headerTop + 90, doc.y + 10);
+    doc.strokeColor('#0f2d52')
+      .lineWidth(1.2)
+      .moveTo(leftMargin, headerBottom)
+      .lineTo(leftMargin + usableWidth, headerBottom)
+      .stroke();
+    doc.strokeColor('#000000').lineWidth(0.5);
+    doc.y = headerBottom + 12;
+
+    doc.font('Helvetica-Bold').fontSize(16).text('Formato de Baja de Equipo de Cómputo', leftMargin, doc.y, {
+      width: usableWidth,
       align: 'center'
     });
+    doc.moveDown(0.2);
+    doc.font('Helvetica').fontSize(11).text('Reporte oficial de baja de activos tecnológicos', leftMargin, doc.y, {
+      width: usableWidth,
+      align: 'center'
+    });
+    doc.moveDown(1);
 
-    doc.moveDown();
+    drawSectionTitle('Información del reporte');
+    drawRow([
+      { label: 'Folio', value: registro.baja_folio || registro.baja_id },
+      { label: 'Fecha de baja', value: formatDate(registro.baja_fecha) }
+    ]);
+    drawRow([
+      { label: 'Fecha del diagnóstico', value: formatDate(registro.baja_fecha_diagnostico) },
+      { label: 'Fecha de reimpresión', value: formatDate(registro.baja_fecha_reimpresion) }
+    ]);
+    drawRow([
+      {
+        label: 'Elaboró',
+        value: registro.nombre_elabora || registro.nombre_tecnico || 'No registrado'
+      },
+      { label: 'Autorizó', value: registro.baja_autorizado_por || 'No registrado' }
+    ]);
+    drawRow([
+      { label: 'Tiempo de uso estimado', value: registro.baja_tiempo_uso || 'Sin información' },
+      { label: 'Incidencia relacionada', value: `#${registro.id_incidencia}` }
+    ]);
 
-    doc.font('Helvetica-Bold').fontSize(12).text('Datos generales');
-    doc.font('Helvetica').fontSize(11);
-    doc.text(`Incidencia #${registro.id_incidencia}`);
-    doc.text(`Estado de la incidencia: ${registro.estado || 'Sin estado'}`);
-    doc.text(`Prioridad: ${registro.prioridad || 'Sin prioridad'}`);
-    doc.text(`Tipo: ${registro.tipo_incidencia || 'Sin tipo'}`);
-    doc.text(`Origen: ${registro.origen_incidencia || 'Sin origen'}`);
-    doc.text(`Reportada por: ${registro.nombre_reporta || 'No registrado'}`);
+    drawSectionTitle('Ubicación y responsable del activo');
+    drawRow([
+      { label: 'Departamento', value: registro.departamento_nombre || 'No registrado' },
+      { label: 'Área', value: registro.area_nombre || 'No registrada' }
+    ]);
+    drawRow([
+      { label: 'Ubicación', value: registro.area_ubicacion || 'No registrada' },
+      { label: 'Estado de la incidencia', value: registro.estado || 'Sin estado' }
+    ]);
+    drawRow([
+      { label: 'Prioridad', value: registro.prioridad || 'Sin prioridad' },
+      { label: 'Origen', value: registro.origen_incidencia || 'Sin origen' }
+    ]);
+    drawRow([
+      { label: 'Reportada por', value: registro.nombre_reporta || 'No registrado' },
+      {
+        label: 'Contacto del propietario',
+        value: registro.propietario_contacto || 'Sin contacto'
+      }
+    ]);
+    drawRow([
+      {
+        label: 'Propietario del activo',
+        value: registro.propietario_nombre_completo || 'No registrado'
+      },
+      { label: 'Edificio', value: 'N/A' }
+    ]);
 
-    doc.moveDown();
-
-    doc.font('Helvetica-Bold').text('Datos del activo');
-    doc.font('Helvetica');
+    drawSectionTitle('Especificaciones del activo');
     const nombreActivo = (registro.marca || registro.modelo)
       ? [registro.marca, registro.modelo].filter(Boolean).join(' ')
       : 'Activo sin nombre';
-    doc.text(`Activo: ${nombreActivo}`);
-    doc.text(`Número de serie: ${registro.numero_serie || 'No registrado'}`);
-    doc.text(`Placa: ${registro.placa_activo || 'No registrada'}`);
-    doc.text(`Contacto propietario: ${registro.propietario_contacto || 'No registrado'}`);
+    drawRow([
+      { label: 'Tipo de equipo', value: registro.categoria_nombre || 'Sin categoría' },
+      { label: 'Nombre / modelo', value: nombreActivo }
+    ]);
+    drawRow([
+      { label: 'Número de serie', value: registro.numero_serie || 'No registrado' },
+      { label: 'Placa de inventario', value: registro.placa_activo || 'No registrada' }
+    ]);
+    drawRow([
+      {
+        label: 'Procesador',
+        value: registro.baja_procesador || registro.activo_procesador || 'Sin información'
+      },
+      {
+        label: 'Memoria RAM',
+        value: registro.baja_memoria_ram || registro.activo_memoria_ram || 'Sin información'
+      }
+    ]);
+    drawRow([
+      {
+        label: 'Almacenamiento',
+        value: registro.baja_almacenamiento || registro.activo_almacenamiento || 'Sin información'
+      },
+      { label: 'Tiempo de garantía', value: formatDate(registro.fecha_garantia) }
+    ]);
+    drawRow([
+      { label: 'Fecha de adquisición', value: formatDate(registro.fecha_compra) },
+      { label: 'Usuario responsable', value: registro.propietario_nombre_completo || 'No registrado' }
+    ]);
 
-    doc.moveDown();
+    drawSectionTitle('Incidencia registrada');
+    drawRow([
+      { label: 'Incidencia', value: `#${registro.id_incidencia}` },
+      { label: 'Fecha de registro', value: formatDate(registro.incidencia_creada_en) }
+    ]);
+    drawRow([
+      { label: 'Tipo de incidencia', value: registro.tipo_incidencia || 'Sin tipo' },
+      { label: 'Origen', value: registro.origen_incidencia || 'Sin origen' }
+    ]);
+    doc.font('Helvetica-Bold').fontSize(10).text('Descripción del problema reportado', leftMargin, doc.y);
+    doc.moveDown(0.2);
+    doc.font('Helvetica').fontSize(10).text(
+      formatParagraph(
+        registro.descripcion_problema,
+        'Sin descripción registrada para la incidencia.'
+      ),
+      leftMargin,
+      doc.y,
+      {
+        width: usableWidth,
+        align: 'justify'
+      }
+    );
+    doc.moveDown(0.8);
 
-    doc.font('Helvetica-Bold').text('Diagnóstico relacionado');
-    doc.font('Helvetica');
-    doc.text(
-      `Fecha de diagnóstico: ${formatearFechaLarga(registro.fecha_diagnostico) || 'No registrada'}`
+    drawSectionTitle('Diagnóstico técnico');
+    doc.font('Helvetica-Bold').fontSize(10).text('Trabajo realizado');
+    doc.moveDown(0.2);
+    doc.font('Helvetica').fontSize(10).text(
+      formatParagraph(
+        registro.descripcion,
+        'Sin información del trabajo realizado por el técnico.'
+      ),
+      leftMargin,
+      doc.y,
+      {
+        width: usableWidth,
+        align: 'justify'
+      }
     );
     doc.moveDown(0.5);
-    doc.text('Descripción del trabajo realizado:');
+    doc.font('Helvetica-Bold').fontSize(10).text('Diagnóstico final');
     doc.moveDown(0.2);
-    doc.font('Helvetica-Oblique').text(registro.descripcion || 'Sin información');
-    doc.moveDown();
-    doc.font('Helvetica').text('Diagnóstico final:');
+    doc.font('Helvetica').fontSize(10).text(
+      formatParagraph(registro.diagnostico, 'Sin diagnóstico registrado.'),
+      leftMargin,
+      doc.y,
+      {
+        width: usableWidth,
+        align: 'justify'
+      }
+    );
+    doc.moveDown(0.8);
+
+    drawSectionTitle('Motivo y observaciones de la baja');
+    doc.font('Helvetica-Bold').fontSize(10).text('Motivo de la baja');
     doc.moveDown(0.2);
-    doc.font('Helvetica-Oblique').text(registro.diagnostico || 'Sin información');
-
-    doc.moveDown();
-
-    doc.font('Helvetica-Bold').text('Detalles de la baja');
-    doc.font('Helvetica');
-    doc.text(
-      `Fecha de baja: ${formatearFechaLarga(registro.baja_fecha) || 'No registrada'}`
+    doc.font('Helvetica').fontSize(10).text(
+      formatParagraph(registro.baja_motivo, 'Sin motivo registrado.'),
+      leftMargin,
+      doc.y,
+      {
+        width: usableWidth,
+        align: 'justify'
+      }
     );
-    doc.text(
-      `Fecha del diagnóstico que originó la baja: ${
-        formatearFechaLarga(registro.baja_fecha_diagnostico) || 'No registrada'
-      }`
-    );
-    doc.text(`Autorizado por: ${registro.baja_autorizado_por || 'No registrado'}`);
     doc.moveDown(0.5);
-    doc.text('Motivo de la baja:');
+    doc.font('Helvetica-Bold').fontSize(10).text('Observaciones adicionales');
     doc.moveDown(0.2);
-    doc.font('Helvetica-Oblique').text(registro.baja_motivo || 'Sin motivo');
-    doc.moveDown();
-    doc.font('Helvetica').text('Observaciones:');
-    doc.moveDown(0.2);
-    doc.font('Helvetica-Oblique').text(registro.baja_observaciones || 'Sin observaciones');
+    doc.font('Helvetica').fontSize(10).text(
+      formatParagraph(registro.baja_observaciones, 'Sin observaciones capturadas.'),
+      leftMargin,
+      doc.y,
+      {
+        width: usableWidth,
+        align: 'justify'
+      }
+    );
+    if (registro.baja_tiempo_uso) {
+      doc.moveDown(0.5);
+      doc.font('Helvetica-Bold').fontSize(10).text('Tiempo de uso documentado');
+      doc.moveDown(0.2);
+      doc.font('Helvetica').fontSize(10).text(
+        formatParagraph(registro.baja_tiempo_uso, 'Sin información de uso.'),
+        leftMargin,
+        doc.y,
+        {
+          width: usableWidth,
+          align: 'justify'
+        }
+      );
+    }
+
+    doc.moveDown(2);
+    const signatureLineWidth = 190;
+    const signatureY = doc.y + 40;
+    doc.strokeColor('#000000')
+      .lineWidth(0.6)
+      .moveTo(leftMargin, signatureY)
+      .lineTo(leftMargin + signatureLineWidth, signatureY)
+      .stroke();
+    doc.moveTo(leftMargin + usableWidth - signatureLineWidth, signatureY)
+      .lineTo(leftMargin + usableWidth, signatureY)
+      .stroke();
+    doc.font('Helvetica').fontSize(10).text('Elaboró', leftMargin, signatureY + 5, {
+      width: signatureLineWidth,
+      align: 'center'
+    });
+    doc.text('Autorizó', leftMargin + usableWidth - signatureLineWidth, signatureY + 5, {
+      width: signatureLineWidth,
+      align: 'center'
+    });
+    doc.moveDown(4);
+    doc.font('Helvetica').fontSize(8).fillColor('#555555').text(
+      'Este formato fue generado automáticamente con base en el registro histórico del sistema de control de activos.',
+      leftMargin,
+      doc.y,
+      {
+        width: usableWidth,
+        align: 'center'
+      }
+    );
+    doc.fillColor('#000000');
 
     doc.end();
   } catch (error) {
