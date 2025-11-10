@@ -10,9 +10,55 @@ const formatearFecha = (valor) => {
   return formateadorFecha.format(fecha);
 };
 
+const dividirNotasBaja = (notas) => {
+  const resultado = {
+    motivo: '',
+    autorizadoPor: '',
+    observaciones: '',
+    restantes: []
+  };
+
+  if (!notas) {
+    return resultado;
+  }
+
+  const lineas = String(notas)
+    .split(/\r?\n/)
+    .map((linea) => linea.trim())
+    .filter(Boolean);
+
+  for (const linea of lineas) {
+    const lineaMin = linea.toLowerCase();
+    if (!resultado.motivo && lineaMin.startsWith('motivo:')) {
+      resultado.motivo = linea.slice('motivo:'.length).trim();
+    } else if (!resultado.autorizadoPor && lineaMin.startsWith('autorizado por:')) {
+      resultado.autorizadoPor = linea.slice('autorizado por:'.length).trim();
+    } else if (!resultado.observaciones && lineaMin.startsWith('observaciones:')) {
+      resultado.observaciones = linea.slice('observaciones:'.length).trim();
+    } else {
+      resultado.restantes.push(linea);
+    }
+  }
+
+  if (!resultado.observaciones && resultado.restantes.length) {
+    resultado.observaciones = resultado.restantes.join('\n');
+  }
+
+  return resultado;
+};
+
 const prepararBaja = (registro) => {
   const fechaBajaTexto = formatearFecha(registro.fecha_baja) || 'Sin fecha';
-  const fechaDiagnosticoTexto = formatearFecha(registro.fecha_diagnostico) || 'Sin fecha';
+  const fechaDiagnosticoTexto =
+    formatearFecha(registro.fecha_diagnostico) || 'Sin fecha';
+
+  const notas = dividirNotasBaja(registro.tiempo_uso);
+  const motivo = registro.motivo || notas.motivo;
+  const observaciones = registro.observaciones || notas.observaciones;
+  const autorizadoPor = registro.autorizado_por || notas.autorizadoPor;
+  const tiempoUso = notas.restantes.length
+    ? notas.restantes.join('\n')
+    : registro.tiempo_uso || '';
 
   const nombreActivo = [registro.marca, registro.modelo]
     .map((parte) => (parte ? String(parte).trim() : ''))
@@ -28,9 +74,10 @@ const prepararBaja = (registro) => {
     }),
     fechaBajaTexto,
     fechaDiagnosticoTexto,
-    autorizadoPor: registro.autorizado_por || 'No registrado',
-    motivo: registro.motivo || 'Sin motivo especificado',
-    observaciones: registro.observaciones || 'Sin observaciones',
+    autorizadoPor: autorizadoPor || 'No registrado',
+    motivo: motivo || 'Sin motivo especificado',
+    observaciones: observaciones || 'Sin observaciones',
+    tiempoUso: tiempoUso || '',
     elaboradoPor: registro.elaborado_por || 'No registrado',
     pdfUrl: registro.evidencia_url || null,
     diagnostico: registro.diagnostico || 'Sin diagnóstico capturado',
@@ -60,13 +107,14 @@ export const getBajas = async (req, res) => {
       `SELECT
          b.ID_Baja AS id_baja,
          b.ID_Activo AS id_activo,
-         b.AutorizadoPor AS autorizado_por,
-         b.Motivo AS motivo,
-         b.Fecha_Diagnostico AS fecha_diagnostico,
+         NULL AS autorizado_por,
+         NULL AS motivo,
+         h.fecha_diagnostico AS fecha_diagnostico,
          b.Fecha_Baja AS fecha_baja,
-         b.Observaciones AS observaciones,
+         NULL AS observaciones,
          b.EvidenciaURL AS evidencia_url,
          b.Folio AS folio,
+         b.Tiempo_Uso AS tiempo_uso,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS elaborado_por,
          a.marca,
          a.modelo,
@@ -86,10 +134,10 @@ export const getBajas = async (req, res) => {
        LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
        LEFT JOIN areas ar ON ar.id_area = a.id_area
        LEFT JOIN departamentos d ON d.id_departamento = ar.id_departamento
-       LEFT JOIN usuarios ut ON ut.id_usuario = b.ElaboradoPor
        LEFT JOIN historial h ON h.id_activo = b.ID_Activo
          AND b.EvidenciaURL IS NOT NULL
          AND b.EvidenciaURL = CONCAT('/incidencias/', h.id_incidencia, '/diagnostico/baja/pdf/', h.id_historial)
+       LEFT JOIN usuarios ut ON ut.id_usuario = h.id_usuario_tecnico
        LEFT JOIN incidencias i ON i.id_incidencia = h.id_incidencia
        ORDER BY b.Fecha_Baja DESC, b.ID_Baja DESC`
     );
