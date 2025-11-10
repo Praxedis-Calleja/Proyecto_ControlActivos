@@ -195,6 +195,9 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
        a.numero_serie,
        a.placa_activo,
        a.propietario_contacto,
+       a.procesador,
+       a.memoria_ram,
+       a.almacenamiento,
        CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
        CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta
      FROM incidencias i
@@ -578,8 +581,11 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     let reporteBajaUrl = null;
     if (requiere_baja === 'SI') {
       const rutaPdf = `/incidencias/${idIncidencia}/diagnostico/baja/pdf/${historialId}`;
+      const motivoLimpio = motivo_baja?.trim() || '';
+      const observacionLimpia = observaciones_baja?.trim() || '';
       const observacionesLimpias = [
-        observaciones_baja?.trim() || '',
+        motivoLimpio ? `Motivo: ${motivoLimpio}` : '',
+        observacionLimpia ? `Observaciones: ${observacionLimpia}` : '',
         evidencia_url ? `Evidencia: ${evidencia_url}` : '',
         `Diagnóstico relacionado #${historialId}`
       ]
@@ -599,16 +605,18 @@ export const postDiagnosticoIncidencia = async (req, res) => {
           `UPDATE reportesbaja
              SET ElaboradoPor = ?,
                  AutorizadoPor = ?,
-                 Motivo = ?,
-                 Fecha_Diagnostico = ?,
-                 Observaciones = ?,
+                 Procesador = ?,
+                 Memoria_Ram = ?,
+                 Almacenamiento = ?,
+                 Tiempo_Uso = ?,
                  EvidenciaURL = ?
            WHERE ID_Baja = ?`,
           [
             tecnicoId,
             autorizado_por,
-            motivo_baja,
-            fechaNormalizada,
+            incidencia.procesador || '',
+            incidencia.memoria_ram || '',
+            incidencia.almacenamiento || '',
             observacionesLimpias || null,
             rutaPdf,
             existentes[0].ID_Baja
@@ -620,19 +628,21 @@ export const postDiagnosticoIncidencia = async (req, res) => {
              ID_Activo,
              ElaboradoPor,
              AutorizadoPor,
-             Motivo,
-             Fecha_Diagnostico,
+             Procesador,
              EvidenciaURL,
-             Observaciones
-           ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             Tiempo_Uso,
+             Memoria_Ram,
+             Almacenamiento
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             incidencia.id_activo,
             tecnicoId,
             autorizado_por,
-            motivo_baja,
-            fechaNormalizada,
+            incidencia.procesador || '',
             rutaPdf,
-            observacionesLimpias || null
+            observacionesLimpias || null,
+            incidencia.memoria_ram || '',
+            incidencia.almacenamiento || ''
           ]
         );
 
@@ -891,15 +901,15 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          b.Folio AS baja_folio,
          b.ElaboradoPor AS baja_elaborado_por_id,
          b.AutorizadoPor AS baja_autorizado_por,
-         b.Motivo AS baja_motivo,
-         b.Fecha_Diagnostico AS baja_fecha_diagnostico,
-         b.Fecha_Baja AS baja_fecha,
+         NULL AS baja_motivo,
+         h.fecha_diagnostico AS baja_fecha_diagnostico,
          b.Fecha_Reimpresion AS baja_fecha_reimpresion,
-         b.Observaciones AS baja_observaciones,
+         NULL AS baja_observaciones,
          b.Procesador AS baja_procesador,
          b.Memoria_Ram AS baja_memoria_ram,
          b.Almacenamiento AS baja_almacenamiento,
          b.Tiempo_Uso AS baja_tiempo_uso,
+         b.Fecha_Baja AS baja_fecha,
          b.EvidenciaURL AS baja_url
        FROM historial h
        INNER JOIN incidencias i ON i.id_incidencia = h.id_incidencia
@@ -920,6 +930,34 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
 
     if (!registro || !registro.baja_id) {
       return res.status(404).send('El reporte de baja solicitado no existe.');
+    }
+
+    if (registro.baja_tiempo_uso) {
+      const lineas = String(registro.baja_tiempo_uso)
+        .split(/\r?\n/)
+        .map((linea) => linea.trim())
+        .filter(Boolean);
+
+      const lineasRestantes = [];
+
+      for (const linea of lineas) {
+        const lineaMin = linea.toLowerCase();
+        if (!registro.baja_motivo && lineaMin.startsWith('motivo:')) {
+          registro.baja_motivo = linea.slice('motivo:'.length).trim();
+        } else if (!registro.baja_observaciones && lineaMin.startsWith('observaciones:')) {
+          registro.baja_observaciones = linea
+            .slice('observaciones:'.length)
+            .trim();
+        } else {
+          lineasRestantes.push(linea);
+        }
+      }
+
+      if (!registro.baja_observaciones && lineasRestantes.length) {
+        registro.baja_observaciones = lineasRestantes.join('\n');
+      }
+
+      registro.baja_tiempo_uso = lineasRestantes.join('\n');
     }
 
     const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
