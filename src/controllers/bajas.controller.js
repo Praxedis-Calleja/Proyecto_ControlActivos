@@ -30,7 +30,39 @@ const seleccionarColumnaBaja = (columnas, nombreColumna, alias) => {
 
 const prepararBaja = (registro) => {
   const fechaBajaTexto = formatearFecha(registro.fecha_baja) || 'Sin fecha';
-  const fechaDiagnosticoTexto = formatearFecha(registro.fecha_diagnostico) || 'Sin fecha';
+  const fechaDiagnosticoTexto =
+    formatearFecha(registro.fecha_diagnostico) || 'Sin fecha';
+
+  let motivo = registro.motivo;
+  let observaciones = registro.observaciones;
+
+  let tiempoUso = registro.tiempo_uso;
+
+  if (registro.tiempo_uso) {
+    const lineas = String(registro.tiempo_uso)
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+
+    const lineasRestantes = [];
+
+    for (const linea of lineas) {
+      const lineaMin = linea.toLowerCase();
+      if (!motivo && lineaMin.startsWith('motivo:')) {
+        motivo = linea.slice('motivo:'.length).trim();
+      } else if (!observaciones && lineaMin.startsWith('observaciones:')) {
+        observaciones = linea.slice('observaciones:'.length).trim();
+      } else {
+        lineasRestantes.push(linea);
+      }
+    }
+
+    if (!observaciones && lineasRestantes.length) {
+      observaciones = lineasRestantes.join('\n');
+    }
+
+    tiempoUso = lineasRestantes.join('\n');
+  }
 
   const nombreActivo = [registro.marca, registro.modelo]
     .map((parte) => (parte ? String(parte).trim() : ''))
@@ -47,8 +79,9 @@ const prepararBaja = (registro) => {
     fechaBajaTexto,
     fechaDiagnosticoTexto,
     autorizadoPor: registro.autorizado_por || 'No registrado',
-    motivo: registro.motivo || 'Sin motivo especificado',
-    observaciones: registro.observaciones || 'Sin observaciones',
+    motivo: motivo || 'Sin motivo especificado',
+    observaciones: observaciones || 'Sin observaciones',
+    tiempoUso: tiempoUso || '',
     elaboradoPor: registro.elaborado_por || 'No registrado',
     pdfUrl: registro.evidencia_url || null,
     diagnostico: registro.diagnostico || 'Sin diagnóstico capturado',
@@ -96,12 +129,13 @@ export const getBajas = async (req, res) => {
          b.ID_Baja AS id_baja,
          b.ID_Activo AS id_activo,
          b.AutorizadoPor AS autorizado_por,
-         ${columnaMotivo},
-         ${columnaFechaDiagnostico},
+         NULL AS motivo,
+         h.fecha_diagnostico AS fecha_diagnostico,
          b.Fecha_Baja AS fecha_baja,
-         ${columnaObservaciones},
+         NULL AS observaciones,
          b.EvidenciaURL AS evidencia_url,
          b.Folio AS folio,
+         b.Tiempo_Uso AS tiempo_uso,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS elaborado_por,
          a.marca,
          a.modelo,
