@@ -11,10 +11,15 @@
           ${diagnosticoIdCreado
             ? `<a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${diagnosticoIdCreado}" target="_blank" rel="noopener">Descargar reporte en PDF</a>`
             : ''}
-          ${reporteBajaCreado
-            ? `<a class="btn-secundario" href="${reporteBajaCreado}" target="_blank" rel="noopener">Reporte de baja en PDF</a>`
-            : ''}
         </div>`
+      : ''}
+
+    ${estadoActualizado
+      ? '<div class="ok">Estado de la incidencia actualizado correctamente.</div>'
+      : ''}
+
+    ${estadoError
+      ? '<div class="alert">No se pudo actualizar el estado de la incidencia. Intenta nuevamente.</div>'
       : ''}
 
     ${(errores && errores.length)
@@ -48,6 +53,16 @@
 
       const multilinea = (texto = '') =>
         escapeHtml(texto).replace(/\r?\n/g, '<br>');
+
+      const opcionesEstado = Array.isArray(estados)
+        ? estados
+            .map((estado) => {
+              const seleccionado = incidencia.estado === estado ? 'selected' : '';
+              const texto = estado.replace(/_/g, ' ');
+              return `<option value="${escapeAttr(estado)}" ${seleccionado}>${escapeHtml(texto)}</option>`;
+            })
+            .join('')
+        : '';
 
       const infoIncidencia = `
         <article class="resumen-incidencia">
@@ -89,6 +104,18 @@
           <div class="descripcion-problema">
             <h4>Descripción reportada</h4>
             <p>${multilinea(incidencia.descripcion_problema || 'Sin descripción')}</p>
+          </div>
+          <div class="acciones-incidencia">
+            <form method="post" action="/incidencias/${incidencia.id_incidencia}/diagnostico/estado" class="acciones-incidencia__form">
+              <label for="estado-incidencia">Cambiar estado</label>
+              <div class="acciones-incidencia__controles">
+                <select id="estado-incidencia" name="estado">
+                  ${opcionesEstado}
+                </select>
+                <input type="hidden" name="_csrf" value="${csrfToken}">
+                <button type="submit" class="btn">Actualizar estado</button>
+              </div>
+            </form>
           </div>
         </article>
       `;
@@ -202,44 +229,13 @@
         </form>
       `;
 
-      const listadoDiagnosticos = `
-        <section class="diagnosticos-listado">
-          <h3>Diagnósticos registrados</h3>
-          ${diagnosticos && diagnosticos.length
-            ? `<ul class="diagnosticos-lista">
-                ${diagnosticos
-                  .map((registro) => `
-                    <li class="diagnostico-item">
-                      <header>
-                        <strong>Diagnóstico #${registro.id_diagnostico}</strong>
-                        <span>${escapeHtml(registro.tecnico_nombre || 'Técnico desconocido')}</span>
-                      </header>
-                      <p><strong>Registrado:</strong> ${escapeHtml(registro.creado_en_fmt)}</p>
-                      <p><strong>Fecha de diagnóstico:</strong> ${escapeHtml(registro.fecha_diagnostico_fmt)}</p>
-                      <div class="detalle">
-                        <h4>Trabajo realizado</h4>
-                        <p>${multilinea(registro.trabajo || 'Sin información')}</p>
-                      </div>
-                      <div class="detalle">
-                        <h4>Diagnóstico</h4>
-                        <p>${multilinea(registro.diagnostico || 'Sin información')}</p>
-                      </div>
-                      ${registro.motivo
-                        ? `<div class="detalle"><h4>Motivo</h4><p>${multilinea(registro.motivo)}</p></div>`
-                        : ''}
-                      ${registro.observaciones
-                        ? `<div class="detalle"><h4>Observaciones</h4><p>${multilinea(registro.observaciones)}</p></div>`
-                        : ''}
-                      ${registro.evidenciaURL
-                        ? `<div class="detalle"><h4>Evidencia</h4><p>${escapeHtml(registro.evidenciaURL)}</p></div>`
-                        : ''}
-                    </li>
-                  `)
-                  .join('')}
-              </ul>`
-            : '<p>Aún no hay diagnósticos registrados para esta incidencia.</p>'}
-        </section>
-      `;
+      const formularioOBloqueo = permiteDiagnostico
+        ? formulario
+        : `
+          <div class="form-diagnostico form-diagnostico--bloqueada">
+            <p>La incidencia está cerrada, no es posible registrar nuevos diagnósticos ni generar reportes de baja.</p>
+          </div>
+        `;
 
       const listadoReportesDiagnostico = `
         <section class="diagnosticos-reportes" id="diagnosticos-reportes">
@@ -255,9 +251,6 @@
                       </div>
                       <div class="acciones">
                         <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Descargar diagnóstico</a>
-                        ${registro.reporte_baja && registro.reporte_baja.url
-                          ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
-                          : ''}
                       </div>
                     </li>
                   `)
@@ -270,9 +263,8 @@
       return `
         <div class="diagnostico-grid">
           ${infoIncidencia}
-          ${formulario}
+          ${formularioOBloqueo}
         </div>
-        ${listadoDiagnosticos}
         ${listadoReportesDiagnostico}
         <script>
           (() => {

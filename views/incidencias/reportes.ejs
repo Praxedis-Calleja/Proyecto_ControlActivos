@@ -7,7 +7,6 @@
           Consulta los diagnósticos registrados para los activos con incidencias, revisa los detalles técnicos y descarga los informes en PDF.
         </p>
       </div>
-      <a class="btn" href="/incidencias">⬅️ Volver a incidencias</a>
     </header>
 
     ${error ? `<div class="alert">${error}</div>` : ''}
@@ -50,10 +49,6 @@
                 ? `<p><strong>Evidencia:</strong> ${escapeHtml(reporte.evidencia)}</p>`
                 : '';
 
-              const reporteBaja = reporte.reporteBaja
-                ? `<a class="btn-secundario" href="${escapeAttr(reporte.reporteBaja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
-                : '';
-
               return `
                 <article class="reporte-diagnostico-card">
                   <header class="reporte-diagnostico-card__header">
@@ -66,7 +61,6 @@
                     <div class="reporte-diagnostico-card__acciones">
                       <a class="btn-secundario" href="/incidencias/${escapeAttr(reporte.incidenciaId)}/diagnostico" rel="noopener">Ver incidencia</a>
                       <a class="btn" href="${escapeAttr(reporte.pdfUrl)}" target="_blank" rel="noopener">Descargar diagnóstico</a>
-                      ${reporteBaja}
                     </div>
                   </header>
 
