@@ -1,6 +1,14 @@
 import { pool } from '../db.js';
 import Joi from 'joi';
 
+const ESTADOS_ACTIVO = Object.freeze([
+  'ALMACEN',
+  'ASIGNADO',
+  'EN_REPARACION',
+  'PRESTAMO',
+  'BAJA'
+]);
+
 const esquemaActivo = Joi.object({
   id_categoria_activos: Joi.number().integer().required(),
   id_area: Joi.number().integer().required(),
@@ -9,7 +17,9 @@ const esquemaActivo = Joi.object({
   propietario_contacto: Joi.string().max(100).allow('', null),
   marca: Joi.string().max(50).allow(''),
   modelo: Joi.string().max(50).allow(''),
-  estado: Joi.string().max(50).required(),
+  estado: Joi.string()
+    .valid(...ESTADOS_ACTIVO)
+    .required(),
   fecha_compra: Joi.alternatives().try(Joi.date(), Joi.string().valid('')).allow(null, ''),
   precio_lista: Joi.alternatives()
     .try(Joi.number().precision(2), Joi.string().valid(''))
@@ -203,6 +213,7 @@ const renderActivos = async (req, res, opciones = {}) => {
       ok: opciones.ok ?? (req.query.ok === '1'),
       eliminado: opciones.eliminado ?? (req.query.deleted === '1'),
       mostrarFormulario: opciones.mostrarFormulario ?? false,
+      estados: ESTADOS_ACTIVO,
       pageTitle: 'Activos fijos'
     });
 };
@@ -316,6 +327,7 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       errores: ['El identificador del activo no es válido'],
       values: {},
       activoId: id,
+      estados: ESTADOS_ACTIVO,
       pageTitle: 'Editar activo fijo'
     });
   }
@@ -334,6 +346,7 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       errores: ['El activo solicitado no fue encontrado'],
       values: {},
       activoId: idActivo,
+      estados: ESTADOS_ACTIVO,
       pageTitle: 'Editar activo fijo'
     });
   }
@@ -384,6 +397,7 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       errores: opciones.errores || [],
       values: valoresConDepartamento,
       activoId: idActivo,
+      estados: ESTADOS_ACTIVO,
       pageTitle: 'Editar activo fijo'
     });
 };
@@ -403,6 +417,7 @@ export const postEditarActivo = async (req, res) => {
       errores: ['El identificador del activo no es válido'],
       values: req.body,
       activoId: req.params.id,
+      estados: ESTADOS_ACTIVO,
       pageTitle: 'Editar activo fijo'
     });
   }
