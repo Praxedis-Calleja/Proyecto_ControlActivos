@@ -6,12 +6,15 @@
       const rawTitle = typeof pageTitle === 'string' && pageTitle.trim() ? pageTitle.trim() : '';
       const sectionTitles = {
         '/activos': 'Activos fijos',
-        '/incidencias': 'Diagnóstico',
-        '/bajas': 'Reportes',
+        '/incidencias': 'Incidencias',
+        '/incidencias/reportes': 'Reportes de diagnóstico',
+        '/bajas': 'Reportes de baja',
         '/usuarios': 'Usuarios',
         '/login': 'Iniciar sesión'
       };
-      const fallbackTitle = sectionTitles[currentSection] || 'Panel administrativo';
+      const normalizedPath = typeof currentPath === 'string' ? currentPath.split('?')[0] : '';
+      const fallbackTitle =
+        sectionTitles[normalizedPath] || sectionTitles[currentSection] || 'Panel administrativo';
       const resolvedTitle = rawTitle || fallbackTitle;
       const pageDocumentTitle = `${resolvedTitle} · Control de Activos`;
       const displayName = user
@@ -44,17 +47,24 @@
             </a>
             <a
               href="/incidencias"
-              class="app-sidebar__link <%= currentSection === '/incidencias' ? 'is-active' : '' %>"
+              class="app-sidebar__link <%= currentSection === '/incidencias' && !normalizedPath.startsWith('/incidencias/reportes') ? 'is-active' : '' %>"
+            >
+              <span aria-hidden="true">🛠️</span>
+              <span>Incidencias</span>
+            </a>
+            <a
+              href="/incidencias/reportes"
+              class="app-sidebar__link <%= normalizedPath.startsWith('/incidencias/reportes') ? 'is-active' : '' %>"
             >
               <span aria-hidden="true">🩺</span>
-              <span>Diagnóstico</span>
+              <span>Reportes de diagnóstico</span>
             </a>
             <a
               href="/bajas"
               class="app-sidebar__link <%= currentSection === '/bajas' ? 'is-active' : '' %>"
             >
               <span aria-hidden="true">📊</span>
-              <span>Reportes</span>
+              <span>Reportes de baja</span>
             </a>
           </nav>
           <div class="app-sidebar__footer">

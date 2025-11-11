@@ -2,12 +2,15 @@
   <section class="incidencias-lista">
     <header class="incidencias-lista__header">
       <div>
-        <h2>Diagnóstico de activos</h2>
+        <h2>Incidencias registradas</h2>
         <p class="incidencias-lista__descripcion section-description">
-          Revisa el estado de las incidencias reportadas, actualiza la información técnica y genera reportes de diagnóstico.
+          Revisa el estado de las incidencias reportadas, actualiza la información técnica y genera los reportes necesarios.
         </p>
       </div>
-      <a class="btn" href="/incidencias/nueva">➕ Registrar incidencia</a>
+      <div class="incidencias-lista__acciones">
+        <a class="btn-secundario" href="/incidencias/reportes">📄 Reportes de diagnóstico</a>
+        <a class="btn" href="/incidencias/nueva">➕ Registrar incidencia</a>
+      </div>
     </header>
 
     ${error ? `<div class="alert">${error}</div>` : ''}
@@ -43,6 +46,7 @@
           <div class="incidencias-vacia">
             <p>Aún no hay incidencias registradas.</p>
             <a class="btn" href="/incidencias/nueva">Registrar la primera incidencia</a>
+            <a class="btn-secundario" href="/incidencias/reportes">Ver reportes de diagnóstico</a>
           </div>
         `;
       }

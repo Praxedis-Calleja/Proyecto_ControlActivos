@@ -133,14 +133,14 @@ export const getBajas = async (req, res) => {
     return res.render('bajas/index', {
       bajas,
       error: null,
-      pageTitle: 'Reportes'
+      pageTitle: 'Reportes de baja'
     });
   } catch (error) {
     console.error('Error al obtener reportes de baja:', error);
     return res.status(500).render('bajas/index', {
       bajas: [],
       error: 'No se pudieron cargar los reportes de baja. Inténtalo nuevamente más tarde.',
-      pageTitle: 'Reportes'
+      pageTitle: 'Reportes de baja'
     });
   }
 };

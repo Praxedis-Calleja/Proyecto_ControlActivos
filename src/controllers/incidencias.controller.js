@@ -342,14 +342,95 @@ export const getListadoIncidencias = async (req, res) => {
     return res.render('incidencias/index', {
       incidencias,
       error: null,
-      pageTitle: 'Diagnóstico'
+      pageTitle: 'Incidencias'
     });
   } catch (error) {
     console.error('Error al listar incidencias:', error);
     return res.status(500).render('incidencias/index', {
       incidencias: [],
       error: 'No se pudieron cargar las incidencias registradas. Intenta nuevamente más tarde.',
-      pageTitle: 'Diagnóstico'
+      pageTitle: 'Incidencias'
+    });
+  }
+};
+
+export const getReportesDiagnostico = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT
+         d.id_diagnostico,
+         d.id_incidencia,
+         d.fecha_diagnostico,
+         d.creado_en,
+         d.diagnostico,
+         d.tiempo_uso,
+         d.evidenciaURL,
+         i.estado,
+         i.prioridad,
+         i.descripcion_problema,
+         CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
+         a.numero_serie,
+         a.placa_activo,
+         CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre,
+         b.ID_Baja AS baja_id,
+         b.Folio AS baja_folio,
+         b.Fecha_Baja AS baja_fecha
+       FROM diagnostico d
+       INNER JOIN incidencias i ON i.id_incidencia = d.id_incidencia
+       INNER JOIN activos_fijos a ON a.id_activo = d.id_activo
+       LEFT JOIN usuarios ut ON ut.id_usuario = d.id_usuario_tecnico
+       LEFT JOIN reportesbaja b ON b.id_diagnostico = d.id_diagnostico
+       ORDER BY d.creado_en DESC`
+    );
+
+    const reportes = rows.map((registro) => {
+      const detalles = descomponerTiempoUso(registro.tiempo_uso);
+
+      return {
+        id: registro.id_diagnostico,
+        incidenciaId: registro.id_incidencia,
+        fechaDiagnostico: formatearFechaLarga(registro.fecha_diagnostico) || 'Sin fecha registrada',
+        creadoEn: formatearFechaHoraCorta(registro.creado_en) || 'Sin registro',
+        diagnostico: registro.diagnostico || '',
+        trabajo: detalles.trabajo || '',
+        descripcionProblema: registro.descripcion_problema || '',
+        evidencia: registro.evidenciaURL || '',
+        tecnico: registro.tecnico_nombre || 'Técnico sin asignar',
+        activo: {
+          nombre: registro.activo_nombre || 'Activo sin nombre',
+          numeroSerie: registro.numero_serie || 'No registrado',
+          placa: registro.placa_activo || 'No registrada'
+        },
+        incidencia: {
+          estado: registro.estado || 'Sin estado',
+          prioridad: registro.prioridad || 'Sin prioridad'
+        },
+        reporteBaja: registro.baja_id
+          ? {
+              id: registro.baja_id,
+              folio: generarFolioBaja({
+                folio: registro.baja_folio,
+                fechaBaja: registro.baja_fecha,
+                idBaja: registro.baja_id
+              }),
+              url: `/incidencias/${registro.id_incidencia}/diagnostico/baja/pdf/${registro.id_diagnostico}`
+            }
+          : null,
+        pdfUrl: `/incidencias/${registro.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}`
+      };
+    });
+
+    return res.render('incidencias/reportes', {
+      reportes,
+      error: null,
+      pageTitle: 'Reportes de diagnóstico'
+    });
+  } catch (error) {
+    console.error('Error al listar reportes de diagnóstico:', error);
+    return res.status(500).render('incidencias/reportes', {
+      reportes: [],
+      error: 'No se pudieron cargar los reportes de diagnóstico. Intenta nuevamente más tarde.',
+      pageTitle: 'Reportes de diagnóstico'
     });
   }
 };
@@ -1372,43 +1453,6 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
       ],
       columnWidths
     );
-
-    drawSectionTitle('Resumen de la baja');
-    doc.font('Helvetica-Bold').fontSize(10).text('Descripción del problema reportado:');
-    doc.font('Helvetica').fontSize(10).text(
-      valorSeguro(registro.descripcion_problema, 'Sin descripción registrada.'),
-      { width: pageWidth, lineGap: 3 }
-    );
-    doc.moveDown(0.4);
-    doc.font('Helvetica-Bold').fontSize(10).text('Diagnóstico técnico:');
-    doc.font('Helvetica').fontSize(10).text(
-      valorSeguro(registro.diagnostico_tecnico, 'Sin diagnóstico registrado.'),
-      { width: pageWidth, lineGap: 3 }
-    );
-    doc.moveDown(0.4);
-    doc.font('Helvetica-Bold').fontSize(10).text('Trabajo realizado:');
-    doc.font('Helvetica').fontSize(10).text(detalles.trabajo || 'Sin información registrada.', {
-      width: pageWidth,
-      lineGap: 3
-    });
-    doc.moveDown(0.4);
-    doc.font('Helvetica-Bold').fontSize(10).text('Motivo de baja:');
-    doc.font('Helvetica').fontSize(10).text(valorSeguro(detalles.motivo, 'Sin motivo registrado.'), {
-      width: pageWidth,
-      lineGap: 3
-    });
-    doc.moveDown(0.4);
-    doc.font('Helvetica-Bold').fontSize(10).text('Autorizado por:');
-    doc.font('Helvetica').fontSize(10).text(valorSeguro(detalles.autorizado_por, 'No registrado'), {
-      width: pageWidth,
-      lineGap: 3
-    });
-    doc.moveDown(0.4);
-    doc.font('Helvetica-Bold').fontSize(10).text('Observaciones:');
-    doc.font('Helvetica').fontSize(10).text(detalles.observaciones || 'Sin observaciones registradas.', {
-      width: pageWidth,
-      lineGap: 3
-    });
 
     drawSectionTitle('Descripción gráfica');
     const descripcionBoxHeight = 150;
