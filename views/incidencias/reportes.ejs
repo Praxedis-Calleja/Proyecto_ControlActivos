@@ -49,6 +49,22 @@
                 ? `<p><strong>Evidencia:</strong> ${escapeHtml(reporte.evidencia)}</p>`
                 : '';
 
+              const accionesBaja = reporte.reporteBaja
+                ? `
+                      <a class="btn-secundario" href="${escapeAttr(reporte.reporteBaja.url)}" target="_blank" rel="noopener">Ver PDF de baja</a>
+                      <a class="btn" href="${escapeAttr(reporte.reporteBaja.url)}?descargar=1" download>Descargar PDF de baja</a>
+                    `
+                : '';
+
+              const resumenBaja = reporte.reporteBaja
+                ? `
+                      <div class="reporte-diagnostico-card__texto">
+                        <h5>Reporte de baja asociado</h5>
+                        <p><strong>Folio:</strong> ${escapeHtml(reporte.reporteBaja.folio)}</p>
+                      </div>
+                    `
+                : '';
+
               return `
                 <article class="reporte-diagnostico-card">
                   <header class="reporte-diagnostico-card__header">
@@ -60,7 +76,9 @@
                     </div>
                     <div class="reporte-diagnostico-card__acciones">
                       <a class="btn-secundario" href="/incidencias/${escapeAttr(reporte.incidenciaId)}/diagnostico" rel="noopener">Ver incidencia</a>
-                      <a class="btn" href="${escapeAttr(reporte.pdfUrl)}" target="_blank" rel="noopener">Descargar diagnóstico</a>
+                      <a class="btn-secundario" href="${escapeAttr(reporte.pdfUrl)}" target="_blank" rel="noopener">Ver PDF diagnóstico</a>
+                      <a class="btn" href="${escapeAttr(reporte.pdfUrl)}?descargar=1" download>Descargar PDF diagnóstico</a>
+                      ${accionesBaja}
                     </div>
                   </header>
 
@@ -101,6 +119,7 @@
                         <h5>Diagnóstico técnico</h5>
                         <p>${multilinea(reporte.diagnostico || 'Sin diagnóstico registrado.')}</p>
                       </div>
+                      ${resumenBaja}
                       ${evidencia}
                     </div>
                   </section>

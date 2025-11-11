@@ -8,6 +8,7 @@
         </p>
       </div>
       <div class="incidencias-lista__acciones">
+        <a class="btn-secundario" href="/incidencias/reportes">Ver reportes</a>
         <a class="btn" href="/incidencias/nueva">➕ Registrar incidencia</a>
       </div>
     </header>
@@ -26,12 +27,16 @@
       const multilinea = (texto = '') =>
         escapeHtml(texto).replace(/\r?\n/g, '<br>');
 
+      const escapeAttr = (texto = '') => escapeHtml(texto);
+
       const formatearEtiqueta = (valor = '') =>
         String(valor)
           .toLowerCase()
           .split('_')
           .map((segmento) => segmento.charAt(0).toUpperCase() + segmento.slice(1))
           .join(' ');
+
+      const tokenCsrf = typeof csrfToken === 'string' ? csrfToken : '';
 
       if (!Array.isArray(incidencias) || incidencias.length === 0) {
         if (error) {
@@ -63,6 +68,26 @@
                 ? ` incidencia-card__estado--${escapeHtml(estadoNormalizado)}`
                 : '';
 
+              const opcionesEstado = Array.isArray(estados)
+                ? estados
+                    .map((estado) => {
+                      const esActual = incidencia.estado === estado;
+                      const disabled = esActual ? ' disabled' : '';
+                      return `
+                        <button
+                          type="submit"
+                          name="estado"
+                          value="${escapeAttr(estado)}"
+                          class="incidencia-card__estado-opcion"
+                          data-estado-opcion${disabled}
+                        >
+                          ${escapeHtml(formatearEtiqueta(estado))}
+                        </button>
+                      `;
+                    })
+                    .join('')
+                : '';
+
               return `
                 <article class="incidencia-card">
                   <header class="incidencia-card__header">
@@ -70,9 +95,28 @@
                       <h3>Incidencia #${escapeHtml(idIncidencia)}</h3>
                       <p class="incidencia-card__activo">${escapeHtml(incidencia.activo_nombre || 'Activo sin nombre')}</p>
                     </div>
-                    <span class="incidencia-card__estado${claseEstado}">
-                      ${escapeHtml(formatearEtiqueta(incidencia.estado || ''))}
-                    </span>
+                    <div class="incidencia-card__estado-control" data-estado-control>
+                      <form
+                        method="post"
+                        action="/incidencias/${escapeAttr(idIncidencia)}/diagnostico/estado"
+                        class="incidencia-card__estado-form"
+                      >
+                        <input type="hidden" name="_csrf" value="${escapeAttr(tokenCsrf)}">
+                        <button
+                          type="button"
+                          class="incidencia-card__estado-btn incidencia-card__estado${claseEstado}"
+                          data-estado-toggle
+                          aria-haspopup="true"
+                          aria-expanded="false"
+                        >
+                          <span>${escapeHtml(formatearEtiqueta(incidencia.estado || ''))}</span>
+                          <span class="incidencia-card__estado-icon" aria-hidden="true">▾</span>
+                        </button>
+                        <div class="incidencia-card__estado-menu" data-estado-menu hidden>
+                          ${opcionesEstado}
+                        </div>
+                      </form>
+                    </div>
                   </header>
 
                   <dl class="incidencia-card__datos">
@@ -122,4 +166,48 @@
       `;
     })()}
   </section>
+
+  <script>
+    (() => {
+      const controls = Array.from(document.querySelectorAll('[data-estado-control]'));
+
+      const closeAll = (exception) => {
+        controls.forEach((control) => {
+          if (exception && control === exception) return;
+          const toggle = control.querySelector('[data-estado-toggle]');
+          const menu = control.querySelector('[data-estado-menu]');
+          if (!toggle || !menu) return;
+          toggle.setAttribute('aria-expanded', 'false');
+          menu.hidden = true;
+        });
+      };
+
+      controls.forEach((control) => {
+        const toggle = control.querySelector('[data-estado-toggle]');
+        const menu = control.querySelector('[data-estado-menu]');
+        if (!toggle || !menu) return;
+
+        toggle.addEventListener('click', (event) => {
+          event.preventDefault();
+          const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+          closeAll(control);
+          toggle.setAttribute('aria-expanded', String(!isExpanded));
+          menu.hidden = isExpanded;
+        });
+      });
+
+      document.addEventListener('click', (event) => {
+        const control = event.target.closest('[data-estado-control]');
+        if (!control) {
+          closeAll();
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeAll();
+        }
+      });
+    })();
+  </script>
 ` }) %>
