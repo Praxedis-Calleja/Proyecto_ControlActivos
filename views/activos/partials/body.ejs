@@ -199,7 +199,15 @@
       <input name="modelo" maxlength="50" value="<%= formValues.modelo ? formValues.modelo : '' %>">
 
       <label>Estado</label>
-      <input name="estado" maxlength="50" required value="<%= formValues.estado ? formValues.estado : '' %>">
+      <% const estadoSeleccionado = String(formValues.estado ?? 'ALMACEN'); %>
+      <select name="estado" required>
+        <% (estados || []).forEach((estado) => { %>
+          <% const seleccionado = estadoSeleccionado === String(estado); %>
+          <option value="<%= estado %>" <%= seleccionado ? 'selected' : '' %>>
+            <%= estado.replace(/_/g, ' ') %>
+          </option>
+        <% }); %>
+      </select>
 
       <label>Fecha de adquisición</label>
       <input type="date" name="fecha_compra" value="<%= formValues.fecha_compra ? formValues.fecha_compra : '' %>">

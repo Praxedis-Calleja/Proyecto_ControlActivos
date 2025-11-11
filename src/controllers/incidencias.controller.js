@@ -875,6 +875,16 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         );
       }
 
+      if (incidencia.id_activo !== null && incidencia.id_activo !== undefined) {
+        await connection.query(
+          `UPDATE activos_fijos
+              SET estado = ?
+            WHERE id_activo = ?
+            LIMIT 1`,
+          ['BAJA', incidencia.id_activo]
+        );
+      }
+
       reporteBajaUrl = `/incidencias/${idIncidencia}/diagnostico/baja/pdf/${diagnosticoId}`;
     }
 
