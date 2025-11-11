@@ -94,7 +94,12 @@
       `;
 
       const formulario = `
-        <form method="post" action="/incidencias/${incidencia.id_incidencia}/diagnostico" class="form-diagnostico">
+        <form
+          method="post"
+          action="/incidencias/${incidencia.id_incidencia}/diagnostico"
+          class="form-diagnostico"
+          data-form-diagnostico
+        >
           <div class="campo">
             <label for="fecha_diagnostico">Fecha de diagnóstico</label>
             <input
@@ -145,24 +150,28 @@
             </div>
           </fieldset>
 
-          <div class="campo">
-            <label for="motivo_baja">Motivo de baja <small>(requerido si aplica)</small></label>
-            <textarea id="motivo_baja" name="motivo_baja" rows="3">${escapeHtml(values.motivo_baja || '')}</textarea>
-          </div>
+          <div class="grupo-baja" data-baja-extra ${values.requiere_baja === 'SI' ? '' : 'hidden'}>
+            <p class="campo-nota">Completa la siguiente información únicamente si el activo será dado de baja.</p>
 
-          <div class="campo">
-            <label for="autorizado_por">Autorizado por <small>(requerido si aplica)</small></label>
-            <input
-              type="text"
-              id="autorizado_por"
-              name="autorizado_por"
-              value="${escapeAttr(values.autorizado_por || '')}"
-            >
-          </div>
+            <div class="campo">
+              <label for="motivo_baja">Motivo de baja <small>(requerido si aplica)</small></label>
+              <textarea id="motivo_baja" name="motivo_baja" rows="3">${escapeHtml(values.motivo_baja || '')}</textarea>
+            </div>
 
-          <div class="campo">
-            <label for="observaciones_baja">Observaciones adicionales</label>
-            <textarea id="observaciones_baja" name="observaciones_baja" rows="3">${escapeHtml(values.observaciones_baja || '')}</textarea>
+            <div class="campo">
+              <label for="autorizado_por">Autorizado por <small>(requerido si aplica)</small></label>
+              <input
+                type="text"
+                id="autorizado_por"
+                name="autorizado_por"
+                value="${escapeAttr(values.autorizado_por || '')}"
+              >
+            </div>
+
+            <div class="campo">
+              <label for="observaciones_baja">Observaciones adicionales</label>
+              <textarea id="observaciones_baja" name="observaciones_baja" rows="3">${escapeHtml(values.observaciones_baja || '')}</textarea>
+            </div>
           </div>
 
           <div class="campo">
@@ -249,6 +258,29 @@
           ${formulario}
         </div>
         ${listadoDiagnosticos}
+        <script>
+          (() => {
+            const form = document.querySelector('[data-form-diagnostico]');
+            if (!form) return;
+            const toggleContainer = () => {
+              const seleccionado = form.querySelector('input[name="requiere_baja"]:checked');
+              const requiereBaja = seleccionado && seleccionado.value === 'SI';
+              const contenedor = form.querySelector('[data-baja-extra]');
+              if (!contenedor) return;
+              if (requiereBaja) {
+                contenedor.removeAttribute('hidden');
+              } else {
+                contenedor.setAttribute('hidden', '');
+              }
+            };
+
+            form.querySelectorAll('input[name="requiere_baja"]').forEach((radio) => {
+              radio.addEventListener('change', toggleContainer);
+            });
+
+            toggleContainer();
+          })();
+        </script>
       `;
     })()}
   </section>
