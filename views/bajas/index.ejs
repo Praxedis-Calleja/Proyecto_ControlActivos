@@ -2,8 +2,8 @@
   <section class="bajas-lista">
     <header class="bajas-lista__header">
       <div>
-        <h2>Reportes de baja</h2>
-        <p class="bajas-lista__descripcion">Consulta los activos dados de baja, revisa el diagnóstico que los originó y descarga el reporte en PDF.</p>
+        <h2>Reportes de activos</h2>
+        <p class="bajas-lista__descripcion section-description">Consulta los activos dados de baja, revisa el diagnóstico que los originó y descarga la evidencia en PDF.</p>
       </div>
     </header>
 
@@ -111,10 +111,15 @@
 
                     <div class="baja-card__bloque">
                       <h4>Resumen de la baja</h4>
-                      <p><strong>Autorizado por:</strong> ${escapeHtml(baja.autorizadoPor)}</p>
                       <p><strong>Motivo:</strong> ${multilinea(baja.motivo)}</p>
                       <p><strong>Observaciones:</strong> ${multilinea(baja.observaciones)}</p>
-                      <p><strong>Elaborado por:</strong> ${escapeHtml(baja.elaboradoPor)}</p>
+                      <p><strong>Técnico responsable:</strong> ${escapeHtml(baja.tecnico)}</p>
+                      ${baja.trabajo
+                        ? `<p><strong>Trabajo realizado:</strong><br>${multilinea(baja.trabajo)}</p>`
+                        : ''}
+                      ${baja.evidencia
+                        ? `<p><strong>Evidencia:</strong> ${escapeHtml(baja.evidencia)}</p>`
+                        : ''}
                     </div>
 
                     <div class="baja-card__bloque">

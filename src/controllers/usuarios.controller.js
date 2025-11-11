@@ -12,19 +12,34 @@ const esquemaUsuario = Joi.object({
 });
 
 export const getRegistro = (req, res) => {
-  res.render('usuarios/registro', { error: null, values: {}, ok: req.query.ok === '1' });
+  res.render('usuarios/registro', {
+    error: null,
+    values: {},
+    ok: req.query.ok === '1',
+    pageTitle: 'Registrar usuario'
+  });
 };
 
 export const postRegistro = async (req, res) => {
   try {
     const { error, value } = esquemaUsuario.validate(req.body);
     if (error) {
-      return res.status(400).render('usuarios/registro', { error: error.message, values: req.body, ok: false });
+      return res.status(400).render('usuarios/registro', {
+        error: error.message,
+        values: req.body,
+        ok: false,
+        pageTitle: 'Registrar usuario'
+      });
     }
 
     const { nombre, apellido, correo, rol, contrasena, confirmar } = value;
     if (contrasena !== confirmar) {
-      return res.status(400).render('usuarios/registro', { error: 'Las contraseñas no coinciden', values: req.body, ok: false });
+      return res.status(400).render('usuarios/registro', {
+        error: 'Las contraseñas no coinciden',
+        values: req.body,
+        ok: false,
+        pageTitle: 'Registrar usuario'
+      });
     }
 
     // ¿Existe ya el correo?
@@ -33,7 +48,12 @@ export const postRegistro = async (req, res) => {
       [correo]
     );
     if (existe.length) {
-      return res.status(409).render('usuarios/registro', { error: 'El correo ya está registrado', values: req.body, ok: false });
+      return res.status(409).render('usuarios/registro', {
+        error: 'El correo ya está registrado',
+        values: req.body,
+        ok: false,
+        pageTitle: 'Registrar usuario'
+      });
     }
 
     // Inserta en texto plano (según tu decisión)
@@ -46,6 +66,11 @@ export const postRegistro = async (req, res) => {
     return res.redirect('/usuarios/registro?ok=1');
   } catch (e) {
     console.error('postRegistro error:', e);
-    return res.status(500).render('usuarios/registro', { error: 'Error interno', values: req.body, ok: false });
+    return res.status(500).render('usuarios/registro', {
+      error: 'Error interno',
+      values: req.body,
+      ok: false,
+      pageTitle: 'Registrar usuario'
+    });
   }
 };
