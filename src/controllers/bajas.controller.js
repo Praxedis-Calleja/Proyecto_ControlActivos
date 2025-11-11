@@ -23,9 +23,15 @@ const obtenerColumnasReportesBaja = async () => {
   return columnasReportesBaja;
 };
 
-const seleccionarColumnaBaja = (columnas, nombreColumna, alias) => {
+const seleccionarColumnaBaja = (
+  columnas,
+  nombreColumna,
+  alias,
+  fallback = 'NULL'
+) => {
   const existe = columnas.has(String(nombreColumna).toLowerCase());
-  return existe ? `b.${nombreColumna} AS ${alias}` : `NULL AS ${alias}`;
+  const expresion = existe ? `b.${nombreColumna}` : fallback;
+  return `${expresion} AS ${alias}`;
 };
 
 const prepararBaja = (registro) => {
@@ -116,23 +122,29 @@ export const getBajas = async (req, res) => {
     const columnaFechaDiagnostico = seleccionarColumnaBaja(
       columnasDisponibles,
       'Fecha_Diagnostico',
-      'fecha_diagnostico'
+      'fecha_diagnostico',
+      'h.fecha_diagnostico'
     );
     const columnaObservaciones = seleccionarColumnaBaja(
       columnasDisponibles,
       'Observaciones',
       'observaciones'
     );
+    const columnaAutorizadoPor = seleccionarColumnaBaja(
+      columnasDisponibles,
+      'AutorizadoPor',
+      'autorizado_por'
+    );
 
     const [rows] = await pool.query(
       `SELECT
          b.ID_Baja AS id_baja,
          b.ID_Activo AS id_activo,
-         b.AutorizadoPor AS autorizado_por,
-         NULL AS motivo,
-         h.fecha_diagnostico AS fecha_diagnostico,
+         ${columnaAutorizadoPor},
+         ${columnaMotivo},
+         ${columnaFechaDiagnostico},
          b.Fecha_Baja AS fecha_baja,
-         NULL AS observaciones,
+         ${columnaObservaciones},
          b.EvidenciaURL AS evidencia_url,
          b.Folio AS folio,
          b.Tiempo_Uso AS tiempo_uso,
