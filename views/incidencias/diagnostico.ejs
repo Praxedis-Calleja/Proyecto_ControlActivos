@@ -233,22 +233,37 @@
                       ${registro.evidenciaURL
                         ? `<div class="detalle"><h4>Evidencia</h4><p>${escapeHtml(registro.evidenciaURL)}</p></div>`
                         : ''}
-                      ${registro.reporte_baja
-                        ? `<div class="detalle">
-                            <h4>Resumen de baja</h4>
-                            <p><strong>Folio:</strong> ${escapeHtml(registro.reporte_baja.folio || '—')}</p>
-                            <p><strong>Fecha de baja:</strong> ${escapeHtml(registro.reporte_baja.fecha_baja_fmt || 'Sin fecha')}</p>
-                          </div>`
-                        : ''}
-                      <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Generar PDF</a>
-                      ${registro.reporte_baja && registro.reporte_baja.url
-                        ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
-                        : ''}
                     </li>
                   `)
                   .join('')}
               </ul>`
             : '<p>Aún no hay diagnósticos registrados para esta incidencia.</p>'}
+        </section>
+      `;
+
+      const listadoReportesDiagnostico = `
+        <section class="diagnosticos-reportes">
+          <h3>Reportes de diagnóstico</h3>
+          ${diagnosticos && diagnosticos.length
+            ? `<ul class="diagnosticos-reportes-lista">
+                ${diagnosticos
+                  .map((registro) => `
+                    <li class="diagnosticos-reporte-item">
+                      <div>
+                        <strong>Diagnóstico #${registro.id_diagnostico}</strong>
+                        <span> · ${escapeHtml(registro.fecha_diagnostico_fmt)}</span>
+                      </div>
+                      <div class="acciones">
+                        <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Descargar diagnóstico</a>
+                        ${registro.reporte_baja && registro.reporte_baja.url
+                          ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
+                          : ''}
+                      </div>
+                    </li>
+                  `)
+                  .join('')}
+              </ul>`
+            : '<p>No se han generado reportes de diagnóstico.</p>'}
         </section>
       `;
 
@@ -258,6 +273,7 @@
           ${formulario}
         </div>
         ${listadoDiagnosticos}
+        ${listadoReportesDiagnostico}
         <script>
           (() => {
             const form = document.querySelector('[data-form-diagnostico]');
