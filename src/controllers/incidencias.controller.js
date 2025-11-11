@@ -106,11 +106,20 @@ const obtenerCatalogos = async () => {
   return { activos, usuarios };
 };
 
+const toDatetimeLocal = (valor) => {
+  if (!valor) return '';
+  const fecha = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return '';
+  return fecha.toISOString().slice(0, 16);
+};
+
 const normalizarValores = (datos = {}) => {
   const valores = { ...datos };
   let cerrada = valores.cerrada_en ?? '';
 
-  if (typeof cerrada === 'string') {
+  if (cerrada instanceof Date || typeof cerrada === 'number') {
+    cerrada = toDatetimeLocal(cerrada);
+  } else if (typeof cerrada === 'string') {
     const texto = cerrada.trim();
     if (!texto) {
       cerrada = '';
@@ -121,6 +130,9 @@ const normalizarValores = (datos = {}) => {
       }
     } else if (texto.includes('T') && texto.length >= 16) {
       cerrada = texto.slice(0, 16);
+    } else {
+      const comoFecha = toDatetimeLocal(texto);
+      cerrada = comoFecha || texto;
     }
   }
 
@@ -574,6 +586,147 @@ export const postNuevaIncidencia = async (req, res) => {
   }
 };
 
+export const getEditarIncidencia = async (req, res) => {
+  const idIncidencia = Number(req.params.id);
+
+  if (!Number.isInteger(idIncidencia) || idIncidencia <= 0) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  try {
+    const incidencia = await obtenerIncidenciaPorId(idIncidencia);
+
+    if (!incidencia) {
+      return res.status(404).send('Incidencia no encontrada');
+    }
+
+    const catalogos = await obtenerCatalogos();
+
+    return res.render('incidencias/editar', {
+      ...catalogos,
+      prioridades: PRIORIDADES,
+      estados: ESTADOS,
+      tiposIncidencia: TIPOS_INCIDENCIA,
+      origenesIncidencia: ORIGENES_INCIDENCIA,
+      errores: [],
+      values: normalizarValores(incidencia),
+      ok: req.query.ok === '1',
+      incidenciaId: idIncidencia,
+      pageTitle: `Editar incidencia #${idIncidencia}`
+    });
+  } catch (error) {
+    console.error('Error al cargar incidencia para edición:', error);
+    return res.status(500).send('Error al cargar la incidencia para edición.');
+  }
+};
+
+export const postEditarIncidencia = async (req, res) => {
+  const idIncidencia = Number(req.params.id);
+
+  if (!Number.isInteger(idIncidencia) || idIncidencia <= 0) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  let incidencia;
+  try {
+    incidencia = await obtenerIncidenciaPorId(idIncidencia);
+  } catch (error) {
+    console.error('Error al recuperar incidencia para edición:', error);
+    return res.status(500).send('Error al recuperar la incidencia.');
+  }
+
+  if (!incidencia) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  const { error, value } = esquemaIncidencia.validate(req.body, {
+    abortEarly: false,
+    allowUnknown: true,
+    stripUnknown: true
+  });
+
+  if (error) {
+    try {
+      const catalogos = await obtenerCatalogos();
+      return res.status(400).render('incidencias/editar', {
+        ...catalogos,
+        prioridades: PRIORIDADES,
+        estados: ESTADOS,
+        tiposIncidencia: TIPOS_INCIDENCIA,
+        origenesIncidencia: ORIGENES_INCIDENCIA,
+        errores: error.details.map((detalle) => detalle.message),
+        values: normalizarValores(req.body),
+        ok: false,
+        incidenciaId: idIncidencia,
+        pageTitle: `Editar incidencia #${idIncidencia}`
+      });
+    } catch (catalogError) {
+      console.error('Error al cargar catálogos en edición:', catalogError);
+      return res.status(500).send('Error al validar la incidencia.');
+    }
+  }
+
+  const {
+    id_activo,
+    id_usuario,
+    descripcion_problema,
+    tipo_incidencia,
+    origen_incidencia,
+    prioridad,
+    estado,
+    cerrada_en
+  } = value;
+
+  try {
+    await pool.query(
+      `UPDATE incidencias
+          SET descripcion_problema = ?,
+              estado = ?,
+              tipo_incidencia = ?,
+              origen_incidencia = ?,
+              prioridad = ?,
+              id_usuario = ?,
+              id_activo = ?,
+              cerrada_en = ?
+        WHERE id_incidencia = ?
+        LIMIT 1`,
+      [
+        descripcion_problema,
+        estado,
+        tipo_incidencia,
+        origen_incidencia,
+        prioridad,
+        id_usuario,
+        id_activo,
+        formatearFechaHora(cerrada_en),
+        idIncidencia
+      ]
+    );
+
+    return res.redirect(`/incidencias/${idIncidencia}/editar?ok=1`);
+  } catch (errorActualizacion) {
+    console.error('Error al actualizar incidencia:', errorActualizacion);
+    try {
+      const catalogos = await obtenerCatalogos();
+      return res.status(500).render('incidencias/editar', {
+        ...catalogos,
+        prioridades: PRIORIDADES,
+        estados: ESTADOS,
+        tiposIncidencia: TIPOS_INCIDENCIA,
+        origenesIncidencia: ORIGENES_INCIDENCIA,
+        errores: ['Ocurrió un error al actualizar la incidencia. Inténtalo nuevamente.'],
+        values: normalizarValores(req.body),
+        ok: false,
+        incidenciaId: idIncidencia,
+        pageTitle: `Editar incidencia #${idIncidencia}`
+      });
+    } catch (catalogError) {
+      console.error('Error adicional al cargar catálogos en edición:', catalogError);
+      return res.status(500).send('Error grave al actualizar la incidencia.');
+    }
+  }
+};
+
 export const getDiagnosticoIncidencia = async (req, res) => {
   const idIncidencia = Number(req.params.id);
 
@@ -872,6 +1025,16 @@ export const postDiagnosticoIncidencia = async (req, res) => {
                   Fecha_Baja = COALESCE(?, Fecha_Baja)
             WHERE ID_Baja = ?`,
           [folioGenerado, fechaBaja, idBajaCreado]
+        );
+      }
+
+      if (incidencia.id_activo !== null && incidencia.id_activo !== undefined) {
+        await connection.query(
+          `UPDATE activos_fijos
+              SET estado = ?
+            WHERE id_activo = ?
+            LIMIT 1`,
+          ['BAJA', incidencia.id_activo]
         );
       }
 

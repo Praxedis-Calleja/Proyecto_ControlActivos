@@ -1,0 +1,132 @@
+<%- include('../layouts/base', { body: `
+  <section class="incidencias-form">
+    <h2>Editar incidencia #${incidenciaId}</h2>
+    <p class="section-description">
+      Actualiza los datos capturados originalmente para mantener la trazabilidad del reporte y sus seguimientos.
+    </p>
+
+    ${ok ? `<div class="ok">Incidencia actualizada correctamente</div>` : ''}
+
+    ${(errores && errores.length)
+      ? `<div class="alert">${errores.map((err) => `<div>${err}</div>`).join('')}</div>`
+      : ''}
+
+    ${(() => {
+      const formatearEtiqueta = (valor) =>
+        String(valor)
+          .toLowerCase()
+          .split('_')
+          .map((segmento) => segmento.charAt(0).toUpperCase() + segmento.slice(1))
+          .join(' ');
+
+      return `
+        <form method="post" action="/incidencias/${incidenciaId}/editar" class="form-incidencia">
+          <div class="campo">
+            <label for="id_activo">Activo involucrado</label>
+            <select name="id_activo" id="id_activo" required>
+              <option value="">Selecciona un activo</option>
+              ${(activos || [])
+                .map((activo) => {
+                  const texto = [activo.marca, activo.modelo, activo.numero_serie]
+                    .filter(Boolean)
+                    .join(' · ') || `Activo #${activo.id_activo}`;
+                  const seleccionado = String((values && values.id_activo) || '') === String(activo.id_activo);
+                  return `<option value="${activo.id_activo}" ${seleccionado ? 'selected' : ''}>${texto}</option>`;
+                })
+                .join('')}
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="id_usuario">Usuario que reporta</label>
+            <select name="id_usuario" id="id_usuario" required>
+              <option value="">Selecciona quien reporta</option>
+              ${(usuarios || [])
+                .map((usuario) => {
+                  const nombre = [usuario.nombre, usuario.apellido].filter(Boolean).join(' ');
+                  const seleccionado = String((values && values.id_usuario) || '') === String(usuario.id_usuario);
+                  const rol = usuario.rol ? formatearEtiqueta(usuario.rol) : '';
+                  const etiquetaRol = rol ? ` (${rol})` : '';
+                  return `<option value="${usuario.id_usuario}" ${seleccionado ? 'selected' : ''}>${nombre || `Usuario #${usuario.id_usuario}`}${etiquetaRol}</option>`;
+                })
+                .join('')}
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="tipo_incidencia">Tipo de incidencia</label>
+            <select name="tipo_incidencia" id="tipo_incidencia" required>
+              <option value="">Selecciona un tipo</option>
+              ${(tiposIncidencia || [])
+                .map((tipo) => {
+                  const seleccionado = String((values && values.tipo_incidencia) || '') === tipo;
+                  return `<option value="${tipo}" ${seleccionado ? 'selected' : ''}>${formatearEtiqueta(tipo)}</option>`;
+                })
+                .join('')}
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="origen_incidencia">Origen de la incidencia</label>
+            <select name="origen_incidencia" id="origen_incidencia" required>
+              <option value="">Selecciona un origen</option>
+              ${(origenesIncidencia || [])
+                .map((origen) => {
+                  const seleccionado = String((values && values.origen_incidencia) || '') === origen;
+                  return `<option value="${origen}" ${seleccionado ? 'selected' : ''}>${formatearEtiqueta(origen)}</option>`;
+                })
+                .join('')}
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="descripcion_problema">Descripción del problema</label>
+            <textarea id="descripcion_problema" name="descripcion_problema" rows="4" required>${(values && values.descripcion_problema) || ''}</textarea>
+          </div>
+
+          <div class="campo">
+            <label for="prioridad">Prioridad</label>
+            <select name="prioridad" id="prioridad" required>
+              <option value="">Selecciona prioridad</option>
+              ${(prioridades || [])
+                .map((prioridad) => {
+                  const seleccionado = String((values && values.prioridad) || '') === prioridad;
+                  return `<option value="${prioridad}" ${seleccionado ? 'selected' : ''}>${formatearEtiqueta(prioridad)}</option>`;
+                })
+                .join('')}
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="estado">Estado</label>
+            <select name="estado" id="estado" required>
+              <option value="">Selecciona estado</option>
+              ${(estados || [])
+                .map((estado) => {
+                  const seleccionado = String((values && values.estado) || '') === estado;
+                  return `<option value="${estado}" ${seleccionado ? 'selected' : ''}>${formatearEtiqueta(estado)}</option>`;
+                })
+                .join('')}
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="cerrada_en">Fecha y hora de cierre (opcional)</label>
+            <input
+              type="datetime-local"
+              id="cerrada_en"
+              name="cerrada_en"
+              value="${(values && values.cerrada_en) || ''}"
+            >
+          </div>
+
+          <input type="hidden" name="_csrf" value="${csrfToken}">
+          <div class="form-incidencia__acciones">
+            <a class="btn-secundario" href="/incidencias/${incidenciaId}/diagnostico">Ver seguimiento</a>
+            <button type="submit">Guardar cambios</button>
+          </div>
+        </form>
+      `;
+    })()}
+  </section>
+` }) %>
