@@ -106,6 +106,7 @@
             <p>${multilinea(incidencia.descripcion_problema || 'Sin descripción')}</p>
           </div>
           <div class="acciones-incidencia">
+            <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/editar">Editar datos de la incidencia</a>
             <form method="post" action="/incidencias/${incidencia.id_incidencia}/diagnostico/estado" class="acciones-incidencia__form">
               <label for="estado-incidencia">Cambiar estado</label>
               <div class="acciones-incidencia__controles">
@@ -243,17 +244,29 @@
           ${diagnosticos && diagnosticos.length
             ? `<ul class="diagnosticos-reportes-lista">
                 ${diagnosticos
-                  .map((registro) => `
-                    <li class="diagnosticos-reporte-item">
-                      <div>
-                        <strong>Diagnóstico #${registro.id_diagnostico}</strong>
-                        <span> · ${escapeHtml(registro.fecha_diagnostico_fmt)}</span>
-                      </div>
-                      <div class="acciones">
-                        <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Descargar diagnóstico</a>
-                      </div>
-                    </li>
-                  `)
+                  .map((registro) => {
+                    const enlaceDiagnostico = `/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}`;
+                    const enlaceBaja = registro.reporte_baja
+                      ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
+                      : '';
+                    const etiquetaBaja = registro.reporte_baja
+                      ? `<small class="diagnosticos-reporte-item__detalle">Folio baja: ${escapeHtml(registro.reporte_baja.folio)}</small>`
+                      : '<small class="diagnosticos-reporte-item__detalle diagnosticos-reporte-item__detalle--sin">Sin reporte de baja</small>';
+
+                    return `
+                      <li class="diagnosticos-reporte-item">
+                        <div>
+                          <strong>Diagnóstico #${registro.id_diagnostico}</strong>
+                          <span> · ${escapeHtml(registro.fecha_diagnostico_fmt)}</span>
+                          ${etiquetaBaja}
+                        </div>
+                        <div class="acciones">
+                          <a class="btn-secundario" href="${escapeAttr(enlaceDiagnostico)}" target="_blank" rel="noopener">Reporte de diagnóstico</a>
+                          ${enlaceBaja}
+                        </div>
+                      </li>
+                    `;
+                  })
                   .join('')}
               </ul>`
             : '<p>No se han generado reportes de diagnóstico.</p>'}
