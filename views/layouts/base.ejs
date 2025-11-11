@@ -1,32 +1,102 @@
-  <!doctype html>
-  <html lang="es">
+<!doctype html>
+<html lang="es">
   <head>
     <meta charset="utf-8">
-    <title>Control de Activos</title>
+    <%
+      const rawTitle = typeof pageTitle === 'string' && pageTitle.trim() ? pageTitle.trim() : '';
+      const sectionTitles = {
+        '/activos': 'Activos fijos',
+        '/incidencias': 'Diagnóstico',
+        '/bajas': 'Reportes',
+        '/usuarios': 'Usuarios',
+        '/login': 'Iniciar sesión'
+      };
+      const fallbackTitle = sectionTitles[currentSection] || 'Panel administrativo';
+      const resolvedTitle = rawTitle || fallbackTitle;
+      const pageDocumentTitle = `${resolvedTitle} · Control de Activos`;
+      const displayName = user
+        ? [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.nombre || 'Cuenta'
+        : '';
+      const userRole = user?.rol || 'Sin rol';
+    %>
+    <title><%= pageDocumentTitle %></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="/css/main.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
   </head>
-  <body>
-    <header>
-      <h1>Control de Activos</h1>
-      <div class="header-actions">
-        <% if (user) { %>
-          <a class="btn" href="/activos">📋 Lista de activos</a>
-          <a class="btn" href="/incidencias">📄 Incidencias</a>
-          <a class="btn" href="/bajas">📉 Reportes de baja</a>
-        <% } %>
-
-        <% if (user) { %>
-          <form action="/logout" method="post" class="logout-form">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit">🚪 Cerrar sesión (<%= [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.nombre || 'Cuenta' %>)</button>
-          </form>
-        <% } %>
+  <body class="<%= user ? 'app-body' : 'public-body' %>">
+    <% if (user) { %>
+      <div class="app-shell">
+        <aside class="app-sidebar">
+          <div class="app-sidebar__brand">
+            <div class="app-sidebar__logo" aria-hidden="true">💼</div>
+            <div class="app-sidebar__brand-text">
+              <p class="app-sidebar__title">Control de activos</p>
+              <p class="app-sidebar__subtitle">Panel administrativo</p>
+            </div>
+          </div>
+          <nav class="app-sidebar__nav" aria-label="Secciones principales">
+            <a
+              href="/activos"
+              class="app-sidebar__link <%= currentSection === '/activos' ? 'is-active' : '' %>"
+            >
+              <span aria-hidden="true">📦</span>
+              <span>Activos fijos</span>
+            </a>
+            <a
+              href="/incidencias"
+              class="app-sidebar__link <%= currentSection === '/incidencias' ? 'is-active' : '' %>"
+            >
+              <span aria-hidden="true">🩺</span>
+              <span>Diagnóstico</span>
+            </a>
+            <a
+              href="/bajas"
+              class="app-sidebar__link <%= currentSection === '/bajas' ? 'is-active' : '' %>"
+            >
+              <span aria-hidden="true">📊</span>
+              <span>Reportes</span>
+            </a>
+          </nav>
+          <div class="app-sidebar__footer">
+            <form action="/logout" method="post" class="app-sidebar__logout-form">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="app-sidebar__logout-btn">Cerrar sesión</button>
+            </form>
+          </div>
+        </aside>
+        <div class="app-shell__content">
+          <header class="app-topbar">
+            <div>
+              <h1 class="app-topbar__title"><%= resolvedTitle %></h1>
+              <% if (typeof subtitle === 'string' && subtitle.trim()) { %>
+                <p class="app-topbar__subtitle"><%= subtitle.trim() %></p>
+              <% } %>
+            </div>
+            <div class="app-topbar__user" aria-label="Usuario activo">
+              <span class="app-topbar__user-icon" aria-hidden="true">👤</span>
+              <div class="app-topbar__user-info">
+                <span class="app-topbar__user-name"><%= displayName %></span>
+                <span class="app-topbar__user-role"><%= userRole %></span>
+              </div>
+            </div>
+          </header>
+          <main class="app-main">
+            <%- typeof content === 'string' ? content : '' %>
+            <%- typeof body !== 'undefined' ? body : '' %>
+          </main>
+        </div>
       </div>
-    </header>
-    <main>
-      <%- typeof content === 'string' ? content : '' %>
-      <%- typeof body !== 'undefined' ? body : '' %>
-    </main>
+    <% } else { %>
+      <div class="public-container">
+        <header class="public-header">
+          <h1>Control de activos</h1>
+          <p class="public-subtitle">Panel administrativo</p>
+        </header>
+        <main class="public-main">
+          <%- typeof content === 'string' ? content : '' %>
+          <%- typeof body !== 'undefined' ? body : '' %>
+        </main>
+      </div>
+    <% } %>
   </body>
-  </html>
+</html>

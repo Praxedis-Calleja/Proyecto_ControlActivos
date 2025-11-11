@@ -1,15 +1,60 @@
 <% const formValues = values || {}; %>
 <section>
   <div class="activos-header">
-    <h2>Activos</h2>
+    <div>
+      <h2>Activos fijos</h2>
+      <p class="section-description">
+        Administra el inventario institucional, registra nuevos activos fijos y consulta su estado operativo.
+      </p>
+    </div>
     <button
       type="button"
       id="toggleActivos"
       class="btn-toggle"
       data-view="<%= mostrarFormulario ? 'form' : 'list' %>"
     >
-      <%= mostrarFormulario ? 'Ver lista' : 'Registrar activo' %>
+      <%= mostrarFormulario ? 'Ver listado' : 'Registrar activo fijo' %>
     </button>
+  </div>
+
+  <% const totalActivos = Array.isArray(activos) ? activos.length : 0; %>
+  <% const totalCategorias = (() => {
+       const categoriasUnicas = new Set((activos || []).map((item) => String(item.categoria || '').trim()).filter(Boolean));
+       return categoriasUnicas.size;
+     })(); %>
+  <% const activosOperativos = (activos || []).filter((item) => {
+       const estado = String(item.estado || '').toLowerCase();
+       return estado.includes('operativo') || estado.includes('activo');
+     }).length; %>
+  <% const hoy = new Date(); %>
+  <% const activosGarantia = (activos || []).filter((item) => {
+       if (!item.fecha_garantia) return false;
+       const fecha = new Date(item.fecha_garantia);
+       if (Number.isNaN(fecha.getTime())) return false;
+       return fecha >= hoy;
+     }).length; %>
+
+  <div class="resumen-activos">
+    <article class="resumen-card">
+      <h3>Total de activos</h3>
+      <strong><%= totalActivos %></strong>
+      <p class="resumen-card__detalle">Equipos registrados en el sistema</p>
+    </article>
+    <article class="resumen-card">
+      <h3>Operativos</h3>
+      <strong><%= activosOperativos %></strong>
+      <p class="resumen-card__detalle">Activos con estado operativo o activo</p>
+    </article>
+    <article class="resumen-card">
+      <h3>Con garantía vigente</h3>
+      <strong><%= activosGarantia %></strong>
+      <p class="resumen-card__detalle">Garantías activas según la fecha registrada</p>
+    </article>
+    <article class="resumen-card">
+      <h3>Categorías</h3>
+      <strong><%= totalCategorias %></strong>
+      <p class="resumen-card__detalle">Clasificaciones distintas de los activos</p>
+    </article>
   </div>
 
   <% if (ok) { %>
@@ -69,9 +114,13 @@
               <th>Modelo</th>
               <th>Estado</th>
               <th>Fecha adquisición</th>
+              <th>Fecha garantía</th>
               <th>Precio lista</th>
               <th>Placa</th>
               <th>Número de serie</th>
+              <th>Procesador</th>
+              <th>Memoria RAM</th>
+              <th>Almacenamiento</th>
               <th>Propietario</th>
               <th>Contacto propietario</th>
               <th>Acciones</th>
@@ -88,9 +137,13 @@
                 <td><%= activo.modelo || '—' %></td>
                 <td><%= activo.estado || '—' %></td>
                 <td><%= activo.fechaAdquisicionTexto || '—' %></td>
+                <td><%= activo.fechaGarantiaTexto || '—' %></td>
                 <td><%= activo.precioListaTexto || (activo.precio_lista ?? '—') %></td>
                 <td><%= activo.placa_activo || '—' %></td>
                 <td><%= activo.numero_serie || '—' %></td>
+                <td><%= activo.procesador || '—' %></td>
+                <td><%= activo.memoria_ram || '—' %></td>
+                <td><%= activo.almacenamiento || '—' %></td>
                 <td><%= activo.propietario_nombre_completo || '—' %></td>
                 <td><%= activo.propietario_contacto || '—' %></td>
                 <td class="acciones">
@@ -108,7 +161,7 @@
   </div>
 
   <div id="panelFormularioActivos" class="<%= mostrarFormulario ? '' : 'oculto' %>">
-    <h3>Registrar nuevo activo</h3>
+    <h3>Registrar nuevo activo fijo</h3>
     <form method="post" action="/activos">
       <label>Categoría</label>
       <select name="id_categoria_activos" required>
@@ -159,6 +212,18 @@
 
       <label>Precio lista</label>
       <input type="number" step="0.01" name="precio_lista" value="<%= formValues.precio_lista ? formValues.precio_lista : '' %>">
+
+      <label>Fecha de garantía</label>
+      <input type="date" name="fecha_garantia" value="<%= formValues.fecha_garantia ? formValues.fecha_garantia : '' %>">
+
+      <label>Procesador</label>
+      <input name="procesador" value="<%= formValues.procesador ? formValues.procesador : '' %>">
+
+      <label>Memoria RAM</label>
+      <input name="memoria_ram" value="<%= formValues.memoria_ram ? formValues.memoria_ram : '' %>">
+
+      <label>Almacenamiento</label>
+      <input name="almacenamiento" value="<%= formValues.almacenamiento ? formValues.almacenamiento : '' %>">
 
       <label>Propietario (nombre completo)</label>
       <input name="propietario_nombre_completo" value="<%= formValues.propietario_nombre_completo ? formValues.propietario_nombre_completo : '' %>">

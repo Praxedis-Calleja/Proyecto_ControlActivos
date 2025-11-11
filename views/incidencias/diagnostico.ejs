@@ -1,12 +1,15 @@
 <%- include('../layouts/base', { body: `
   <section class="diagnostico-incidencia">
     <h2>Diagnóstico de la incidencia #${incidencia.id_incidencia}</h2>
+    <p class="section-description">
+      Completa la evaluación técnica del activo, documenta el trabajo realizado y genera los reportes necesarios.
+    </p>
 
     ${ok
       ? `<div class="ok">
           Diagnóstico registrado correctamente.
-          ${historialIdCreado
-            ? `<a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${historialIdCreado}" target="_blank" rel="noopener">Descargar reporte en PDF</a>`
+          ${diagnosticoIdCreado
+            ? `<a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${diagnosticoIdCreado}" target="_blank" rel="noopener">Descargar reporte en PDF</a>`
             : ''}
           ${reporteBajaCreado
             ? `<a class="btn-secundario" href="${reporteBajaCreado}" target="_blank" rel="noopener">Reporte de baja en PDF</a>`
@@ -108,6 +111,21 @@
             <textarea id="descripcion_trabajo" name="descripcion_trabajo" rows="4" required>${escapeHtml(values.descripcion_trabajo || '')}</textarea>
           </div>
 
+          <div class="campo campo-flex">
+            <div>
+              <label for="procesador">Procesador diagnosticado</label>
+              <input id="procesador" name="procesador" value="${escapeAttr(values.procesador || incidencia.procesador || '')}">
+            </div>
+            <div>
+              <label for="memoria_ram">Memoria RAM</label>
+              <input id="memoria_ram" name="memoria_ram" value="${escapeAttr(values.memoria_ram || incidencia.memoria_ram || '')}">
+            </div>
+            <div>
+              <label for="almacenamiento">Almacenamiento</label>
+              <input id="almacenamiento" name="almacenamiento" value="${escapeAttr(values.almacenamiento || incidencia.almacenamiento || '')}">
+            </div>
+          </div>
+
           <div class="campo">
             <label for="diagnostico">Diagnóstico técnico</label>
             <textarea id="diagnostico" name="diagnostico" rows="4" required>${escapeHtml(values.diagnostico || '')}</textarea>
@@ -175,36 +193,45 @@
         </form>
       `;
 
-      const listadoHistorial = `
-        <section class="historial-diagnosticos">
-          <h3>Historial de diagnósticos</h3>
-          ${historial && historial.length
-            ? `<ul class="historial-lista">
-                ${historial
+      const listadoDiagnosticos = `
+        <section class="diagnosticos-listado">
+          <h3>Diagnósticos registrados</h3>
+          ${diagnosticos && diagnosticos.length
+            ? `<ul class="diagnosticos-lista">
+                ${diagnosticos
                   .map((registro) => `
-                    <li class="historial-item">
+                    <li class="diagnostico-item">
                       <header>
-                        <strong>Diagnóstico #${registro.id_historial}</strong>
+                        <strong>Diagnóstico #${registro.id_diagnostico}</strong>
                         <span>${escapeHtml(registro.tecnico_nombre || 'Técnico desconocido')}</span>
                       </header>
                       <p><strong>Registrado:</strong> ${escapeHtml(registro.creado_en_fmt)}</p>
                       <p><strong>Fecha de diagnóstico:</strong> ${escapeHtml(registro.fecha_diagnostico_fmt)}</p>
                       <div class="detalle">
                         <h4>Trabajo realizado</h4>
-                        <p>${multilinea(registro.descripcion || 'Sin información')}</p>
+                        <p>${multilinea(registro.trabajo || 'Sin información')}</p>
                       </div>
                       <div class="detalle">
                         <h4>Diagnóstico</h4>
                         <p>${multilinea(registro.diagnostico || 'Sin información')}</p>
                       </div>
+                      ${registro.motivo
+                        ? `<div class="detalle"><h4>Motivo</h4><p>${multilinea(registro.motivo)}</p></div>`
+                        : ''}
+                      ${registro.observaciones
+                        ? `<div class="detalle"><h4>Observaciones</h4><p>${multilinea(registro.observaciones)}</p></div>`
+                        : ''}
+                      ${registro.evidenciaURL
+                        ? `<div class="detalle"><h4>Evidencia</h4><p>${escapeHtml(registro.evidenciaURL)}</p></div>`
+                        : ''}
                       ${registro.reporte_baja
                         ? `<div class="detalle">
                             <h4>Resumen de baja</h4>
-                            <p><strong>Autorizado por:</strong> ${escapeHtml(registro.reporte_baja.autorizado_por || 'No registrado')}</p>
+                            <p><strong>Folio:</strong> ${escapeHtml(registro.reporte_baja.folio || '—')}</p>
                             <p><strong>Fecha de baja:</strong> ${escapeHtml(registro.reporte_baja.fecha_baja_fmt || 'Sin fecha')}</p>
                           </div>`
                         : ''}
-                      <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_historial}" target="_blank" rel="noopener">Generar PDF</a>
+                      <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Generar PDF</a>
                       ${registro.reporte_baja && registro.reporte_baja.url
                         ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
                         : ''}
@@ -221,7 +248,7 @@
           ${infoIncidencia}
           ${formulario}
         </div>
-        ${listadoHistorial}
+        ${listadoDiagnosticos}
       `;
     })()}
   </section>

@@ -14,7 +14,13 @@ const esquemaActivo = Joi.object({
   precio_lista: Joi.alternatives()
     .try(Joi.number().precision(2), Joi.string().valid(''))
     .allow(null, ''),
-  numero_serie: Joi.string().max(100).allow('', null)
+  numero_serie: Joi.string().max(100).allow('', null),
+  fecha_garantia: Joi.alternatives()
+    .try(Joi.date(), Joi.string().valid(''))
+    .allow(null, ''),
+  procesador: Joi.string().allow('', null),
+  memoria_ram: Joi.string().allow('', null),
+  almacenamiento: Joi.string().allow('', null)
 }).unknown(true);
 
 const obtenerCatalogos = async () => {
@@ -40,6 +46,7 @@ const prepararActivo = (activo) => {
   if (!activo) return null;
 
   const fecha = activo.fecha_compra ? new Date(activo.fecha_compra) : null;
+  const fechaGarantia = activo.fecha_garantia ? new Date(activo.fecha_garantia) : null;
   const precioNumero =
     activo.precio_lista !== null && activo.precio_lista !== undefined
       ? Number(activo.precio_lista)
@@ -57,7 +64,11 @@ const prepararActivo = (activo) => {
     id_activo: idNormalizado,
     fechaAdquisicionTexto: fecha ? formateadorFecha.format(fecha) : '—',
     precioListaTexto: precioNumero !== null ? formateadorMoneda.format(precioNumero) : '—',
-    fecha_compra_formulario: fecha ? fecha.toISOString().slice(0, 10) : ''
+    fecha_compra_formulario: fecha ? fecha.toISOString().slice(0, 10) : '',
+    fechaGarantiaTexto: fechaGarantia ? formateadorFecha.format(fechaGarantia) : '—',
+    fecha_garantia_formulario: fechaGarantia
+      ? fechaGarantia.toISOString().slice(0, 10)
+      : ''
   };
 };
 
@@ -106,6 +117,10 @@ const obtenerActivos = async (busqueda = '') => {
       a.fecha_compra,
       a.precio_lista,
       a.numero_serie,
+      a.fecha_garantia,
+      a.procesador,
+      a.memoria_ram,
+      a.almacenamiento,
       c.nombre AS categoria,
       ar.nombre_area AS area,
       ar.id_departamento,
@@ -193,7 +208,8 @@ const renderActivos = async (req, res, opciones = {}) => {
       totalCoincidencias: activos.length,
       ok: opciones.ok ?? (req.query.ok === '1'),
       eliminado: opciones.eliminado ?? (req.query.deleted === '1'),
-      mostrarFormulario: opciones.mostrarFormulario ?? false
+      mostrarFormulario: opciones.mostrarFormulario ?? false,
+      pageTitle: 'Activos fijos'
     });
 };
 
@@ -231,13 +247,17 @@ export const postNuevoActivo = async (req, res) => {
     estado,
     fecha_compra,
     precio_lista,
-    numero_serie
+    numero_serie,
+    fecha_garantia,
+    procesador,
+    memoria_ram,
+    almacenamiento
   } = value;
 
   await pool.query(
     `INSERT INTO activos_fijos
-    (id_categoria_activos, id_area, placa_activo, propietario_nombre_completo, propietario_contacto, marca, modelo, estado, fecha_compra, precio_lista, numero_serie)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    (id_categoria_activos, id_area, placa_activo, propietario_nombre_completo, propietario_contacto, marca, modelo, estado, fecha_compra, precio_lista, numero_serie, fecha_garantia, procesador, memoria_ram, almacenamiento)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id_categoria_activos,
       id_area,
@@ -249,7 +269,11 @@ export const postNuevoActivo = async (req, res) => {
       estado,
       fecha_compra || null,
       precio_lista || null,
-      numero_serie || null
+      numero_serie || null,
+      fecha_garantia || null,
+      procesador || null,
+      memoria_ram || null,
+      almacenamiento || null
     ]
   );
 
@@ -261,20 +285,31 @@ export const getDetalleActivo = async (req, res) => {
   if (!Number.isInteger(idActivo) || idActivo <= 0) {
     return res
       .status(404)
-      .render('activos/detalle', { activo: null, ok: false, error: null });
+      .render('activos/detalle', {
+        activo: null,
+        ok: false,
+        error: null,
+        pageTitle: 'Detalle de activo fijo'
+      });
   }
 
   const activo = await obtenerActivoPorId(idActivo);
   if (!activo) {
     return res
       .status(404)
-      .render('activos/detalle', { activo: null, ok: false, error: null });
+      .render('activos/detalle', {
+        activo: null,
+        ok: false,
+        error: null,
+        pageTitle: 'Detalle de activo fijo'
+      });
   }
 
   return res.render('activos/detalle', {
     activo,
     ok: req.query.ok === '1',
-    error: null
+    error: null,
+    pageTitle: 'Detalle de activo fijo'
   });
 };
 
@@ -289,7 +324,8 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       departamentos: [],
       errores: ['El identificador del activo no es válido'],
       values: {},
-      activoId: id
+      activoId: id,
+      pageTitle: 'Editar activo fijo'
     });
   }
 
@@ -306,7 +342,8 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       departamentos,
       errores: ['El activo solicitado no fue encontrado'],
       values: {},
-      activoId: idActivo
+      activoId: idActivo,
+      pageTitle: 'Editar activo fijo'
     });
   }
 
@@ -325,6 +362,10 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
         ? String(activo.precio_lista)
         : '',
     numero_serie: activo.numero_serie || '',
+    fecha_garantia: activo.fecha_garantia_formulario || '',
+    procesador: activo.procesador || '',
+    memoria_ram: activo.memoria_ram || '',
+    almacenamiento: activo.almacenamiento || '',
     departamento_form:
       (() => {
         const area = areas.find((areaItem) => String(areaItem.id_area) === String(activo.id_area));
@@ -354,7 +395,8 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
       departamentos,
       errores: opciones.errores || [],
       values: valoresConDepartamento,
-      activoId: idActivo
+      activoId: idActivo,
+      pageTitle: 'Editar activo fijo'
     });
 };
 
@@ -372,7 +414,8 @@ export const postEditarActivo = async (req, res) => {
       departamentos: [],
       errores: ['El identificador del activo no es válido'],
       values: req.body,
-      activoId: req.params.id
+      activoId: req.params.id,
+      pageTitle: 'Editar activo fijo'
     });
   }
 
@@ -400,7 +443,11 @@ export const postEditarActivo = async (req, res) => {
     estado,
     fecha_compra,
     precio_lista,
-    numero_serie
+    numero_serie,
+    fecha_garantia,
+    procesador,
+    memoria_ram,
+    almacenamiento
   } = value;
 
   const [resultado] = await pool.query(
@@ -415,7 +462,11 @@ export const postEditarActivo = async (req, res) => {
        estado = ?,
        fecha_compra = ?,
        precio_lista = ?,
-       numero_serie = ?
+       numero_serie = ?,
+       fecha_garantia = ?,
+       procesador = ?,
+       memoria_ram = ?,
+       almacenamiento = ?
      WHERE id_activo = ?
      LIMIT 1`,
     [
@@ -430,6 +481,10 @@ export const postEditarActivo = async (req, res) => {
       fecha_compra || null,
       precio_lista || null,
       numero_serie || null,
+      fecha_garantia || null,
+      procesador || null,
+      memoria_ram || null,
+      almacenamiento || null,
       idActivo
     ]
   );
@@ -450,14 +505,24 @@ export const postEliminarActivo = async (req, res) => {
   if (!Number.isInteger(idActivo) || idActivo <= 0) {
     return res
       .status(404)
-      .render('activos/detalle', { activo: null, ok: false, error: null });
+      .render('activos/detalle', {
+        activo: null,
+        ok: false,
+        error: null,
+        pageTitle: 'Detalle de activo fijo'
+      });
   }
 
   const activo = await obtenerActivoPorId(idActivo);
   if (!activo) {
     return res
       .status(404)
-      .render('activos/detalle', { activo: null, ok: false, error: null });
+      .render('activos/detalle', {
+        activo: null,
+        ok: false,
+        error: null,
+        pageTitle: 'Detalle de activo fijo'
+      });
   }
 
   const [resultado] = await pool.query(

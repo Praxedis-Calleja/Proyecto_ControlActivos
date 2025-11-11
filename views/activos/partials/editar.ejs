@@ -1,7 +1,7 @@
 <% const formValues = values || {}; %>
 <section class="editar-activo">
-  <a href="/activos/<%= activoId %>" class="btn-regresar">← Volver al detalle</a>
-  <h2>Editar activo</h2>
+  <a href="/activos/<%= activoId %>" class="btn-regresar">Volver al detalle</a>
+  <h2>Editar activo fijo</h2>
 
   <% if (errores && errores.length) { %>
     <div class="alert">
@@ -64,6 +64,18 @@
 
       <label for="precio_lista">Precio lista</label>
       <input id="precio_lista" type="number" step="0.01" name="precio_lista" value="<%= formValues.precio_lista ?? '' %>">
+
+      <label for="fecha_garantia">Fecha de garantía</label>
+      <input id="fecha_garantia" type="date" name="fecha_garantia" value="<%= formValues.fecha_garantia ?? '' %>">
+
+      <label for="procesador">Procesador</label>
+      <input id="procesador" name="procesador" value="<%= formValues.procesador ?? '' %>">
+
+      <label for="memoria_ram">Memoria RAM</label>
+      <input id="memoria_ram" name="memoria_ram" value="<%= formValues.memoria_ram ?? '' %>">
+
+      <label for="almacenamiento">Almacenamiento</label>
+      <input id="almacenamiento" name="almacenamiento" value="<%= formValues.almacenamiento ?? '' %>">
 
       <label for="propietario_nombre_completo">Propietario (nombre completo)</label>
       <input

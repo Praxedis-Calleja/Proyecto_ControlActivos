@@ -3,7 +3,7 @@ import { pool } from '../db.js';
 export const getLogin = (req, res) => {
   if (req.session.user) return res.redirect('/');
   // si usas csurf y res.locals.csrfToken se inyecta en middleware global, no hace falta pasarlo aquí
-  res.render('auth/login', { error: null });
+  res.render('auth/login', { error: null, pageTitle: 'Iniciar sesión' });
 };
 
 export const postLogin = async (req, res) => {
@@ -15,7 +15,10 @@ export const postLogin = async (req, res) => {
 
     if (!correo || !contrasena) {
       console.log('[LOGIN] Falta correo o contraseña');
-      return res.status(400).render('auth/login', { error: 'Falta correo o contraseña' });
+      return res.status(400).render('auth/login', {
+        error: 'Falta correo o contraseña',
+        pageTitle: 'Iniciar sesión'
+      });
 
     }
 
@@ -40,7 +43,10 @@ export const postLogin = async (req, res) => {
     console.log('[LOGIN] rows.length =', rows.length);
     if (!rows.length) {
       console.log('[LOGIN] No se encontró usuario con correo:', correo);
-      return res.status(401).render('auth/login', { error: 'Credenciales inválidas' });
+      return res.status(401).render('auth/login', {
+        error: 'Credenciales inválidas',
+        pageTitle: 'Iniciar sesión'
+      });
     }
 
     const user = rows[0];
@@ -52,7 +58,10 @@ export const postLogin = async (req, res) => {
 
     if (!user.contrasena) {
       console.warn('⚠ Usuario sin contraseña en BD:', user);
-      return res.status(401).render('auth/login', { error: 'El usuario no tiene contraseña registrada' });
+      return res.status(401).render('auth/login', {
+        error: 'El usuario no tiene contraseña registrada',
+        pageTitle: 'Iniciar sesión'
+      });
     }
 
     req.session.user = {
@@ -66,7 +75,10 @@ export const postLogin = async (req, res) => {
     return res.redirect('/');
   } catch (e) {
     console.error('postLogin error:', e);
-    return res.status(500).render('auth/login', { error: 'Error interno' });
+    return res.status(500).render('auth/login', {
+      error: 'Error interno',
+      pageTitle: 'Iniciar sesión'
+    });
   }
 };
 

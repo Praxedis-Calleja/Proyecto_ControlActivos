@@ -13,9 +13,9 @@ import {
 const router = Router();
 
 router.get('/', requiereLogin, getListadoIncidencias);
-router.get('/:id/diagnostico/pdf/:historialId', requiereLogin, getDiagnosticoPdf);
+router.get('/:id/diagnostico/pdf/:diagnosticoId', requiereLogin, getDiagnosticoPdf);
 router.get(
-  '/:id/diagnostico/baja/pdf/:historialId',
+  '/:id/diagnostico/baja/pdf/:diagnosticoId',
   requiereLogin,
   getDiagnosticoBajaPdf
 );

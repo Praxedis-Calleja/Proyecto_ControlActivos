@@ -70,6 +70,10 @@ app.use(csurf());
 app.use((req, res, next) => {
   res.locals.csrfToken = req.csrfToken();
   res.locals.user = req.session.user || null;
+  const path = req.path || '/';
+  const segments = path.split('/').filter(Boolean);
+  res.locals.currentSection = segments.length ? `/${segments[0]}` : '/';
+  res.locals.currentPath = req.originalUrl || path;
   next();
 });
 
@@ -86,7 +90,7 @@ app.use('/bajas', bajasRoutes);
 // Home
 app.get('/', (req, res) => {
   if (!req.session.user) return res.redirect('/login');
-  res.render('layouts/base', { content: 'Bienvenido' });
+  return res.redirect('/activos');
 });
 
 // Errores CSRF

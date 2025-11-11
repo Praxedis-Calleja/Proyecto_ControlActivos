@@ -1,6 +1,9 @@
 <%- include('../layouts/base', { body: `
   <section class="login">
     <h2>Acceso administrativo</h2>
+    <p class="section-description login__intro">
+      Inicia sesión para gestionar el inventario de activos, registrar diagnósticos y emitir reportes oficiales.
+    </p>
     ${error ? `<div class="alert">${error}</div>` : ''}
     <form method="post" action="/login">
       <label>Correo</label>

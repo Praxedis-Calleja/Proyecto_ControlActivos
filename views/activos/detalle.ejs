@@ -1,6 +1,6 @@
 <%- include('../layouts/base', { body: `
   <section class="detalle-activo">
-    <a href="/activos" class="btn-regresar">← Volver a activos</a>
+    <a href="/activos" class="btn-regresar">Volver a activos fijos</a>
 
     ${ok ? `<div class="ok">El activo se actualizó correctamente.</div>` : ''}
     ${error ? `<div class="alert">${error}</div>` : ''}
@@ -8,7 +8,7 @@
     ${!activo ? `
       <div class="alert">El activo solicitado no fue encontrado.</div>
     ` : `
-      <h2>Detalle del activo</h2>
+      <h2>Detalle del activo fijo</h2>
       <dl class="detalle-lista">
         <div>
           <dt>Identificador</dt>
@@ -47,12 +47,28 @@
           <dd>${activo.fechaAdquisicionTexto || '—'}</dd>
         </div>
         <div>
+          <dt>Fecha de garantía</dt>
+          <dd>${activo.fechaGarantiaTexto || '—'}</dd>
+        </div>
+        <div>
           <dt>Precio de lista</dt>
           <dd>${activo.precioListaTexto || (activo.precio_lista ?? '—')}</dd>
         </div>
         <div>
           <dt>Número de serie</dt>
           <dd>${activo.numero_serie || '—'}</dd>
+        </div>
+        <div>
+          <dt>Procesador</dt>
+          <dd>${activo.procesador || '—'}</dd>
+        </div>
+        <div>
+          <dt>Memoria RAM</dt>
+          <dd>${activo.memoria_ram || '—'}</dd>
+        </div>
+        <div>
+          <dt>Almacenamiento</dt>
+          <dd>${activo.almacenamiento || '—'}</dd>
         </div>
         <div>
           <dt>Propietario</dt>
