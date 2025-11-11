@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 10-11-2025 a las 17:17:14
+-- Tiempo de generación: 11-11-2025 a las 02:43:43
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -124,29 +124,33 @@ INSERT INTO `departamentos` (`id_departamento`, `nombre_departamento`) VALUES
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `historial`
+-- Estructura de tabla para la tabla `diagnostico`
 --
 
-CREATE TABLE `historial` (
-  `id_historial` int(11) NOT NULL,
+CREATE TABLE `diagnostico` (
+  `id_diagnostico` int(11) NOT NULL,
   `id_activo` int(11) NOT NULL,
   `id_incidencia` int(11) DEFAULT NULL,
   `id_usuario_tecnico` int(11) DEFAULT NULL,
-  `descripcion` text DEFAULT NULL,
   `diagnostico` text DEFAULT NULL,
   `fecha_diagnostico` date DEFAULT NULL,
   `fecha_ingreso` date NOT NULL DEFAULT curdate(),
-  `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp(),
+  `tiempo_uso` text NOT NULL,
+  `procesador` text NOT NULL,
+  `almacenamiento` text NOT NULL,
+  `memoria_ram` text NOT NULL,
+  `evidenciaURL` varchar(150) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `historial`
+-- Volcado de datos para la tabla `diagnostico`
 --
 
-INSERT INTO `historial` (`id_historial`, `id_activo`, `id_incidencia`, `id_usuario_tecnico`, `descripcion`, `diagnostico`, `fecha_diagnostico`, `fecha_ingreso`, `creado_en`) VALUES
-(1, 2, 1, 2, 'gferferrewrew', 'erewrewerewrewrew', '2025-11-19', '2025-11-04', '2025-11-04 18:34:08'),
-(5, 3, 2, 2, 'sdfsdfsdfsfds', 'fdfgfdgfdfddsfsd', '2025-11-06', '2025-11-05', '2025-11-06 05:03:21'),
-(6, 3, 2, 2, 'rgfgdfgdfgdfg', 'fsdfdsfdsfdsfs', '2025-11-06', '2025-11-05', '2025-11-06 05:03:44');
+INSERT INTO `diagnostico` (`id_diagnostico`, `id_activo`, `id_incidencia`, `id_usuario_tecnico`, `diagnostico`, `fecha_diagnostico`, `fecha_ingreso`, `creado_en`, `tiempo_uso`, `procesador`, `almacenamiento`, `memoria_ram`, `evidenciaURL`) VALUES
+(1, 2, 1, 2, 'erewrewerewrewrew', '2025-11-19', '2025-11-04', '2025-11-04 18:34:08', '', '', '', '', ''),
+(5, 3, 2, 2, 'fdfgfdgfdfddsfsd', '2025-11-06', '2025-11-05', '2025-11-06 05:03:21', '', '', '', '', ''),
+(6, 3, 2, 2, 'fsdfdsfdsfdsfs', '2025-11-06', '2025-11-05', '2025-11-06 05:03:44', '', '', '', '', '');
 
 -- --------------------------------------------------------
 
@@ -185,23 +189,17 @@ CREATE TABLE `reportesbaja` (
   `ID_Baja` int(11) NOT NULL,
   `Folio` varchar(20) NOT NULL,
   `ID_Activo` int(11) NOT NULL,
-  `ElaboradoPor` int(11) NOT NULL,
-  `AutorizadoPor` varchar(120) NOT NULL,
-  `Procesador` text NOT NULL,
   `Fecha_Reimpresion` date DEFAULT NULL,
   `Fecha_Baja` date NOT NULL DEFAULT curdate(),
-  `EvidenciaURL` varchar(255) DEFAULT NULL,
-  `Tiempo_Uso` text DEFAULT NULL,
-  `Memoria_Ram` text NOT NULL,
-  `Almacenamiento` text NOT NULL
+  `id_diagnostico` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `reportesbaja`
 --
 
-INSERT INTO `reportesbaja` (`ID_Baja`, `Folio`, `ID_Activo`, `ElaboradoPor`, `AutorizadoPor`, `Procesador`, `Fecha_Reimpresion`, `Fecha_Baja`, `EvidenciaURL`, `Tiempo_Uso`, `Memoria_Ram`, `Almacenamiento`) VALUES
-(4, 'BAJ-20251105-000004', 3, 2, 'sdfdsfdsfds', 'fdsfdsfdsfs', '2025-11-06', '2025-11-05', '/incidencias/2/diagnostico/baja/pdf/6', 'sdfsdfdsfsd\nDiagnóstico relacionado #6', '', '');
+INSERT INTO `reportesbaja` (`ID_Baja`, `Folio`, `ID_Activo`, `Fecha_Reimpresion`, `Fecha_Baja`, `id_diagnostico`) VALUES
+(4, 'BAJ-20251105-000004', 3, '2025-11-06', '2025-11-05', NULL);
 
 -- --------------------------------------------------------
 
@@ -220,10 +218,7 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`session_id`, `expires`, `data`) VALUES
-('F_bnBUuONVh3F-ekKD6e0bLuJmYmcygO', 1762700830, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-09T15:04:10.865Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"ecxwgG8FTwjMTGioenlWiZ3t\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}'),
-('NGiW6itIRm9mkCYx6W1xqWx515uQgHo8', 1762587887, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-08T07:44:46.831Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"TLD-0ijRi56gLd3g_nGi71Ug\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"},\"diagnosticSignatures\":{}}'),
-('QdqG_zTce97YUdZIa2a7PP-WrUMtUHyW', 1762480750, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-07T01:43:38.283Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"-RLYIGAM6mN0-CwZAXhgIegw\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}'),
-('aNO1-RQmGo2IvrzETHggZdCNETWkn1wF', 1762479804, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-07T01:43:23.581Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"-FrgxMpV7bIHUFJ7i66nuRBH\"}');
+('ygwN0hfKbUnH6nCJpFGRYzXS0oaIT6ib', 1762832564, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-11T02:04:53.483Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"bmnpQjDuGg0CCSVzqARt9GtH\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}');
 
 -- --------------------------------------------------------
 
@@ -283,10 +278,10 @@ ALTER TABLE `departamentos`
   ADD PRIMARY KEY (`id_departamento`);
 
 --
--- Indices de la tabla `historial`
+-- Indices de la tabla `diagnostico`
 --
-ALTER TABLE `historial`
-  ADD PRIMARY KEY (`id_historial`),
+ALTER TABLE `diagnostico`
+  ADD PRIMARY KEY (`id_diagnostico`),
   ADD KEY `fk_historial_activo` (`id_activo`),
   ADD KEY `fk_historial_incidencia` (`id_incidencia`),
   ADD KEY `fk_historial_tecnico` (`id_usuario_tecnico`);
@@ -305,9 +300,8 @@ ALTER TABLE `incidencias`
 ALTER TABLE `reportesbaja`
   ADD PRIMARY KEY (`ID_Baja`),
   ADD UNIQUE KEY `ID_Activo` (`ID_Activo`),
-  ADD KEY `fk_baja_elaborado` (`ElaboradoPor`),
   ADD KEY `idx_baja_fecha` (`Fecha_Baja`),
-  ADD KEY `idx_baja_autorizado` (`AutorizadoPor`);
+  ADD KEY `fk_diagnostico` (`id_diagnostico`);
 
 --
 -- Indices de la tabla `sessions`
@@ -351,10 +345,10 @@ ALTER TABLE `departamentos`
   MODIFY `id_departamento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
--- AUTO_INCREMENT de la tabla `historial`
+-- AUTO_INCREMENT de la tabla `diagnostico`
 --
-ALTER TABLE `historial`
-  MODIFY `id_historial` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+ALTER TABLE `diagnostico`
+  MODIFY `id_diagnostico` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `incidencias`
@@ -393,12 +387,12 @@ ALTER TABLE `areas`
   ADD CONSTRAINT `fk_areas_departamento` FOREIGN KEY (`id_departamento`) REFERENCES `departamentos` (`id_departamento`) ON UPDATE CASCADE;
 
 --
--- Filtros para la tabla `historial`
+-- Filtros para la tabla `diagnostico`
 --
-ALTER TABLE `historial`
-  ADD CONSTRAINT `fk_historial_activo` FOREIGN KEY (`id_activo`) REFERENCES `activos_fijos` (`id_activo`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_historial_incidencia` FOREIGN KEY (`id_incidencia`) REFERENCES `incidencias` (`id_incidencia`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_historial_tecnico` FOREIGN KEY (`id_usuario_tecnico`) REFERENCES `usuarios` (`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `diagnostico`
+  ADD CONSTRAINT `fk_diagnostico_activo` FOREIGN KEY (`id_activo`) REFERENCES `activos_fijos` (`id_activo`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_diagnostico_incidencia` FOREIGN KEY (`id_incidencia`) REFERENCES `incidencias` (`id_incidencia`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_diagnostico_tecnico` FOREIGN KEY (`id_usuario_tecnico`) REFERENCES `usuarios` (`id_usuario`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `incidencias`
@@ -412,7 +406,7 @@ ALTER TABLE `incidencias`
 --
 ALTER TABLE `reportesbaja`
   ADD CONSTRAINT `fk_baja_activo` FOREIGN KEY (`ID_Activo`) REFERENCES `activos_fijos` (`id_activo`),
-  ADD CONSTRAINT `fk_baja_elaborado` FOREIGN KEY (`ElaboradoPor`) REFERENCES `usuarios` (`id_usuario`);
+  ADD CONSTRAINT `fk_baja_diag` FOREIGN KEY (`id_diagnostico`) REFERENCES `diagnostico` (`id_diagnostico`) ON DELETE SET NULL ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
