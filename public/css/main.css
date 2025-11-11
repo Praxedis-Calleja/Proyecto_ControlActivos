@@ -1036,7 +1036,14 @@ textarea {
 
 .baja-card__acciones {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.baja-card__acciones .btn,
+.baja-card__acciones .btn-secundario {
+  white-space: nowrap;
 }
 
 .baja-card__bloque {

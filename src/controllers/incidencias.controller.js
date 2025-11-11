@@ -1011,9 +1011,16 @@ export const getDiagnosticoPdf = async (req, res) => {
 
     const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
     const nombreArchivo = `diagnostico_incidencia_${registro.id_incidencia}.pdf`;
+    const solicitarDescarga = String(req.query.descargar ?? '')
+      .trim()
+      .toLowerCase();
+    const esDescarga = ['1', 'true', 'si', 'yes'].includes(solicitarDescarga);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${nombreArchivo}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `${esDescarga ? 'attachment' : 'inline'}; filename="${nombreArchivo}"`
+    );
 
     doc.info.Title = `Diagnóstico incidencia ${registro.id_incidencia}`;
     doc.info.Subject = 'Formato de diagnóstico de equipo de cómputo';
@@ -1364,9 +1371,16 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
 
     const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
     const nombreArchivo = `baja_activo_${registro.id_incidencia}_${registro.baja_id}.pdf`;
+    const solicitarDescarga = String(req.query.descargar ?? '')
+      .trim()
+      .toLowerCase();
+    const esDescarga = ['1', 'true', 'si', 'yes'].includes(solicitarDescarga);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${nombreArchivo}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `${esDescarga ? 'attachment' : 'inline'}; filename="${nombreArchivo}"`
+    );
 
     doc.info.Title = `Reporte de baja ${folio}`;
     doc.info.Subject = 'Formato de baja de equipo de cómputo';
