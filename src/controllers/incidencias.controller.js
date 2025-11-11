@@ -1232,7 +1232,7 @@ export const getDiagnosticoPdf = async (req, res) => {
     };
 
     const drawKeyValueTable = (rows, widths) => {
-      const padding = 6;
+      const padding = 4;
       let y = doc.y;
       doc.strokeColor('#bdbdbd');
 
@@ -1252,13 +1252,13 @@ export const getDiagnosticoPdf = async (req, res) => {
             });
           }
 
-          doc.font('Helvetica').fontSize(10);
+          doc.font('Helvetica').fontSize(9.5);
           const valueHeight = doc.heightOfString(valueText, {
             width,
-            lineGap: 2
+            lineGap: 1.5
           });
 
-          const height = Math.max(labelHeight + valueHeight + padding * 2 + (label ? 2 : 0), 32);
+          const height = Math.max(labelHeight + valueHeight + padding * 2 + (label ? 2 : 0), 26);
 
           return {
             label,
@@ -1286,10 +1286,10 @@ export const getDiagnosticoPdf = async (req, res) => {
             textY += dato.labelHeight + 2;
           }
 
-          doc.font('Helvetica').fontSize(10).fillColor('#000000');
+          doc.font('Helvetica').fontSize(9.5).fillColor('#000000');
           doc.text(dato.value, currentX + padding, textY, {
             width: dato.width,
-            lineGap: 2
+            lineGap: 1.5
           });
 
           currentX += cellWidth;
@@ -1303,18 +1303,53 @@ export const getDiagnosticoPdf = async (req, res) => {
       doc.y = y + 10;
     };
 
-    if (fs.existsSync(logoPath)) {
-      const logoWidth = Math.min(120, pageWidth * 0.35);
-      doc.image(logoPath, startX + pageWidth - logoWidth, doc.y, { width: logoWidth });
-    }
+    const drawDocumentHeader = (titulo) => {
+      const initialY = doc.y;
+      let headerX = startX;
+      let availableWidth = pageWidth;
+      let headerBottom = initialY;
 
-    doc.font('Helvetica-Bold').fontSize(12).text('DIRECCIÓN DE TECNOLOGÍA', startX);
-    doc.font('Helvetica').fontSize(10).text('SISTEMAS · SOPORTE TÉCNICO', startX);
-    doc.moveDown(0.5);
-    doc.font('Helvetica-Bold').fontSize(16).text('Formato de Diagnóstico de Equipo de Cómputo', {
-      align: 'center'
-    });
-    doc.moveDown(0.8);
+      if (fs.existsSync(logoPath)) {
+        try {
+          const logoImage = doc.openImage(logoPath);
+          const maxLogoWidth = Math.min(120, pageWidth * 0.28);
+          const logoWidth = Math.min(maxLogoWidth, logoImage.width);
+          const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
+
+          doc.image(logoImage, startX, initialY, { width: logoWidth });
+
+          headerX = startX + logoWidth + 12;
+          availableWidth = Math.max(pageWidth - (headerX - startX), pageWidth * 0.45);
+          headerBottom = Math.max(headerBottom, initialY + logoHeight);
+        } catch (logoError) {
+          console.error('No se pudo cargar el logo del reporte:', logoError);
+        }
+      }
+
+      doc.font('Helvetica-Bold').fontSize(12).fillColor('#1f1f1f');
+      doc.text('DIRECCIÓN DE TECNOLOGÍA', headerX, initialY, {
+        width: availableWidth,
+        align: 'left'
+      });
+
+      doc.font('Helvetica').fontSize(10).fillColor('#1f1f1f');
+      doc.text('SISTEMAS · SOPORTE TÉCNICO', headerX, doc.y, {
+        width: availableWidth,
+        align: 'left'
+      });
+
+      doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000');
+      doc.text(titulo, headerX, doc.y + 4, {
+        width: availableWidth,
+        align: 'left'
+      });
+
+      headerBottom = Math.max(headerBottom, doc.y);
+      doc.y = headerBottom + 12;
+      doc.fillColor('#000000');
+    };
+
+    drawDocumentHeader('Formato de Diagnóstico de Equipo de Cómputo');
 
     drawSectionTitle('Datos generales');
     drawKeyValueTable(
@@ -1578,7 +1613,7 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     };
 
     const drawKeyValueTable = (rows, widths) => {
-      const padding = 6;
+      const padding = 4;
       let y = doc.y;
       doc.strokeColor('#bdbdbd');
 
@@ -1598,13 +1633,13 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
             });
           }
 
-          doc.font('Helvetica').fontSize(10);
+          doc.font('Helvetica').fontSize(9.5);
           const valueHeight = doc.heightOfString(valueText, {
             width,
-            lineGap: 2
+            lineGap: 1.5
           });
 
-          const height = Math.max(labelHeight + valueHeight + padding * 2 + (label ? 2 : 0), 32);
+          const height = Math.max(labelHeight + valueHeight + padding * 2 + (label ? 2 : 0), 26);
 
           return {
             label,
@@ -1632,10 +1667,10 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
             textY += dato.labelHeight + 2;
           }
 
-          doc.font('Helvetica').fontSize(10).fillColor('#000000');
+          doc.font('Helvetica').fontSize(9.5).fillColor('#000000');
           doc.text(dato.value, currentX + padding, textY, {
             width: dato.width,
-            lineGap: 2
+            lineGap: 1.5
           });
 
           currentX += cellWidth;
@@ -1649,18 +1684,53 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
       doc.y = y + 10;
     };
 
-    if (fs.existsSync(logoPath)) {
-      const logoWidth = Math.min(120, pageWidth * 0.35);
-      doc.image(logoPath, startX + pageWidth - logoWidth, doc.y, { width: logoWidth });
-    }
+    const drawDocumentHeader = (titulo) => {
+      const initialY = doc.y;
+      let headerX = startX;
+      let availableWidth = pageWidth;
+      let headerBottom = initialY;
 
-    doc.font('Helvetica-Bold').fontSize(12).text('DIRECCIÓN DE TECNOLOGÍA', startX);
-    doc.font('Helvetica').fontSize(10).text('SISTEMAS · SOPORTE TÉCNICO', startX);
-    doc.moveDown(0.5);
-    doc.font('Helvetica-Bold').fontSize(16).text('Formato de Baja de Equipo de Cómputo', {
-      align: 'center'
-    });
-    doc.moveDown(0.8);
+      if (fs.existsSync(logoPath)) {
+        try {
+          const logoImage = doc.openImage(logoPath);
+          const maxLogoWidth = Math.min(120, pageWidth * 0.28);
+          const logoWidth = Math.min(maxLogoWidth, logoImage.width);
+          const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
+
+          doc.image(logoImage, startX, initialY, { width: logoWidth });
+
+          headerX = startX + logoWidth + 12;
+          availableWidth = Math.max(pageWidth - (headerX - startX), pageWidth * 0.45);
+          headerBottom = Math.max(headerBottom, initialY + logoHeight);
+        } catch (logoError) {
+          console.error('No se pudo cargar el logo del reporte:', logoError);
+        }
+      }
+
+      doc.font('Helvetica-Bold').fontSize(12).fillColor('#1f1f1f');
+      doc.text('DIRECCIÓN DE TECNOLOGÍA', headerX, initialY, {
+        width: availableWidth,
+        align: 'left'
+      });
+
+      doc.font('Helvetica').fontSize(10).fillColor('#1f1f1f');
+      doc.text('SISTEMAS · SOPORTE TÉCNICO', headerX, doc.y, {
+        width: availableWidth,
+        align: 'left'
+      });
+
+      doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000');
+      doc.text(titulo, headerX, doc.y + 4, {
+        width: availableWidth,
+        align: 'left'
+      });
+
+      headerBottom = Math.max(headerBottom, doc.y);
+      doc.y = headerBottom + 12;
+      doc.fillColor('#000000');
+    };
+
+    drawDocumentHeader('Formato de Baja de Equipo de Cómputo');
 
     drawSectionTitle('Datos generales');
     drawKeyValueTable(
