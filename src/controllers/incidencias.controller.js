@@ -343,14 +343,16 @@ export const getListadoIncidencias = async (req, res) => {
     return res.render('incidencias/index', {
       incidencias,
       error: null,
-      pageTitle: 'Incidencias'
+      pageTitle: 'Incidencias',
+      estados: ESTADOS
     });
   } catch (error) {
     console.error('Error al listar incidencias:', error);
     return res.status(500).render('incidencias/index', {
       incidencias: [],
       error: 'No se pudieron cargar las incidencias registradas. Intenta nuevamente más tarde.',
-      pageTitle: 'Incidencias'
+      pageTitle: 'Incidencias',
+      estados: ESTADOS
     });
   }
 };

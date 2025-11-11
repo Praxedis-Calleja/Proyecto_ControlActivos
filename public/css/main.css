@@ -717,6 +717,82 @@ textarea {
   color: var(--color-primary);
 }
 
+.incidencia-card__estado-control {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.incidencia-card__estado-form {
+  position: relative;
+  margin: 0;
+}
+
+.incidencia-card__estado-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.incidencia-card__estado-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.incidencia-card__estado-btn .incidencia-card__estado-icon {
+  font-size: 0.75em;
+}
+
+.incidencia-card__estado-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+  padding: 0.25rem;
+  z-index: 2;
+}
+
+.incidencia-card__estado-opcion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.35rem;
+  font: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.incidencia-card__estado-opcion:hover,
+.incidencia-card__estado-opcion:focus-visible {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary);
+  outline: none;
+}
+
+.incidencia-card__estado-opcion[disabled] {
+  cursor: default;
+  color: var(--color-muted);
+}
+
+.incidencia-card__estado-opcion[disabled]:hover,
+.incidencia-card__estado-opcion[disabled]:focus-visible {
+  background: none;
+  color: var(--color-muted);
+}
+
 .incidencia-card__datos,
 .baja-card__datos {
   display: grid;
