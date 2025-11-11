@@ -8,7 +8,6 @@
         </p>
       </div>
       <div class="incidencias-lista__acciones">
-        <a class="btn-secundario" href="/incidencias/reportes">📄 Reportes de diagnóstico</a>
         <a class="btn" href="/incidencias/nueva">➕ Registrar incidencia</a>
       </div>
     </header>
@@ -46,7 +45,6 @@
           <div class="incidencias-vacia">
             <p>Aún no hay incidencias registradas.</p>
             <a class="btn" href="/incidencias/nueva">Registrar la primera incidencia</a>
-            <a class="btn-secundario" href="/incidencias/reportes">Ver reportes de diagnóstico</a>
           </div>
         `;
       }
@@ -113,7 +111,6 @@
                       <p><strong>Diagnósticos registrados:</strong> ${totalDiagnosticos}</p>
                     </div>
                     <div class="incidencia-card__acciones">
-                      <a class="btn-secundario" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico#diagnosticos-reportes">Ver reportes de diagnóstico</a>
                       <a class="btn" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico">Registrar diagnóstico</a>
                     </div>
                   </footer>
