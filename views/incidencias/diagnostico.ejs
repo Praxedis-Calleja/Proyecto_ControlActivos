@@ -11,9 +11,6 @@
           ${diagnosticoIdCreado
             ? `<a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${diagnosticoIdCreado}" target="_blank" rel="noopener">Descargar reporte en PDF</a>`
             : ''}
-          ${reporteBajaCreado
-            ? `<a class="btn-secundario" href="${reporteBajaCreado}" target="_blank" rel="noopener">Reporte de baja en PDF</a>`
-            : ''}
         </div>`
       : ''}
 
@@ -240,45 +237,6 @@
           </div>
         `;
 
-      const listadoDiagnosticos = `
-        <section class="diagnosticos-listado">
-          <h3>Diagnósticos registrados</h3>
-          ${diagnosticos && diagnosticos.length
-            ? `<ul class="diagnosticos-lista">
-                ${diagnosticos
-                  .map((registro) => `
-                    <li class="diagnostico-item">
-                      <header>
-                        <strong>Diagnóstico #${registro.id_diagnostico}</strong>
-                        <span>${escapeHtml(registro.tecnico_nombre || 'Técnico desconocido')}</span>
-                      </header>
-                      <p><strong>Registrado:</strong> ${escapeHtml(registro.creado_en_fmt)}</p>
-                      <p><strong>Fecha de diagnóstico:</strong> ${escapeHtml(registro.fecha_diagnostico_fmt)}</p>
-                      <div class="detalle">
-                        <h4>Trabajo realizado</h4>
-                        <p>${multilinea(registro.trabajo || 'Sin información')}</p>
-                      </div>
-                      <div class="detalle">
-                        <h4>Diagnóstico</h4>
-                        <p>${multilinea(registro.diagnostico || 'Sin información')}</p>
-                      </div>
-                      ${registro.motivo
-                        ? `<div class="detalle"><h4>Motivo</h4><p>${multilinea(registro.motivo)}</p></div>`
-                        : ''}
-                      ${registro.observaciones
-                        ? `<div class="detalle"><h4>Observaciones</h4><p>${multilinea(registro.observaciones)}</p></div>`
-                        : ''}
-                      ${registro.evidenciaURL
-                        ? `<div class="detalle"><h4>Evidencia</h4><p>${escapeHtml(registro.evidenciaURL)}</p></div>`
-                        : ''}
-                    </li>
-                  `)
-                  .join('')}
-              </ul>`
-            : '<p>Aún no hay diagnósticos registrados para esta incidencia.</p>'}
-        </section>
-      `;
-
       const listadoReportesDiagnostico = `
         <section class="diagnosticos-reportes" id="diagnosticos-reportes">
           <h3>Reportes de diagnóstico</h3>
@@ -293,9 +251,6 @@
                       </div>
                       <div class="acciones">
                         <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Descargar diagnóstico</a>
-                        ${registro.reporte_baja && registro.reporte_baja.url
-                          ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
-                          : ''}
                       </div>
                     </li>
                   `)
@@ -310,7 +265,6 @@
           ${infoIncidencia}
           ${formularioOBloqueo}
         </div>
-        ${listadoDiagnosticos}
         ${listadoReportesDiagnostico}
         <script>
           (() => {

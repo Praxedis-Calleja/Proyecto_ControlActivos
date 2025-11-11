@@ -958,63 +958,6 @@ textarea {
   align-items: center;
 }
 
-.diagnosticos-listado {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.diagnosticos-lista {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 1rem;
-}
-
-.diagnostico-item {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-medium);
-  padding: 1rem 1.2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.diagnostico-item header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.diagnostico-item__acciones {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.diagnostico-item__acciones a {
-  font-size: 0.85rem;
-  padding: 0.45rem 0.8rem;
-}
-
-.diagnostico-detalle {
-  margin: 0;
-  color: var(--color-muted);
-}
-
-.diagnostico-resumen {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.diagnostico-resumen p {
-  margin: 0;
-  color: var(--color-text);
-}
-
 .baja-card__acciones {
   display: flex;
   gap: 0.5rem;
