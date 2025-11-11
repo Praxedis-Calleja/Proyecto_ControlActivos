@@ -633,7 +633,8 @@ textarea {
 }
 
 .incidencias-lista__header,
-.bajas-lista__header {
+.bajas-lista__header,
+.reportes-diagnostico__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -642,30 +643,52 @@ textarea {
 }
 
 .incidencias-lista__header h2,
-.bajas-lista__header h2 {
+.bajas-lista__header h2,
+.reportes-diagnostico__header h2 {
   margin: 0;
   font-size: 1.6rem;
 }
 
 .incidencias-lista__descripcion,
-.bajas-lista__descripcion {
+.bajas-lista__descripcion,
+.reportes-diagnostico__descripcion {
   margin: 0.35rem 0 0;
   color: var(--color-muted);
 }
 
+.incidencias-lista__acciones {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.incidencias-lista__acciones .btn,
+.incidencias-lista__acciones .btn-secundario {
+  white-space: nowrap;
+}
+
 .incidencias-grid,
 .bajas-grid,
-.diagnostico-grid {
+.diagnostico-grid,
+.reportes-diagnostico__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.35rem;
   margin-top: 1.5rem;
 }
 
+.reportes-diagnostico {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .incidencia-card,
 .baja-card,
 .diagnostico-card,
-.resumen-incidencia {
+.resumen-incidencia,
+.reporte-diagnostico-card {
   background: var(--color-surface-alt);
   border-radius: var(--radius-medium);
   border: 1px solid var(--color-border);
@@ -757,13 +780,90 @@ textarea {
   white-space: nowrap;
 }
 
+.reporte-diagnostico-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.reporte-diagnostico-card__subtitulo {
+  margin: 0.35rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.reporte-diagnostico-card__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.reporte-diagnostico-card__acciones .btn,
+.reporte-diagnostico-card__acciones .btn-secundario {
+  white-space: nowrap;
+}
+
+.reporte-diagnostico-card__contenido {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+}
+
+.reporte-diagnostico-card__bloque h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.reporte-diagnostico-card__bloque dl {
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.reporte-diagnostico-card__bloque dl div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.reporte-diagnostico-card__bloque dt {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.reporte-diagnostico-card__bloque dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.reporte-diagnostico-card__texto {
+  margin-top: 0.85rem;
+}
+
+.reporte-diagnostico-card__texto h5 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.reporte-diagnostico-card__texto p {
+  margin: 0.35rem 0 0;
+  color: var(--color-text);
+}
+
 .incidencia-card__detalles p {
   margin: 0.2rem 0;
   color: var(--color-muted);
 }
 
 .incidencias-vacia,
-.bajas-vacia {
+.bajas-vacia,
+.reportes-diagnostico__vacio {
   text-align: center;
   color: var(--color-muted);
   padding: 2rem 1rem;
