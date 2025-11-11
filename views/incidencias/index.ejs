@@ -108,7 +108,10 @@
                       ${ultimoDiagnostico}
                       <p><strong>Diagnósticos registrados:</strong> ${totalDiagnosticos}</p>
                     </div>
-                    <a class="btn-secundario" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico">Registrar diagnóstico</a>
+                    <div class="incidencia-card__acciones">
+                      <a class="btn-secundario" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico#diagnosticos-reportes">Ver reportes de diagnóstico</a>
+                      <a class="btn" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico">Registrar diagnóstico</a>
+                    </div>
                   </footer>
                 </article>
               `;

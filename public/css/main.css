@@ -745,6 +745,18 @@ textarea {
   flex-wrap: wrap;
 }
 
+.incidencia-card__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.incidencia-card__acciones .btn,
+.incidencia-card__acciones .btn-secundario {
+  white-space: nowrap;
+}
+
 .incidencia-card__detalles p {
   margin: 0.2rem 0;
   color: var(--color-muted);
