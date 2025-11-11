@@ -110,22 +110,6 @@
                     </div>
 
                     <div class="baja-card__bloque">
-                      <h4>Resumen de la baja</h4>
-                      <p><strong>Motivo:</strong> ${multilinea(baja.motivo)}</p>
-                      <p><strong>Observaciones:</strong> ${multilinea(baja.observaciones)}</p>
-                      ${baja.autorizadoPor
-                        ? `<p><strong>Autorizado por:</strong> ${escapeHtml(baja.autorizadoPor)}</p>`
-                        : ''}
-                      <p><strong>Técnico responsable:</strong> ${escapeHtml(baja.tecnico)}</p>
-                      ${baja.trabajo
-                        ? `<p><strong>Trabajo realizado:</strong><br>${multilinea(baja.trabajo)}</p>`
-                        : ''}
-                      ${baja.evidencia
-                        ? `<p><strong>Evidencia:</strong> ${escapeHtml(baja.evidencia)}</p>`
-                        : ''}
-                    </div>
-
-                    <div class="baja-card__bloque">
                       <h4>Diagnóstico asociado</h4>
                       ${incidencia}
                       <p><strong>Diagnóstico técnico:</strong></p>
