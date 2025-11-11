@@ -118,9 +118,6 @@
               <th>Precio lista</th>
               <th>Placa</th>
               <th>Número de serie</th>
-              <th>Procesador</th>
-              <th>Memoria RAM</th>
-              <th>Almacenamiento</th>
               <th>Propietario</th>
               <th>Contacto propietario</th>
               <th>Acciones</th>
@@ -141,9 +138,6 @@
                 <td><%= activo.precioListaTexto || (activo.precio_lista ?? '—') %></td>
                 <td><%= activo.placa_activo || '—' %></td>
                 <td><%= activo.numero_serie || '—' %></td>
-                <td><%= activo.procesador || '—' %></td>
-                <td><%= activo.memoria_ram || '—' %></td>
-                <td><%= activo.almacenamiento || '—' %></td>
                 <td><%= activo.propietario_nombre_completo || '—' %></td>
                 <td><%= activo.propietario_contacto || '—' %></td>
                 <td class="acciones">
@@ -215,15 +209,6 @@
 
       <label>Fecha de garantía</label>
       <input type="date" name="fecha_garantia" value="<%= formValues.fecha_garantia ? formValues.fecha_garantia : '' %>">
-
-      <label>Procesador</label>
-      <input name="procesador" value="<%= formValues.procesador ? formValues.procesador : '' %>">
-
-      <label>Memoria RAM</label>
-      <input name="memoria_ram" value="<%= formValues.memoria_ram ? formValues.memoria_ram : '' %>">
-
-      <label>Almacenamiento</label>
-      <input name="almacenamiento" value="<%= formValues.almacenamiento ? formValues.almacenamiento : '' %>">
 
       <label>Propietario (nombre completo)</label>
       <input name="propietario_nombre_completo" value="<%= formValues.propietario_nombre_completo ? formValues.propietario_nombre_completo : '' %>">

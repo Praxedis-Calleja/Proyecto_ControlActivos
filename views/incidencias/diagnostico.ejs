@@ -94,7 +94,12 @@
       `;
 
       const formulario = `
-        <form method="post" action="/incidencias/${incidencia.id_incidencia}/diagnostico" class="form-diagnostico">
+        <form
+          method="post"
+          action="/incidencias/${incidencia.id_incidencia}/diagnostico"
+          class="form-diagnostico"
+          data-form-diagnostico
+        >
           <div class="campo">
             <label for="fecha_diagnostico">Fecha de diagnóstico</label>
             <input
@@ -145,24 +150,28 @@
             </div>
           </fieldset>
 
-          <div class="campo">
-            <label for="motivo_baja">Motivo de baja <small>(requerido si aplica)</small></label>
-            <textarea id="motivo_baja" name="motivo_baja" rows="3">${escapeHtml(values.motivo_baja || '')}</textarea>
-          </div>
+          <div class="grupo-baja" data-baja-extra ${values.requiere_baja === 'SI' ? '' : 'hidden'}>
+            <p class="campo-nota">Completa la siguiente información únicamente si el activo será dado de baja.</p>
 
-          <div class="campo">
-            <label for="autorizado_por">Autorizado por <small>(requerido si aplica)</small></label>
-            <input
-              type="text"
-              id="autorizado_por"
-              name="autorizado_por"
-              value="${escapeAttr(values.autorizado_por || '')}"
-            >
-          </div>
+            <div class="campo">
+              <label for="motivo_baja">Motivo de baja <small>(requerido si aplica)</small></label>
+              <textarea id="motivo_baja" name="motivo_baja" rows="3">${escapeHtml(values.motivo_baja || '')}</textarea>
+            </div>
 
-          <div class="campo">
-            <label for="observaciones_baja">Observaciones adicionales</label>
-            <textarea id="observaciones_baja" name="observaciones_baja" rows="3">${escapeHtml(values.observaciones_baja || '')}</textarea>
+            <div class="campo">
+              <label for="autorizado_por">Autorizado por <small>(requerido si aplica)</small></label>
+              <input
+                type="text"
+                id="autorizado_por"
+                name="autorizado_por"
+                value="${escapeAttr(values.autorizado_por || '')}"
+              >
+            </div>
+
+            <div class="campo">
+              <label for="observaciones_baja">Observaciones adicionales</label>
+              <textarea id="observaciones_baja" name="observaciones_baja" rows="3">${escapeHtml(values.observaciones_baja || '')}</textarea>
+            </div>
           </div>
 
           <div class="campo">
@@ -224,22 +233,37 @@
                       ${registro.evidenciaURL
                         ? `<div class="detalle"><h4>Evidencia</h4><p>${escapeHtml(registro.evidenciaURL)}</p></div>`
                         : ''}
-                      ${registro.reporte_baja
-                        ? `<div class="detalle">
-                            <h4>Resumen de baja</h4>
-                            <p><strong>Folio:</strong> ${escapeHtml(registro.reporte_baja.folio || '—')}</p>
-                            <p><strong>Fecha de baja:</strong> ${escapeHtml(registro.reporte_baja.fecha_baja_fmt || 'Sin fecha')}</p>
-                          </div>`
-                        : ''}
-                      <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Generar PDF</a>
-                      ${registro.reporte_baja && registro.reporte_baja.url
-                        ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
-                        : ''}
                     </li>
                   `)
                   .join('')}
               </ul>`
             : '<p>Aún no hay diagnósticos registrados para esta incidencia.</p>'}
+        </section>
+      `;
+
+      const listadoReportesDiagnostico = `
+        <section class="diagnosticos-reportes">
+          <h3>Reportes de diagnóstico</h3>
+          ${diagnosticos && diagnosticos.length
+            ? `<ul class="diagnosticos-reportes-lista">
+                ${diagnosticos
+                  .map((registro) => `
+                    <li class="diagnosticos-reporte-item">
+                      <div>
+                        <strong>Diagnóstico #${registro.id_diagnostico}</strong>
+                        <span> · ${escapeHtml(registro.fecha_diagnostico_fmt)}</span>
+                      </div>
+                      <div class="acciones">
+                        <a class="btn-secundario" href="/incidencias/${incidencia.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}" target="_blank" rel="noopener">Descargar diagnóstico</a>
+                        ${registro.reporte_baja && registro.reporte_baja.url
+                          ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
+                          : ''}
+                      </div>
+                    </li>
+                  `)
+                  .join('')}
+              </ul>`
+            : '<p>No se han generado reportes de diagnóstico.</p>'}
         </section>
       `;
 
@@ -249,6 +273,30 @@
           ${formulario}
         </div>
         ${listadoDiagnosticos}
+        ${listadoReportesDiagnostico}
+        <script>
+          (() => {
+            const form = document.querySelector('[data-form-diagnostico]');
+            if (!form) return;
+            const toggleContainer = () => {
+              const seleccionado = form.querySelector('input[name="requiere_baja"]:checked');
+              const requiereBaja = seleccionado && seleccionado.value === 'SI';
+              const contenedor = form.querySelector('[data-baja-extra]');
+              if (!contenedor) return;
+              if (requiereBaja) {
+                contenedor.removeAttribute('hidden');
+              } else {
+                contenedor.setAttribute('hidden', '');
+              }
+            };
+
+            form.querySelectorAll('input[name="requiere_baja"]').forEach((radio) => {
+              radio.addEventListener('change', toggleContainer);
+            });
+
+            toggleContainer();
+          })();
+        </script>
       `;
     })()}
   </section>

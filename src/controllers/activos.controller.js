@@ -17,10 +17,7 @@ const esquemaActivo = Joi.object({
   numero_serie: Joi.string().max(100).allow('', null),
   fecha_garantia: Joi.alternatives()
     .try(Joi.date(), Joi.string().valid(''))
-    .allow(null, ''),
-  procesador: Joi.string().allow('', null),
-  memoria_ram: Joi.string().allow('', null),
-  almacenamiento: Joi.string().allow('', null)
+    .allow(null, '')
 }).unknown(true);
 
 const obtenerCatalogos = async () => {
@@ -118,9 +115,6 @@ const obtenerActivos = async (busqueda = '') => {
       a.precio_lista,
       a.numero_serie,
       a.fecha_garantia,
-      a.procesador,
-      a.memoria_ram,
-      a.almacenamiento,
       c.nombre AS categoria,
       ar.nombre_area AS area,
       ar.id_departamento,
@@ -248,10 +242,7 @@ export const postNuevoActivo = async (req, res) => {
     fecha_compra,
     precio_lista,
     numero_serie,
-    fecha_garantia,
-    procesador,
-    memoria_ram,
-    almacenamiento
+    fecha_garantia
   } = value;
 
   await pool.query(
@@ -271,9 +262,9 @@ export const postNuevoActivo = async (req, res) => {
       precio_lista || null,
       numero_serie || null,
       fecha_garantia || null,
-      procesador || null,
-      memoria_ram || null,
-      almacenamiento || null
+      '',
+      '',
+      ''
     ]
   );
 
@@ -363,9 +354,6 @@ const renderEditarActivo = async (req, res, opciones = {}) => {
         : '',
     numero_serie: activo.numero_serie || '',
     fecha_garantia: activo.fecha_garantia_formulario || '',
-    procesador: activo.procesador || '',
-    memoria_ram: activo.memoria_ram || '',
-    almacenamiento: activo.almacenamiento || '',
     departamento_form:
       (() => {
         const area = areas.find((areaItem) => String(areaItem.id_area) === String(activo.id_area));
@@ -444,10 +432,7 @@ export const postEditarActivo = async (req, res) => {
     fecha_compra,
     precio_lista,
     numero_serie,
-    fecha_garantia,
-    procesador,
-    memoria_ram,
-    almacenamiento
+    fecha_garantia
   } = value;
 
   const [resultado] = await pool.query(
@@ -463,10 +448,7 @@ export const postEditarActivo = async (req, res) => {
        fecha_compra = ?,
        precio_lista = ?,
        numero_serie = ?,
-       fecha_garantia = ?,
-       procesador = ?,
-       memoria_ram = ?,
-       almacenamiento = ?
+       fecha_garantia = ?
      WHERE id_activo = ?
      LIMIT 1`,
     [
@@ -482,9 +464,6 @@ export const postEditarActivo = async (req, res) => {
       precio_lista || null,
       numero_serie || null,
       fecha_garantia || null,
-      procesador || null,
-      memoria_ram || null,
-      almacenamiento || null,
       idActivo
     ]
   );

@@ -18,15 +18,18 @@ const descomponerTiempoUso = (valor) => {
 
   let motivo = '';
   let observaciones = '';
+  let autorizado_por = '';
   const trabajo = [];
 
   for (const linea of lineas) {
     const minusculas = linea.toLowerCase();
     if (!motivo && minusculas.startsWith('motivo:')) {
       motivo = linea.slice('motivo:'.length).trim();
+    } else if (!autorizado_por && minusculas.startsWith('autorizado por:')) {
+      autorizado_por = linea.slice('autorizado por:'.length).trim();
     } else if (!observaciones && minusculas.startsWith('observaciones:')) {
       observaciones = linea.slice('observaciones:'.length).trim();
-    } else if (!minusculas.startsWith('autorizado por:')) {
+    } else {
       trabajo.push(linea);
     }
   }
@@ -34,7 +37,8 @@ const descomponerTiempoUso = (valor) => {
   return {
     trabajo: trabajo.join('\n'),
     motivo,
-    observaciones
+    observaciones,
+    autorizado_por
   };
 };
 
@@ -61,6 +65,7 @@ const prepararBaja = (registro) => {
     fechaDiagnosticoTexto,
     motivo: detalles.motivo || 'Sin motivo especificado',
     observaciones: detalles.observaciones || 'Sin observaciones',
+    autorizadoPor: detalles.autorizado_por || '',
     trabajo: detalles.trabajo || '',
     tecnico: registro.tecnico || 'No registrado',
     evidencia: registro.evidencia || null,
