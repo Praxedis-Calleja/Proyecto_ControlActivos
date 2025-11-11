@@ -17,6 +17,14 @@
         </div>`
       : ''}
 
+    ${estadoActualizado
+      ? '<div class="ok">Estado de la incidencia actualizado correctamente.</div>'
+      : ''}
+
+    ${estadoError
+      ? '<div class="alert">No se pudo actualizar el estado de la incidencia. Intenta nuevamente.</div>'
+      : ''}
+
     ${(errores && errores.length)
       ? `<div class="alert">${errores.map((err) => `<div>${err}</div>`).join('')}</div>`
       : ''}
@@ -48,6 +56,16 @@
 
       const multilinea = (texto = '') =>
         escapeHtml(texto).replace(/\r?\n/g, '<br>');
+
+      const opcionesEstado = Array.isArray(estados)
+        ? estados
+            .map((estado) => {
+              const seleccionado = incidencia.estado === estado ? 'selected' : '';
+              const texto = estado.replace(/_/g, ' ');
+              return `<option value="${escapeAttr(estado)}" ${seleccionado}>${escapeHtml(texto)}</option>`;
+            })
+            .join('')
+        : '';
 
       const infoIncidencia = `
         <article class="resumen-incidencia">
@@ -89,6 +107,18 @@
           <div class="descripcion-problema">
             <h4>Descripción reportada</h4>
             <p>${multilinea(incidencia.descripcion_problema || 'Sin descripción')}</p>
+          </div>
+          <div class="acciones-incidencia">
+            <form method="post" action="/incidencias/${incidencia.id_incidencia}/diagnostico/estado" class="acciones-incidencia__form">
+              <label for="estado-incidencia">Cambiar estado</label>
+              <div class="acciones-incidencia__controles">
+                <select id="estado-incidencia" name="estado">
+                  ${opcionesEstado}
+                </select>
+                <input type="hidden" name="_csrf" value="${csrfToken}">
+                <button type="submit" class="btn">Actualizar estado</button>
+              </div>
+            </form>
           </div>
         </article>
       `;
@@ -202,6 +232,14 @@
         </form>
       `;
 
+      const formularioOBloqueo = permiteDiagnostico
+        ? formulario
+        : `
+          <div class="form-diagnostico form-diagnostico--bloqueada">
+            <p>La incidencia está cerrada, no es posible registrar nuevos diagnósticos ni generar reportes de baja.</p>
+          </div>
+        `;
+
       const listadoDiagnosticos = `
         <section class="diagnosticos-listado">
           <h3>Diagnósticos registrados</h3>
@@ -270,7 +308,7 @@
       return `
         <div class="diagnostico-grid">
           ${infoIncidencia}
-          ${formulario}
+          ${formularioOBloqueo}
         </div>
         ${listadoDiagnosticos}
         ${listadoReportesDiagnostico}

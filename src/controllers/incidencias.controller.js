@@ -229,6 +229,7 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
        i.id_usuario,
        i.id_activo,
        i.creada_en,
+       i.cerrada_en,
        a.marca,
        a.modelo,
        a.numero_serie,
@@ -606,6 +607,8 @@ export const getDiagnosticoIncidencia = async (req, res) => {
 
     const pageTitle = `Diagnóstico · Incidencia #${incidencia.id_incidencia}`;
 
+    const permiteDiagnostico = incidencia.estado !== 'CERRADA';
+
     return res.render('incidencias/diagnostico', {
       incidencia,
       diagnosticos,
@@ -617,11 +620,64 @@ export const getDiagnosticoIncidencia = async (req, res) => {
           ? Number(req.query.h)
           : null,
       reporteBajaCreado,
-      pageTitle
+      pageTitle,
+      estados: ESTADOS,
+      permiteDiagnostico,
+      estadoActualizado: req.query.estadoOk === '1',
+      estadoError: req.query.estadoError === '1'
     });
   } catch (error) {
     console.error('Error al cargar formulario de diagnóstico:', error);
     return res.status(500).send('Error al cargar el formulario de diagnóstico.');
+  }
+};
+
+export const postCambiarEstadoIncidencia = async (req, res) => {
+  const idIncidencia = Number(req.params.id);
+
+  if (!Number.isInteger(idIncidencia) || idIncidencia <= 0) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  const estadoSolicitado =
+    typeof req.body.estado === 'string' ? req.body.estado.trim().toUpperCase() : '';
+
+  if (!ESTADOS.includes(estadoSolicitado)) {
+    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
+  }
+
+  let incidencia;
+  try {
+    incidencia = await obtenerIncidenciaPorId(idIncidencia);
+  } catch (error) {
+    console.error('Error al recuperar incidencia para actualizar estado:', error);
+    return res.status(500).send('Error al actualizar el estado de la incidencia.');
+  }
+
+  if (!incidencia) {
+    return res.status(404).send('Incidencia no encontrada');
+  }
+
+  const cerradaEn =
+    estadoSolicitado === 'CERRADA'
+      ? formatearFechaHora(new Date().toISOString().slice(0, 19)) ||
+        incidencia.cerrada_en ||
+        null
+      : null;
+
+  try {
+    await pool.query(
+      `UPDATE incidencias
+          SET estado = ?,
+              cerrada_en = ?
+        WHERE id_incidencia = ?`,
+      [estadoSolicitado, cerradaEn, idIncidencia]
+    );
+
+    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoOk=1`);
+  } catch (error) {
+    console.error('Error al actualizar estado de incidencia:', error);
+    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
   }
 };
 
@@ -650,6 +706,33 @@ export const postDiagnosticoIncidencia = async (req, res) => {
   }
 
   const pageTitle = `Diagnóstico · Incidencia #${incidencia.id_incidencia}`;
+  const nombreTecnico = [req.session.user?.nombre, req.session.user?.apellido]
+    .filter(Boolean)
+    .join(' ');
+  const permiteDiagnostico = incidencia.estado !== 'CERRADA';
+
+  if (!permiteDiagnostico) {
+    try {
+      const diagnosticos = await obtenerDiagnosticosIncidencia(idIncidencia);
+      return res.status(400).render('incidencias/diagnostico', {
+        incidencia,
+        diagnosticos,
+        errores: ['La incidencia está cerrada, no se pueden registrar diagnósticos ni generar bajas.'],
+        values: normalizarValoresDiagnostico({}, nombreTecnico),
+        ok: false,
+        diagnosticoIdCreado: null,
+        reporteBajaCreado: null,
+        pageTitle,
+        estados: ESTADOS,
+        permiteDiagnostico,
+        estadoActualizado: false,
+        estadoError: false
+      });
+    } catch (diagnosticoError) {
+      console.error('Error al recuperar diagnósticos en incidencia cerrada:', diagnosticoError);
+      return res.status(500).send('Error al recuperar los diagnósticos de la incidencia.');
+    }
+  }
 
   const { error, value } = esquemaDiagnostico.validate(req.body, {
     abortEarly: false,
@@ -660,9 +743,6 @@ export const postDiagnosticoIncidencia = async (req, res) => {
   if (error) {
     try {
       const diagnosticos = await obtenerDiagnosticosIncidencia(idIncidencia);
-      const nombreTecnico = [req.session.user?.nombre, req.session.user?.apellido]
-        .filter(Boolean)
-        .join(' ');
 
       return res.status(400).render('incidencias/diagnostico', {
         incidencia,
@@ -671,7 +751,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         values: normalizarValoresDiagnostico(req.body, nombreTecnico),
         ok: false,
         diagnosticoIdCreado: null,
-        pageTitle
+        reporteBajaCreado: null,
+        pageTitle,
+        estados: ESTADOS,
+        permiteDiagnostico,
+        estadoActualizado: false,
+        estadoError: false
       });
     } catch (diagnosticoError) {
       console.error('Error al recuperar diagnósticos:', diagnosticoError);
@@ -828,7 +913,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         values: normalizarValoresDiagnostico(req.body, nombreTecnico),
         ok: false,
         diagnosticoIdCreado: null,
-        pageTitle
+        reporteBajaCreado: null,
+        pageTitle,
+        estados: ESTADOS,
+        permiteDiagnostico,
+        estadoActualizado: false,
+        estadoError: false
       });
     } catch (diagnosticoError) {
       console.error('Error adicional al recuperar diagnósticos:', diagnosticoError);

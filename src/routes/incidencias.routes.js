@@ -8,6 +8,7 @@ import {
   getDiagnosticoBajaPdf,
   getNuevaIncidencia,
   postDiagnosticoIncidencia,
+  postCambiarEstadoIncidencia,
   postNuevaIncidencia
 } from '../controllers/incidencias.controller.js';
 
@@ -22,6 +23,11 @@ router.get(
   getDiagnosticoBajaPdf
 );
 router.get('/:id/diagnostico', requiereLogin, getDiagnosticoIncidencia);
+router.post(
+  '/:id/diagnostico/estado',
+  requiereLogin,
+  postCambiarEstadoIncidencia
+);
 router.post('/:id/diagnostico', requiereLogin, postDiagnosticoIncidencia);
 router.get('/nueva', requiereLogin, getNuevaIncidencia);
 router.post('/nueva', requiereLogin, postNuevaIncidencia);
