@@ -206,11 +206,14 @@ const descomponerTiempoUso = (valor) => {
   let motivo = '';
   let observaciones = '';
   let autorizado_por = '';
+  let tiempoUso = '';
   const trabajo = [];
 
   for (const linea of lineas) {
     const enMinusculas = linea.toLowerCase();
-    if (!motivo && enMinusculas.startsWith('motivo:')) {
+    if (!tiempoUso && enMinusculas.startsWith('tiempo de uso:')) {
+      tiempoUso = linea.slice('tiempo de uso:'.length).trim();
+    } else if (!motivo && enMinusculas.startsWith('motivo:')) {
       motivo = linea.slice('motivo:'.length).trim();
     } else if (!autorizado_por && enMinusculas.startsWith('autorizado por:')) {
       autorizado_por = linea.slice('autorizado por:'.length).trim();
@@ -225,7 +228,8 @@ const descomponerTiempoUso = (valor) => {
     trabajo: trabajo.join('\n'),
     motivo,
     observaciones,
-    autorizado_por
+    autorizado_por,
+    tiempoUso
   };
 };
 
@@ -1682,6 +1686,61 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
       doc.y = y + 10;
     };
 
+    const drawLabeledBox = (titulo, contenido, opciones = {}) => {
+      const boxHeight = opciones.height ?? 120;
+      const boxY = doc.y;
+
+      doc.font('Helvetica-Bold').fontSize(10).text(titulo, startX, boxY);
+      const contentY = doc.y + 6;
+
+      doc.rect(startX, contentY, pageWidth, boxHeight).strokeColor('#bdbdbd').stroke();
+      doc.strokeColor('#000000');
+
+      doc.font('Helvetica').fontSize(10).text(contenido, startX + 10, contentY + 10, {
+        width: pageWidth - 20,
+        lineGap: 3
+      });
+
+      doc.y = contentY + boxHeight + 14;
+    };
+
+    const drawSignatureBlock = () => {
+      const lineWidth = Math.min(pageWidth * 0.5, 260);
+
+      doc.moveDown(1.2);
+      const lineY = doc.y;
+      doc.moveTo(startX, lineY).lineTo(startX + lineWidth, lineY).lineWidth(0.7).strokeColor('#000000').stroke();
+
+      doc.font('Helvetica').fontSize(9).text('Usuario administrador o técnico', startX, lineY + 4, {
+        width: lineWidth,
+        align: 'center'
+      });
+
+      const infoX = startX + lineWidth + 24;
+      const infoWidth = pageWidth - (infoX - startX);
+
+      doc.font('Helvetica-Bold').fontSize(10).text('Departamento de Tecnología', infoX, lineY - 12, {
+        width: infoWidth,
+        align: 'left'
+      });
+
+      doc.font('Helvetica').fontSize(9).text('Ingeniero de Soporte de Hoteles', infoX, doc.y + 6, {
+        width: infoWidth
+      });
+
+      const drawInfoLine = (label) => {
+        doc.moveDown(0.4);
+        doc.font('Helvetica').fontSize(9).text(`${label}: _________________________________`, infoX, doc.y, {
+          width: infoWidth
+        });
+      };
+
+      drawInfoLine('Correo');
+      drawInfoLine('Dirección');
+
+      doc.y += 16;
+    };
+
     const drawDocumentHeader = (titulo) => {
       const initialY = doc.y;
       let headerX = startX;
@@ -1732,120 +1791,109 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
 
     drawDocumentHeader('Formato de Baja de Equipo de Cómputo');
 
+    const headerColumn = Math.floor(pageWidth / 2);
+    const headerColumns = [headerColumn, pageWidth - headerColumn];
+
+    drawKeyValueTable(
+      [
+        [
+          { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
+          { label: 'Fecha', value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada') }
+        ],
+        [
+          { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
+          { label: 'Usuario', value: valorSeguro(registro.nombre_reporta, 'No registrado') }
+        ]
+      ],
+      headerColumns
+    );
+
+    const tiempoUsoTexto = (() => {
+      if (detalles.tiempoUso) {
+        return detalles.tiempoUso;
+      }
+
+      const linea = String(registro.tiempo_uso ?? '')
+        .split(/\r?\n/)
+        .map((parte) => parte.trim())
+        .find(Boolean);
+
+      return valorSeguro(linea, 'No registrado');
+    })();
+
+    const nombreEquipo = (() => {
+      const combinado = [registro.marca, registro.modelo].map((texto) => String(texto ?? '').trim()).filter(Boolean).join(' ');
+      if (combinado) return combinado;
+      return valorSeguro(registro.categoria_nombre, 'No registrado');
+    })();
+
     drawSectionTitle('Datos del equipo');
     drawKeyValueTable(
       [
         [
-          { label: 'No. de folio', value: folio },
-          { label: 'Fecha', value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada') },
-          { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') }
-        ],
-        [
-          { label: 'Ubicación', value: valorSeguro(registro.departamento_nombre, 'No registrada') },
-          { label: 'Usuario', value: valorSeguro(registro.nombre_reporta, 'No registrado') },
-          { label: 'No. inventario', value: valorSeguro(registro.placa_activo, 'No registrado') }
-        ],
-        [
+          { label: 'Equipo', value: valorSeguro(registro.categoria_nombre, 'No registrado') },
           { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
-          { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
-          { label: 'Número de serie', value: valorSeguro(registro.numero_serie, 'No registrado') }
+          { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') }
         ],
         [
-          { label: 'Procesador', value: especificaciones.procesador },
-          { label: 'Memoria RAM', value: especificaciones.memoria_ram },
-          { label: 'Almacenamiento', value: especificaciones.almacenamiento }
-        ],
-        [
-          { label: 'Fecha de compra', value: fechaSegura(registro.fecha_compra, 'No registrada') },
-          { label: 'Vigencia de garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') },
-          { label: 'Técnico responsable', value: valorSeguro(registro.nombre_tecnico, 'No registrado') }
+          { label: 'Placa de AF', value: valorSeguro(registro.placa_activo, 'No registrada') },
+          { label: 'No. Serie', value: valorSeguro(registro.numero_serie, 'No registrado') },
+          { label: 'Tiempo de uso', value: tiempoUsoTexto }
         ]
       ],
       columnWidths
     );
 
-    drawSectionTitle('Descripción gráfica');
-    const descripcionBoxHeight = 150;
-    const descripcionBoxY = doc.y;
-    doc.rect(startX, descripcionBoxY, pageWidth, descripcionBoxHeight).strokeColor('#bdbdbd').stroke();
-    doc.strokeColor('#000000');
-    const evidenciaTexto = registro.diagnostico_evidencia
-      ? `Evidencia: ${registro.diagnostico_evidencia}`
-      : 'No se proporcionó evidencia para esta baja.';
-    doc.font('Helvetica').fontSize(10).text(evidenciaTexto, startX + 10, descripcionBoxY + 10, {
-      width: pageWidth - 20,
-      lineGap: 3
-    });
-    doc.y = descripcionBoxY + descripcionBoxHeight + 12;
+    drawKeyValueTable(
+      [[{ label: 'Nombre de equipo', value: nombreEquipo }]],
+      [pageWidth]
+    );
+
+    drawSectionTitle('Datos específicos');
+    drawKeyValueTable(
+      [
+        [
+          { label: 'Memoria RAM', value: especificaciones.memoria_ram },
+          { label: 'Almacenamiento', value: especificaciones.almacenamiento },
+          { label: 'Procesador', value: especificaciones.procesador }
+        ]
+      ],
+      columnWidths
+    );
+
+    drawKeyValueTable(
+      [[{ label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }]],
+      [pageWidth]
+    );
+
+    const descripcionGrafica = valorSeguro(
+      registro.diagnostico_evidencia,
+      'No se proporcionó descripción gráfica para esta baja.'
+    );
+    drawLabeledBox('Descripción gráfica', descripcionGrafica, { height: 140 });
 
     drawSectionTitle('Diagnóstico técnico');
 
-    if (registro.descripcion_problema) {
-      doc.font('Helvetica-Bold').fontSize(10).text('Descripción del problema reportado:');
-      doc.font('Helvetica').fontSize(10).text(
-        valorSeguro(registro.descripcion_problema, 'Sin descripción registrada.'),
-        {
-          width: pageWidth,
-          lineGap: 3
-        }
-      );
-      doc.moveDown(0.3);
-    }
+    const escribirBloqueDiagnostico = (etiqueta, contenido) => {
+      const texto = String(contenido ?? '').trim();
+      if (!texto) return;
 
-    if (detalles.trabajo) {
-      doc.font('Helvetica-Bold').fontSize(10).text('Trabajo realizado:');
-      doc.font('Helvetica').fontSize(10).text(detalles.trabajo, {
+      doc.font('Helvetica-Bold').fontSize(10).text(`${etiqueta}:`);
+      doc.font('Helvetica').fontSize(10).text(texto, {
         width: pageWidth,
         lineGap: 3
       });
-      doc.moveDown(0.3);
-    }
+      doc.moveDown(0.4);
+    };
 
-    if (detalles.motivo) {
-      doc.font('Helvetica-Bold').fontSize(10).text('Motivo de baja:');
-      doc.font('Helvetica').fontSize(10).text(detalles.motivo, {
-        width: pageWidth,
-        lineGap: 3
-      });
-      doc.moveDown(0.3);
-    }
+    escribirBloqueDiagnostico('Diagnóstico', registro.diagnostico_tecnico);
+    escribirBloqueDiagnostico('Motivo de baja', detalles.motivo);
+    escribirBloqueDiagnostico('Observaciones', detalles.observaciones);
+    escribirBloqueDiagnostico('Autorizado por', detalles.autorizado_por);
 
-    if (detalles.observaciones) {
-      doc.font('Helvetica-Bold').fontSize(10).text('Observaciones:');
-      doc.font('Helvetica').fontSize(10).text(detalles.observaciones, {
-        width: pageWidth,
-        lineGap: 3
-      });
-      doc.moveDown(0.3);
-    }
+    drawSectionTitle('Espacio para firma');
+    drawSignatureBlock();
 
-    if (registro.diagnostico_tecnico) {
-      doc.font('Helvetica-Bold').fontSize(10).text('Diagnóstico final:');
-      doc.font('Helvetica').fontSize(10).text(registro.diagnostico_tecnico, {
-        width: pageWidth,
-        lineGap: 3
-      });
-      doc.moveDown(0.3);
-    }
-
-    if (detalles.autorizado_por) {
-      doc.font('Helvetica-Bold').fontSize(10).text('Autorizado por:');
-      doc.font('Helvetica').fontSize(10).text(detalles.autorizado_por, {
-        width: pageWidth,
-        lineGap: 3
-      });
-      doc.moveDown(0.3);
-    }
-
-    doc.font('Helvetica').fontSize(10).text(
-      `Técnico responsable: ${valorSeguro(registro.nombre_tecnico, 'No registrado')}`
-    );
-
-    doc.moveDown(1.4);
-    doc.font('Helvetica-Bold').fontSize(10).text('Firma del técnico:', startX);
-    doc.moveDown(1);
-    doc.font('Helvetica').fontSize(13).text(valorSeguro(registro.nombre_tecnico, 'No registrado'), startX);
-    doc.moveDown(1.2);
     doc.font('Helvetica').fontSize(9).fillColor('#555555').text(
       'Documento generado automáticamente por el Sistema de Control de Activos.',
       startX,
