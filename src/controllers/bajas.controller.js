@@ -57,7 +57,6 @@ const prepararBaja = (registro) => {
   return {
     id: registro.id_baja,
     folio: generarFolioBaja({
-      folio: registro.folio,
       fechaBaja: registro.fecha_baja,
       idBaja: registro.id_baja
     }),
@@ -98,7 +97,6 @@ export const getBajas = async (req, res) => {
       `SELECT
          b.ID_Baja AS id_baja,
          b.ID_Activo AS id_activo,
-         b.Folio AS folio,
          b.Fecha_Baja AS fecha_baja,
          d.id_diagnostico,
          d.fecha_diagnostico,

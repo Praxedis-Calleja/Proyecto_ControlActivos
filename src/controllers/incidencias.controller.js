@@ -283,7 +283,6 @@ const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
        d.evidenciaURL,
        CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre,
        b.ID_Baja AS baja_id,
-       b.Folio AS baja_folio,
        b.Fecha_Baja AS baja_fecha
      FROM diagnostico d
      LEFT JOIN usuarios ut ON ut.id_usuario = d.id_usuario_tecnico
@@ -302,7 +301,6 @@ const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
       ? {
           id: registro.baja_id,
           folio: generarFolioBaja({
-            folio: registro.baja_folio,
             fechaBaja: registro.baja_fecha,
             idBaja: registro.baja_id
           }),
@@ -392,7 +390,6 @@ export const getReportesDiagnostico = async (req, res) => {
          a.placa_activo,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre,
          b.ID_Baja AS baja_id,
-         b.Folio AS baja_folio,
          b.Fecha_Baja AS baja_fecha
        FROM diagnostico d
        INNER JOIN incidencias i ON i.id_incidencia = d.id_incidencia
@@ -428,7 +425,6 @@ export const getReportesDiagnostico = async (req, res) => {
           ? {
               id: registro.baja_id,
               folio: generarFolioBaja({
-                folio: registro.baja_folio,
                 fechaBaja: registro.baja_fecha,
                 idBaja: registro.baja_id
               }),
@@ -1002,13 +998,11 @@ export const postDiagnosticoIncidencia = async (req, res) => {
       const fechaBaja = fechaNormalizada || formatearFecha(new Date()) || null;
       const [resultadoBaja] = await connection.query(
         `INSERT INTO reportesbaja (
-           Folio,
            ID_Activo,
            Fecha_Baja,
            id_diagnostico
-         ) VALUES (?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?)`,
         [
-          '',
           incidencia.id_activo,
           fechaBaja,
           diagnosticoId
@@ -1016,23 +1010,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
       );
 
       const idBajaCreado = resultadoBaja.insertId;
-      if (idBajaCreado) {
-        const folioGenerado = generarFolioBaja({
-          folio: '',
-          fechaBaja,
-          idBaja: idBajaCreado
-        });
-
-        await connection.query(
-          `UPDATE reportesbaja
-              SET Folio = ?,
-                  Fecha_Baja = COALESCE(?, Fecha_Baja)
-            WHERE ID_Baja = ?`,
-          [folioGenerado, fechaBaja, idBajaCreado]
-        );
-      }
-
-      if (incidencia.id_activo !== null && incidencia.id_activo !== undefined) {
+      if (idBajaCreado && incidencia.id_activo !== null && incidencia.id_activo !== undefined) {
         await connection.query(
           `UPDATE activos_fijos
               SET estado = ?
@@ -1041,7 +1019,6 @@ export const postDiagnosticoIncidencia = async (req, res) => {
           ['BAJA', incidencia.id_activo]
         );
       }
-
       reporteBajaUrl = `/incidencias/${idIncidencia}/diagnostico/baja/pdf/${diagnosticoId}`;
     }
 
@@ -1528,7 +1505,6 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          dpt.nombre_departamento AS departamento_nombre,
          cat.nombre AS categoria_nombre,
          b.ID_Baja AS baja_id,
-         b.Folio AS baja_folio,
          b.Fecha_Baja AS baja_fecha,
          CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico
@@ -1554,7 +1530,6 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
     const folio = generarFolioBaja({
-      folio: registro.baja_folio,
       fechaBaja: registro.baja_fecha,
       idBaja: registro.baja_id
     });
