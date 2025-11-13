@@ -3,12 +3,72 @@ import PDFDocument from 'pdfkit';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pool } from '../db.js';
-import { generarFolioBaja } from '../utils/folioBaja.js';
 
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
 const ESTADOS = ['ABIERTA', 'EN_PROCESO', 'CERRADA', 'CANCELADA'];
 const TIPOS_INCIDENCIA = ['CORRECTIVO', 'PREVENTIVO', 'INSTALACION', 'OTRO'];
 const ORIGENES_INCIDENCIA = ['USUARIO', 'SISTEMA', 'MANTENIMIENTO', 'OTRO'];
+
+let cacheColumnasEspecificacionesActivos;
+
+const obtenerColumnasEspecificacionesActivos = async () => {
+  if (cacheColumnasEspecificacionesActivos) {
+    return cacheColumnasEspecificacionesActivos;
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SHOW COLUMNS FROM activos_fijos WHERE Field IN ('procesador', 'memoria_ram', 'almacenamiento')"
+    );
+
+    const disponibles = {
+      procesador: false,
+      memoria_ram: false,
+      almacenamiento: false
+    };
+
+    for (const columna of rows) {
+      if (columna.Field === 'procesador') {
+        disponibles.procesador = true;
+      } else if (columna.Field === 'memoria_ram') {
+        disponibles.memoria_ram = true;
+      } else if (columna.Field === 'almacenamiento') {
+        disponibles.almacenamiento = true;
+      }
+    }
+
+    cacheColumnasEspecificacionesActivos = disponibles;
+  } catch (error) {
+    console.warn(
+      'No se pudieron verificar las columnas de especificaciones en activos_fijos:',
+      error
+    );
+    cacheColumnasEspecificacionesActivos = {
+      procesador: false,
+      memoria_ram: false,
+      almacenamiento: false
+    };
+  }
+
+  return cacheColumnasEspecificacionesActivos;
+};
+
+const construirSelectEspecificacionesActivo = async (aliasTabla, aliasPrefijo = '') => {
+  const columnasDisponibles = await obtenerColumnasEspecificacionesActivos();
+  const prefijo = aliasPrefijo ? `${aliasPrefijo}_` : '';
+
+  return [
+    columnasDisponibles.procesador
+      ? `${aliasTabla}.procesador AS ${prefijo}procesador`
+      : `NULL AS ${prefijo}procesador`,
+    columnasDisponibles.memoria_ram
+      ? `${aliasTabla}.memoria_ram AS ${prefijo}memoria_ram`
+      : `NULL AS ${prefijo}memoria_ram`,
+    columnasDisponibles.almacenamiento
+      ? `${aliasTabla}.almacenamiento AS ${prefijo}almacenamiento`
+      : `NULL AS ${prefijo}almacenamiento`
+  ];
+};
 
 const esquemaDiagnostico = Joi.object({
   descripcion_trabajo: Joi.string()
@@ -234,6 +294,8 @@ const descomponerTiempoUso = (valor) => {
 };
 
 const obtenerIncidenciaPorId = async (idIncidencia) => {
+  const camposEspecificaciones = await construirSelectEspecificacionesActivo('a');
+
   const [rows] = await pool.query(
     `SELECT
        i.id_incidencia,
@@ -251,9 +313,7 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
        a.numero_serie,
        a.placa_activo,
        a.propietario_contacto,
-       a.procesador,
-       a.memoria_ram,
-       a.almacenamiento,
+       ${camposEspecificaciones.join(',\n       ')},
        CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
        CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta
      FROM incidencias i
@@ -283,7 +343,6 @@ const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
        d.evidenciaURL,
        CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre,
        b.ID_Baja AS baja_id,
-       b.Folio AS baja_folio,
        b.Fecha_Baja AS baja_fecha
      FROM diagnostico d
      LEFT JOIN usuarios ut ON ut.id_usuario = d.id_usuario_tecnico
@@ -301,11 +360,6 @@ const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
     reporte_baja: registro.baja_id
       ? {
           id: registro.baja_id,
-          folio: generarFolioBaja({
-            folio: registro.baja_folio,
-            fechaBaja: registro.baja_fecha,
-            idBaja: registro.baja_id
-          }),
           fecha_baja_fmt: formatearFechaLarga(registro.baja_fecha) || 'Sin fecha',
           url: `/incidencias/${registro.id_incidencia}/diagnostico/baja/pdf/${registro.id_diagnostico}`
         }
@@ -392,7 +446,6 @@ export const getReportesDiagnostico = async (req, res) => {
          a.placa_activo,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre,
          b.ID_Baja AS baja_id,
-         b.Folio AS baja_folio,
          b.Fecha_Baja AS baja_fecha
        FROM diagnostico d
        INNER JOIN incidencias i ON i.id_incidencia = d.id_incidencia
@@ -427,11 +480,7 @@ export const getReportesDiagnostico = async (req, res) => {
         reporteBaja: registro.baja_id
           ? {
               id: registro.baja_id,
-              folio: generarFolioBaja({
-                folio: registro.baja_folio,
-                fechaBaja: registro.baja_fecha,
-                idBaja: registro.baja_id
-              }),
+              fecha: formatearFechaLarga(registro.baja_fecha) || 'Sin fecha registrada',
               url: `/incidencias/${registro.id_incidencia}/diagnostico/baja/pdf/${registro.id_diagnostico}`
             }
           : null,
@@ -1008,29 +1057,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
            id_diagnostico
          ) VALUES (?, ?, ?, ?)`,
         [
-          '',
+          null,
           incidencia.id_activo,
           fechaBaja,
           diagnosticoId
         ]
       );
-
-      const idBajaCreado = resultadoBaja.insertId;
-      if (idBajaCreado) {
-        const folioGenerado = generarFolioBaja({
-          folio: '',
-          fechaBaja,
-          idBaja: idBajaCreado
-        });
-
-        await connection.query(
-          `UPDATE reportesbaja
-              SET Folio = ?,
-                  Fecha_Baja = COALESCE(?, Fecha_Baja)
-            WHERE ID_Baja = ?`,
-          [folioGenerado, fechaBaja, idBajaCreado]
-        );
-      }
 
       if (incidencia.id_activo !== null && incidencia.id_activo !== undefined) {
         await connection.query(
@@ -1113,6 +1145,8 @@ export const getDiagnosticoPdf = async (req, res) => {
   }
 
   try {
+    const camposActivo = await construirSelectEspecificacionesActivo('a', 'activo');
+
     const [rows] = await pool.query(
       `SELECT
          d.id_diagnostico,
@@ -1138,9 +1172,7 @@ export const getDiagnosticoPdf = async (req, res) => {
          a.propietario_nombre_completo,
          a.propietario_contacto,
          a.id_categoria_activos,
-         a.procesador AS activo_procesador,
-         a.memoria_ram AS activo_memoria_ram,
-         a.almacenamiento AS activo_almacenamiento,
+         ${camposActivo.join(',\n         ')},
          ar.nombre_area AS area_nombre,
          dpt.nombre_departamento AS departamento_nombre,
          cat.nombre AS categoria_nombre,
@@ -1496,6 +1528,8 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
   }
 
   try {
+    const camposActivo = await construirSelectEspecificacionesActivo('a', 'activo');
+
     const [rows] = await pool.query(
       `SELECT
          d.id_diagnostico,
@@ -1521,14 +1555,11 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          a.fecha_compra,
          a.fecha_garantia,
          a.id_categoria_activos,
-         a.procesador AS activo_procesador,
-         a.memoria_ram AS activo_memoria_ram,
-         a.almacenamiento AS activo_almacenamiento,
+         ${camposActivo.join(',\n         ')},
          ar.nombre_area AS area_nombre,
          dpt.nombre_departamento AS departamento_nombre,
          cat.nombre AS categoria_nombre,
          b.ID_Baja AS baja_id,
-         b.Folio AS baja_folio,
          b.Fecha_Baja AS baja_fecha,
          CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico
@@ -1553,12 +1584,6 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     }
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
-    const folio = generarFolioBaja({
-      folio: registro.baja_folio,
-      fechaBaja: registro.baja_fecha,
-      idBaja: registro.baja_id
-    });
-
     const categoriaTexto = registro.categoria_nombre || 'No registrada';
     const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
     const especificaciones = esEquipoComputo
@@ -1586,7 +1611,7 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
       `${esDescarga ? 'attachment' : 'inline'}; filename="${nombreArchivo}"`
     );
 
-    doc.info.Title = `Reporte de baja ${folio}`;
+    doc.info.Title = `Reporte de baja #${registro.baja_id}`;
     doc.info.Subject = 'Formato de baja de equipo de cómputo';
     doc.info.Creator = 'Sistema de Control de Activos';
 
