@@ -99,8 +99,10 @@
                     .join('')
                 : '';
 
+              const claseCerrada = estaCerrada ? ' incidencia-card--cerrada' : '';
+
               return `
-                <article class="incidencia-card">
+                <article class="incidencia-card${claseCerrada}">
                   <header class="incidencia-card__header">
                     <div>
                       <h3>Incidencia</h3>

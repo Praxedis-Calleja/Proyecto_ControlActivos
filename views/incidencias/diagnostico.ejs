@@ -250,7 +250,7 @@
                       ? `<a class="btn-secundario" href="${escapeAttr(registro.reporte_baja.url)}" target="_blank" rel="noopener">Reporte de baja</a>`
                       : '';
                     const etiquetaBaja = registro.reporte_baja
-                      ? `<small class="diagnosticos-reporte-item__detalle">Folio baja: ${escapeHtml(registro.reporte_baja.folio)}</small>`
+                      ? `<small class="diagnosticos-reporte-item__detalle">Reporte de baja #${escapeHtml(registro.reporte_baja.id)} · Fecha: ${escapeHtml(registro.reporte_baja.fecha_baja_fmt)}</small>`
                       : '<small class="diagnosticos-reporte-item__detalle diagnosticos-reporte-item__detalle--sin">Sin reporte de baja</small>';
 
                     return `

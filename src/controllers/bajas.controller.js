@@ -1,5 +1,4 @@
 import { pool } from '../db.js';
-import { generarFolioBaja } from '../utils/folioBaja.js';
 
 const formateadorFecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' });
 
@@ -56,10 +55,6 @@ const prepararBaja = (registro) => {
 
   return {
     id: registro.id_baja,
-    folio: generarFolioBaja({
-      fechaBaja: registro.fecha_baja,
-      idBaja: registro.id_baja
-    }),
     fechaBajaTexto,
     fechaDiagnosticoTexto,
     motivo: detalles.motivo || 'Sin motivo especificado',
