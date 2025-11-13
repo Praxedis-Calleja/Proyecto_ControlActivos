@@ -629,7 +629,7 @@ export const getEditarIncidencia = async (req, res) => {
       values: normalizarValores(incidencia),
       ok: req.query.ok === '1',
       incidenciaId: idIncidencia,
-      pageTitle: `Editar incidencia #${idIncidencia}`
+      pageTitle: 'Editar incidencia'
     });
   } catch (error) {
     console.error('Error al cargar incidencia para edición:', error);
@@ -675,7 +675,7 @@ export const postEditarIncidencia = async (req, res) => {
         values: normalizarValores(req.body),
         ok: false,
         incidenciaId: idIncidencia,
-        pageTitle: `Editar incidencia #${idIncidencia}`
+        pageTitle: 'Editar incidencia'
       });
     } catch (catalogError) {
       console.error('Error al cargar catálogos en edición:', catalogError);
@@ -735,7 +735,7 @@ export const postEditarIncidencia = async (req, res) => {
         values: normalizarValores(req.body),
         ok: false,
         incidenciaId: idIncidencia,
-        pageTitle: `Editar incidencia #${idIncidencia}`
+        pageTitle: 'Editar incidencia'
       });
     } catch (catalogError) {
       console.error('Error adicional al cargar catálogos en edición:', catalogError);
@@ -777,7 +777,7 @@ export const getDiagnosticoIncidencia = async (req, res) => {
         ? req.query.b
         : null;
 
-    const pageTitle = `Diagnóstico · Incidencia #${incidencia.id_incidencia}`;
+    const pageTitle = 'Diagnóstico de incidencia';
 
     const permiteDiagnostico = incidencia.estado !== 'CERRADA';
 
@@ -877,7 +877,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     return res.status(404).send('Incidencia no encontrada');
   }
 
-  const pageTitle = `Diagnóstico · Incidencia #${incidencia.id_incidencia}`;
+  const pageTitle = 'Diagnóstico de incidencia';
   const nombreTecnico = [req.session.user?.nombre, req.session.user?.apellido]
     .filter(Boolean)
     .join(' ');
@@ -1362,7 +1362,7 @@ export const getDiagnosticoPdf = async (req, res) => {
         [
           { label: 'Departamento', value: registro.departamento_nombre || 'No registrado' },
           { label: 'Técnico asignado', value: firma },
-          { label: 'Incidencia', value: `#${registro.id_incidencia}` }
+          { label: 'Referencia de incidencia', value: registro.id_incidencia || 'Sin referencia' }
         ],
         [
           { label: 'Estado', value: registro.estado || 'Sin estado' },
