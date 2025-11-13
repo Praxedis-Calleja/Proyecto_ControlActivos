@@ -258,8 +258,8 @@ export const postNuevoActivo = async (req, res) => {
 
   await pool.query(
     `INSERT INTO activos_fijos
-    (id_categoria_activos, id_area, placa_activo, propietario_nombre_completo, propietario_contacto, marca, modelo, estado, fecha_compra, precio_lista, numero_serie, fecha_garantia, procesador, memoria_ram, almacenamiento)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    (id_categoria_activos, id_area, placa_activo, propietario_nombre_completo, propietario_contacto, marca, modelo, estado, fecha_compra, precio_lista, numero_serie, fecha_garantia)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id_categoria_activos,
       id_area,
@@ -272,10 +272,7 @@ export const postNuevoActivo = async (req, res) => {
       fecha_compra || null,
       precio_lista || null,
       numero_serie || null,
-      fecha_garantia || null,
-      '',
-      '',
-      ''
+      fecha_garantia || null
     ]
   );
 
