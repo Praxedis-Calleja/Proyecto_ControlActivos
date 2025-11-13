@@ -38,7 +38,14 @@
 
       const tokenCsrf = typeof csrfToken === 'string' ? csrfToken : '';
 
-      if (!Array.isArray(incidencias) || incidencias.length === 0) {
+      const incidenciasVisibles = Array.isArray(incidencias)
+        ? incidencias.filter(
+            (incidencia) =>
+              String(incidencia.estado || '').toUpperCase() !== 'CANCELADA'
+          )
+        : [];
+
+      if (incidenciasVisibles.length === 0) {
         if (error) {
           return `
             <div class="incidencias-vacia">
@@ -56,7 +63,7 @@
 
       return `
         <div class="incidencias-grid">
-          ${incidencias
+          ${incidenciasVisibles
             .map((incidencia) => {
               const idIncidencia = incidencia.id_incidencia ?? '';
               const totalDiagnosticos = Number(incidencia.total_diagnosticos) || 0;
@@ -66,6 +73,11 @@
               const estadoNormalizado = String(incidencia.estado || '').toLowerCase();
               const claseEstado = estadoNormalizado
                 ? ` incidencia-card__estado--${escapeHtml(estadoNormalizado)}`
+                : '';
+              const estaCerrada = estadoNormalizado === 'cerrada';
+
+              const atributosAccionDeshabilitada = estaCerrada
+                ? ' aria-disabled="true" tabindex="-1" data-accion-deshabilitada'
                 : '';
 
               const opcionesEstado = Array.isArray(estados)
@@ -155,8 +167,8 @@
                       <p><strong>Diagnósticos registrados:</strong> ${totalDiagnosticos}</p>
                     </div>
                     <div class="incidencia-card__acciones">
-                      <a class="btn-secundario" href="/incidencias/${escapeHtml(idIncidencia)}/editar">Editar datos</a>
-                      <a class="btn" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico">Registrar diagnóstico</a>
+                      <a class="btn-secundario" href="/incidencias/${escapeHtml(idIncidencia)}/editar"${atributosAccionDeshabilitada}>Editar datos</a>
+                      <a class="btn" href="/incidencias/${escapeHtml(idIncidencia)}/diagnostico"${atributosAccionDeshabilitada}>Registrar diagnóstico</a>
                     </div>
                   </footer>
                 </article>
