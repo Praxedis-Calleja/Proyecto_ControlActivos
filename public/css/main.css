@@ -678,12 +678,33 @@ textarea {
 
 .incidencias-grid,
 .bajas-grid,
-.diagnostico-grid,
-.reportes-diagnostico__grid {
+.diagnostico-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.35rem;
   margin-top: 1.5rem;
+}
+
+.reportes-diagnostico__grid {
+  display: flex;
+  gap: 1.35rem;
+  margin-top: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scroll-snap-type: x proximity;
+}
+
+.reportes-diagnostico__grid::-webkit-scrollbar {
+  height: 0.5rem;
+}
+
+.reportes-diagnostico__grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reportes-diagnostico__grid::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+  border-radius: 999px;
 }
 
 .reportes-diagnostico {

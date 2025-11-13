@@ -56,7 +56,8 @@
                 : '';
 
               const incidencia = baja.incidencia
-                ? `<p><strong>Incidencia relacionada:</strong> <a href="/incidencias/${escapeAttr(baja.incidencia.id)}/diagnostico" class="baja-card__link">#${escapeHtml(baja.incidencia.id)}</a></p>
+                ? `<p><strong>Incidencia relacionada:</strong> <a href="/incidencias/${escapeAttr(baja.incidencia.id)}/diagnostico" class="baja-card__link">Ver incidencia</a></p>
+                    <p><strong>Referencia de incidencia:</strong> ${escapeHtml(baja.incidencia.id)}</p>
                     <p><strong>Descripción:</strong> ${escapeHtml(baja.incidencia.descripcion)}</p>`
                 : '<p><strong>Incidencia relacionada:</strong> No disponible</p>';
 

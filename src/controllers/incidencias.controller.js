@@ -318,6 +318,23 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
        CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta
      FROM incidencias i
      INNER JOIN activos_fijos a ON a.id_activo = i.id_activo
+     LEFT JOIN (
+       SELECT
+         ultimos.id_incidencia,
+         ultimos.procesador,
+         ultimos.memoria_ram,
+         ultimos.almacenamiento
+       FROM (
+         SELECT
+           d.id_incidencia,
+           d.procesador,
+           d.memoria_ram,
+           d.almacenamiento,
+           ROW_NUMBER() OVER (PARTITION BY d.id_incidencia ORDER BY d.creado_en DESC, d.id_diagnostico DESC) AS rn
+         FROM diagnostico d
+       ) ultimos
+       WHERE ultimos.rn = 1
+     ) ud ON ud.id_incidencia = i.id_incidencia
      LEFT JOIN usuarios u ON u.id_usuario = i.id_usuario
      WHERE i.id_incidencia = ?
      LIMIT 1`,
@@ -665,7 +682,7 @@ export const getEditarIncidencia = async (req, res) => {
       values: normalizarValores(incidencia),
       ok: req.query.ok === '1',
       incidenciaId: idIncidencia,
-      pageTitle: `Editar incidencia #${idIncidencia}`
+      pageTitle: 'Editar incidencia'
     });
   } catch (error) {
     console.error('Error al cargar incidencia para edición:', error);
@@ -711,7 +728,7 @@ export const postEditarIncidencia = async (req, res) => {
         values: normalizarValores(req.body),
         ok: false,
         incidenciaId: idIncidencia,
-        pageTitle: `Editar incidencia #${idIncidencia}`
+        pageTitle: 'Editar incidencia'
       });
     } catch (catalogError) {
       console.error('Error al cargar catálogos en edición:', catalogError);
@@ -771,7 +788,7 @@ export const postEditarIncidencia = async (req, res) => {
         values: normalizarValores(req.body),
         ok: false,
         incidenciaId: idIncidencia,
-        pageTitle: `Editar incidencia #${idIncidencia}`
+        pageTitle: 'Editar incidencia'
       });
     } catch (catalogError) {
       console.error('Error adicional al cargar catálogos en edición:', catalogError);
@@ -813,7 +830,7 @@ export const getDiagnosticoIncidencia = async (req, res) => {
         ? req.query.b
         : null;
 
-    const pageTitle = `Diagnóstico · Incidencia #${incidencia.id_incidencia}`;
+    const pageTitle = 'Diagnóstico de incidencia';
 
     const permiteDiagnostico = incidencia.estado !== 'CERRADA';
 
@@ -913,7 +930,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     return res.status(404).send('Incidencia no encontrada');
   }
 
-  const pageTitle = `Diagnóstico · Incidencia #${incidencia.id_incidencia}`;
+  const pageTitle = 'Diagnóstico de incidencia';
   const nombreTecnico = [req.session.user?.nombre, req.session.user?.apellido]
     .filter(Boolean)
     .join(' ');
@@ -1051,11 +1068,10 @@ export const postDiagnosticoIncidencia = async (req, res) => {
       const fechaBaja = fechaNormalizada || formatearFecha(new Date()) || null;
       const [resultadoBaja] = await connection.query(
         `INSERT INTO reportesbaja (
-           Folio,
            ID_Activo,
            Fecha_Baja,
            id_diagnostico
-         ) VALUES (?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?)`,
         [
           null,
           incidencia.id_activo,
@@ -1073,7 +1089,6 @@ export const postDiagnosticoIncidencia = async (req, res) => {
           ['BAJA', incidencia.id_activo]
         );
       }
-
       reporteBajaUrl = `/incidencias/${idIncidencia}/diagnostico/baja/pdf/${diagnosticoId}`;
     }
 
@@ -1400,7 +1415,7 @@ export const getDiagnosticoPdf = async (req, res) => {
         [
           { label: 'Departamento', value: registro.departamento_nombre || 'No registrado' },
           { label: 'Técnico asignado', value: firma },
-          { label: 'Incidencia', value: `#${registro.id_incidencia}` }
+          { label: 'Referencia de incidencia', value: registro.id_incidencia || 'Sin referencia' }
         ],
         [
           { label: 'Estado', value: registro.estado || 'Sin estado' },
