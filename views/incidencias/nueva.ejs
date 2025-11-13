@@ -29,7 +29,7 @@
                 .map((activo) => {
                   const texto = [activo.marca, activo.modelo, activo.numero_serie]
                     .filter(Boolean)
-                    .join(' · ') || `Activo #${activo.id_activo}`;
+                    .join(' · ') || 'Activo sin referencia';
                   const seleccionado = String((values && values.id_activo) || '') === String(activo.id_activo);
                   return `<option value="${activo.id_activo}" ${seleccionado ? 'selected' : ''}>${texto}</option>`;
                 })
@@ -47,7 +47,7 @@
                   const seleccionado = String((values && values.id_usuario) || '') === String(usuario.id_usuario);
                   const rol = usuario.rol ? formatearEtiqueta(usuario.rol) : '';
                   const etiquetaRol = rol ? ` (${rol})` : '';
-                  return `<option value="${usuario.id_usuario}" ${seleccionado ? 'selected' : ''}>${nombre || `Usuario #${usuario.id_usuario}`}${etiquetaRol}</option>`;
+                  return `<option value="${usuario.id_usuario}" ${seleccionado ? 'selected' : ''}>${nombre || 'Usuario sin referencia'}${etiquetaRol}</option>`;
                 })
                 .join('')}
             </select>

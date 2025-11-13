@@ -69,9 +69,9 @@
                 <article class="reporte-diagnostico-card">
                   <header class="reporte-diagnostico-card__header">
                     <div>
-                      <h3>Diagnóstico #${escapeHtml(reporte.id)}</h3>
+                      <h3>Diagnóstico</h3>
                       <p class="reporte-diagnostico-card__subtitulo">
-                        Incidencia #${escapeHtml(reporte.incidenciaId)} · ${escapeHtml(reporte.fechaDiagnostico)}
+                        Incidencia · ${escapeHtml(reporte.fechaDiagnostico)}
                       </p>
                     </div>
                     <div class="reporte-diagnostico-card__acciones">
@@ -104,6 +104,8 @@
                     <div class="reporte-diagnostico-card__bloque">
                       <h4>Detalle del diagnóstico</h4>
                       <p><strong>Registrado:</strong> ${escapeHtml(reporte.creadoEn)}</p>
+                      <p><strong>Referencia de diagnóstico:</strong> ${escapeHtml(reporte.id)}</p>
+                      <p><strong>Referencia de incidencia:</strong> ${escapeHtml(reporte.incidenciaId)}</p>
                       <p><strong>Técnico:</strong> ${escapeHtml(reporte.tecnico)}</p>
                       <p><strong>Estado de la incidencia:</strong> ${escapeHtml(reporte.incidencia.estado)}</p>
                       <p><strong>Prioridad:</strong> ${escapeHtml(reporte.incidencia.prioridad)}</p>

@@ -1,6 +1,6 @@
 <%- include('../layouts/base', { body: `
   <section class="diagnostico-incidencia">
-    <h2>Diagnóstico de la incidencia #${incidencia.id_incidencia}</h2>
+    <h2>Diagnóstico de la incidencia</h2>
     <p class="section-description">
       Completa la evaluación técnica del activo, documenta el trabajo realizado y genera los reportes necesarios.
     </p>
@@ -256,8 +256,9 @@
                     return `
                       <li class="diagnosticos-reporte-item">
                         <div>
-                          <strong>Diagnóstico #${registro.id_diagnostico}</strong>
+                          <strong>Diagnóstico</strong>
                           <span> · ${escapeHtml(registro.fecha_diagnostico_fmt)}</span>
+                          <small class="diagnosticos-reporte-item__detalle">Referencia: ${escapeHtml(registro.id_diagnostico)}</small>
                           ${etiquetaBaja}
                         </div>
                         <div class="acciones">
