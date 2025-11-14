@@ -1621,6 +1621,7 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          cat.nombre AS categoria_nombre,
          b.ID_Baja AS baja_id,
          b.Fecha_Baja AS baja_fecha,
+         b.Fecha_Reimpresion AS baja_fecha_reimpresion,
          CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico
        FROM diagnostico d
@@ -1891,6 +1892,11 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
         ]
       ],
       headerColumns
+    );
+
+    drawKeyValueTable(
+      [[{ label: 'Fecha de reimpresión', value: fechaSegura(registro.baja_fecha_reimpresion, 'Sin fecha registrada') }]],
+      [pageWidth]
     );
 
     const tiempoUsoTexto = (() => {
