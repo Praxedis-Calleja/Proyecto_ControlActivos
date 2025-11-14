@@ -385,7 +385,44 @@ const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
 };
 
 export const getListadoIncidencias = async (req, res) => {
+  const estadoActualizado = req.query.estadoOk === '1';
+  const estadoErrorActualizacion = req.query.estadoError === '1';
+  const estadoSolicitado =
+    typeof req.query.estado === 'string' ? req.query.estado.trim().toUpperCase() : '';
+  const textoBusqueda = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const soloActuales = req.query.hoy === '1';
+
+  const estadosPermitidos = new Set(['ABIERTA', 'EN_PROCESO', 'CERRADA']);
+
+  const filtros = {
+    estado: estadosPermitidos.has(estadoSolicitado) ? estadoSolicitado : '',
+    busqueda: textoBusqueda,
+    hoy: soloActuales
+  };
+
   try {
+    const condiciones = ["i.estado <> 'CANCELADA'"];
+    const parametros = [];
+
+    if (filtros.estado) {
+      condiciones.push('i.estado = ?');
+      parametros.push(filtros.estado);
+    }
+
+    if (filtros.busqueda) {
+      const termino = `%${filtros.busqueda.replace(/\s+/g, ' ').trim()}%`;
+      condiciones.push(
+        "(CONCAT_WS(' ', a.marca, a.modelo) LIKE ? OR CONCAT_WS(' ', u.nombre, u.apellido) LIKE ? OR i.descripcion_problema LIKE ?)"
+      );
+      parametros.push(termino, termino, termino);
+    }
+
+    if (filtros.hoy) {
+      condiciones.push('DATE(i.creada_en) = CURDATE()');
+    }
+
+    const whereSql = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+
     const [rows] = await pool.query(
       `SELECT
          i.id_incidencia,
@@ -411,7 +448,9 @@ export const getListadoIncidencias = async (req, res) => {
          FROM diagnostico
          GROUP BY id_incidencia
        ) h ON h.id_incidencia = i.id_incidencia
-       ORDER BY i.creada_en DESC`
+       ${whereSql}
+       ORDER BY i.creada_en DESC`,
+      parametros
     );
 
     const incidencias = rows.map((incidencia) => ({
@@ -431,7 +470,10 @@ export const getListadoIncidencias = async (req, res) => {
       incidencias,
       error: null,
       pageTitle: 'Incidencias',
-      estados: ESTADOS
+      estados: ESTADOS,
+      estadoActualizado,
+      estadoErrorActualizacion,
+      filtros
     });
   } catch (error) {
     console.error('Error al listar incidencias:', error);
@@ -439,7 +481,10 @@ export const getListadoIncidencias = async (req, res) => {
       incidencias: [],
       error: 'No se pudieron cargar las incidencias registradas. Intenta nuevamente más tarde.',
       pageTitle: 'Incidencias',
-      estados: ESTADOS
+      estados: ESTADOS,
+      estadoActualizado,
+      estadoErrorActualizacion,
+      filtros
     });
   }
 };
@@ -868,7 +913,7 @@ export const postCambiarEstadoIncidencia = async (req, res) => {
     typeof req.body.estado === 'string' ? req.body.estado.trim().toUpperCase() : '';
 
   if (!ESTADOS.includes(estadoSolicitado)) {
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
+    return res.redirect('/incidencias?estadoError=1');
   }
 
   let incidencia;
@@ -899,10 +944,10 @@ export const postCambiarEstadoIncidencia = async (req, res) => {
       [estadoSolicitado, cerradaEn, idIncidencia]
     );
 
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoOk=1`);
+    return res.redirect('/incidencias?estadoOk=1');
   } catch (error) {
     console.error('Error al actualizar estado de incidencia:', error);
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
+    return res.redirect('/incidencias?estadoError=1');
   }
 };
 

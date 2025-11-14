@@ -13,6 +13,8 @@
       </div>
     </header>
 
+    ${estadoActualizado ? '<div class="ok">Estado de la incidencia actualizado correctamente.</div>' : ''}
+    ${estadoErrorActualizacion ? '<div class="alert">No se pudo actualizar el estado de la incidencia. Inténtalo nuevamente.</div>' : ''}
     ${error ? `<div class="alert">${error}</div>` : ''}
 
     ${(() => {
@@ -38,6 +40,56 @@
 
       const tokenCsrf = typeof csrfToken === 'string' ? csrfToken : '';
 
+      const filtrosDatos = {
+        estado: filtros && typeof filtros.estado === 'string' ? filtros.estado : '',
+        busqueda: filtros && typeof filtros.busqueda === 'string' ? filtros.busqueda : '',
+        hoy: Boolean(filtros && filtros.hoy)
+      };
+
+      const filtrosAplicados = Boolean(
+        filtrosDatos.estado || filtrosDatos.busqueda || filtrosDatos.hoy
+      );
+
+      const opcionesFiltroEstado = ['', 'ABIERTA', 'EN_PROCESO', 'CERRADA']
+        .map((valor) => {
+          const selected = filtrosDatos.estado === valor ? ' selected' : '';
+          const etiqueta = valor ? formatearEtiqueta(valor) : 'Todas';
+          return `<option value="${escapeAttr(valor)}"${selected}>${escapeHtml(etiqueta)}</option>`;
+        })
+        .join('');
+
+      const formularioFiltros = `
+        <form class="incidencias-filtros" method="get">
+          <div class="incidencias-filtros__grupo">
+            <label for="filtro-estado">Estado</label>
+            <select id="filtro-estado" name="estado">
+              ${opcionesFiltroEstado}
+            </select>
+          </div>
+          <div class="incidencias-filtros__grupo incidencias-filtros__grupo--busqueda">
+            <label for="filtro-busqueda">Buscar</label>
+            <input
+              type="search"
+              id="filtro-busqueda"
+              name="q"
+              value="${escapeAttr(filtrosDatos.busqueda)}"
+              placeholder="Buscar por activo o descripción"
+              autocomplete="off"
+            >
+          </div>
+          <div class="incidencias-filtros__grupo incidencias-filtros__grupo--checkbox">
+            <label class="incidencias-filtros__checkbox">
+              <input type="checkbox" name="hoy" value="1"${filtrosDatos.hoy ? ' checked' : ''}>
+              <span>Solo incidencias de hoy</span>
+            </label>
+          </div>
+          <div class="incidencias-filtros__acciones">
+            <button type="submit" class="btn">Aplicar filtros</button>
+            <a class="btn-secundario" href="/incidencias">Limpiar</a>
+          </div>
+        </form>
+      `;
+
       const incidenciasVisibles = Array.isArray(incidencias)
         ? incidencias.filter(
             (incidencia) =>
@@ -48,12 +100,23 @@
       if (incidenciasVisibles.length === 0) {
         if (error) {
           return `
+            ${formularioFiltros}
             <div class="incidencias-vacia">
               <p>No pudimos cargar la lista de incidencias en este momento.</p>
             </div>
           `;
         }
+        if (filtrosAplicados) {
+          return `
+            ${formularioFiltros}
+            <div class="incidencias-vacia">
+              <p>No se encontraron incidencias con los filtros seleccionados.</p>
+              <a class="btn" href="/incidencias">Limpiar filtros</a>
+            </div>
+          `;
+        }
         return `
+          ${formularioFiltros}
           <div class="incidencias-vacia">
             <p>Aún no hay incidencias registradas.</p>
             <a class="btn" href="/incidencias/nueva">Registrar la primera incidencia</a>
@@ -62,6 +125,7 @@
       }
 
       return `
+        ${formularioFiltros}
         <div class="incidencias-grid">
           ${incidenciasVisibles
             .map((incidencia) => {
