@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 15-11-2025 a las 00:06:56
+-- Tiempo de generación: 15-11-2025 a las 00:44:16
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -59,14 +59,6 @@ CREATE TABLE `areas` (
   `id_departamento` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `areas`
---
-
-INSERT INTO `areas` (`id_area`, `nombre_area`, `ubicacion`, `id_departamento`) VALUES
-(1, 'Recepción Grupos', 'Módulo 5', 2),
-(2, 'Sistemas', 'Módulo 6', 1);
-
 -- --------------------------------------------------------
 
 --
@@ -78,17 +70,6 @@ CREATE TABLE `categorias_activos` (
   `nombre` varchar(120) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `categorias_activos`
---
-
-INSERT INTO `categorias_activos` (`id_categoria_activos`, `nombre`) VALUES
-(1, 'CPU'),
-(2, 'Apple TV'),
-(3, 'Monitor'),
-(4, 'Laptop'),
-(5, 'Escanner');
-
 -- --------------------------------------------------------
 
 --
@@ -99,16 +80,6 @@ CREATE TABLE `departamentos` (
   `id_departamento` int(11) NOT NULL,
   `nombre_departamento` varchar(120) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `departamentos`
---
-
-INSERT INTO `departamentos` (`id_departamento`, `nombre_departamento`) VALUES
-(1, 'Tecnologia'),
-(2, 'Recepcion'),
-(3, 'Seguridad'),
-(4, 'Mantenimiento');
 
 -- --------------------------------------------------------
 
@@ -148,7 +119,10 @@ CREATE TABLE `incidencias` (
   `id_usuario` int(11) NOT NULL,
   `id_activo` int(11) NOT NULL,
   `creada_en` timestamp NOT NULL DEFAULT current_timestamp(),
-  `cerrada_en` timestamp NULL DEFAULT NULL
+  `cerrada_en` timestamp NULL DEFAULT NULL,
+  `nombre_contacto_externo` varchar(120) DEFAULT NULL,
+  `tipo_contacto_externo` varchar(50) DEFAULT NULL,
+  `datos_contacto_externo` varchar(120) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -177,14 +151,6 @@ CREATE TABLE `sessions` (
   `data` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
---
--- Volcado de datos para la tabla `sessions`
---
-
-INSERT INTO `sessions` (`session_id`, `expires`, `data`) VALUES
-('AnG57XYjhnUgaZCgfE8CZz1tTlmLk8DC', 1763167541, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-15T00:43:10.440Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"QdQPOYkZ87m4QfqqFOLv7qkh\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}'),
-('b7AcsgfslVmAg76HzxzlCmX2eImme6E0', 1763165581, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-14T22:33:21.491Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"s6huMQUGBTP5Kyc0i1NRESQC\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}');
-
 -- --------------------------------------------------------
 
 --
@@ -200,15 +166,6 @@ CREATE TABLE `usuarios` (
   `contrasena` varchar(255) NOT NULL,
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `usuarios`
---
-
-INSERT INTO `usuarios` (`id_usuario`, `nombre`, `apellido`, `correo`, `rol`, `contrasena`, `creado_en`) VALUES
-(1, 'Tech', 'Soporte', 'tech@xcaret.com', 'TECNICO', '1234', '2025-10-20 05:34:04'),
-(2, 'Admin', 'Sistema', 'admin@hotelarte.mx', 'Administrador', 'Admin1234*', '2025-10-26 00:29:55'),
-(4, 'Eider', 'mojon', 'alex@gmail.com', 'HUESPED', '1234', '2025-11-01 04:38:42');
 
 --
 -- Índices para tablas volcadas
@@ -289,49 +246,49 @@ ALTER TABLE `usuarios`
 -- AUTO_INCREMENT de la tabla `activos_fijos`
 --
 ALTER TABLE `activos_fijos`
-  MODIFY `id_activo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_activo` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `areas`
 --
 ALTER TABLE `areas`
-  MODIFY `id_area` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_area` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `categorias_activos`
 --
 ALTER TABLE `categorias_activos`
-  MODIFY `id_categoria_activos` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id_categoria_activos` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `departamentos`
 --
 ALTER TABLE `departamentos`
-  MODIFY `id_departamento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_departamento` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `diagnostico`
 --
 ALTER TABLE `diagnostico`
-  MODIFY `id_diagnostico` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_diagnostico` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `incidencias`
 --
 ALTER TABLE `incidencias`
-  MODIFY `id_incidencia` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_incidencia` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `reportesbaja`
 --
 ALTER TABLE `reportesbaja`
-  MODIFY `ID_Baja` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `ID_Baja` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Restricciones para tablas volcadas
