@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 11-11-2025 a las 02:43:43
+-- Tiempo de generación: 15-11-2025 a las 00:06:56
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -43,19 +43,8 @@ CREATE TABLE `activos_fijos` (
   `placa_activo` text NOT NULL,
   `propietario_nombre_completo` text NOT NULL,
   `propietario_contacto` text NOT NULL,
-  `fecha_garantia` datetime NOT NULL DEFAULT current_timestamp(),
-  `procesador` text NOT NULL,
-  `memoria_ram` text NOT NULL,
-  `almacenamiento` text NOT NULL
+  `fecha_garantia` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `activos_fijos`
---
-
-INSERT INTO `activos_fijos` (`id_activo`, `marca`, `modelo`, `id_usuario`, `id_area`, `id_categoria_activos`, `estado`, `precio_lista`, `fecha_compra`, `numero_serie`, `creado_en`, `actualizado_en`, `placa_activo`, `propietario_nombre_completo`, `propietario_contacto`, `fecha_garantia`, `procesador`, `memoria_ram`, `almacenamiento`) VALUES
-(2, 'Lenovo', '34234', NULL, 2, 1, '', 2131231.44, '2025-10-05', '342', '2025-11-01 04:27:40', NULL, '0', '0', '', '2025-11-01 22:36:06', '', '', ''),
-(3, 'Lenovo', 'WWWF221', NULL, 1, 3, '', 3445.00, '2025-11-05', '4534', '2025-11-05 17:00:25', '2025-11-05 17:01:01', '0', '0', 'Teams', '2025-11-05 11:00:25', '', '', '');
 
 -- --------------------------------------------------------
 
@@ -143,15 +132,6 @@ CREATE TABLE `diagnostico` (
   `evidenciaURL` varchar(150) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `diagnostico`
---
-
-INSERT INTO `diagnostico` (`id_diagnostico`, `id_activo`, `id_incidencia`, `id_usuario_tecnico`, `diagnostico`, `fecha_diagnostico`, `fecha_ingreso`, `creado_en`, `tiempo_uso`, `procesador`, `almacenamiento`, `memoria_ram`, `evidenciaURL`) VALUES
-(1, 2, 1, 2, 'erewrewerewrewrew', '2025-11-19', '2025-11-04', '2025-11-04 18:34:08', '', '', '', '', ''),
-(5, 3, 2, 2, 'fdfgfdgfdfddsfsd', '2025-11-06', '2025-11-05', '2025-11-06 05:03:21', '', '', '', '', ''),
-(6, 3, 2, 2, 'fsdfdsfdsfdsfs', '2025-11-06', '2025-11-05', '2025-11-06 05:03:44', '', '', '', '', '');
-
 -- --------------------------------------------------------
 
 --
@@ -171,14 +151,6 @@ CREATE TABLE `incidencias` (
   `cerrada_en` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `incidencias`
---
-
-INSERT INTO `incidencias` (`id_incidencia`, `descripcion_problema`, `estado`, `tipo_incidencia`, `origen_incidencia`, `prioridad`, `id_usuario`, `id_activo`, `creada_en`, `cerrada_en`) VALUES
-(1, 'sdtrfdsfddsf', 'ABIERTA', 'PREVENTIVO', 'USUARIO', 'MEDIA', 2, 2, '2025-11-03 23:43:46', '0000-00-00 00:00:00'),
-(2, 'de3535353453rew', 'CERRADA', 'OTRO', 'SISTEMA', 'MEDIA', 4, 3, '2025-11-05 17:09:23', '0000-00-00 00:00:00');
-
 -- --------------------------------------------------------
 
 --
@@ -187,19 +159,11 @@ INSERT INTO `incidencias` (`id_incidencia`, `descripcion_problema`, `estado`, `t
 
 CREATE TABLE `reportesbaja` (
   `ID_Baja` int(11) NOT NULL,
-  `Folio` varchar(20) NOT NULL,
   `ID_Activo` int(11) NOT NULL,
   `Fecha_Reimpresion` date DEFAULT NULL,
   `Fecha_Baja` date NOT NULL DEFAULT curdate(),
   `id_diagnostico` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `reportesbaja`
---
-
-INSERT INTO `reportesbaja` (`ID_Baja`, `Folio`, `ID_Activo`, `Fecha_Reimpresion`, `Fecha_Baja`, `id_diagnostico`) VALUES
-(4, 'BAJ-20251105-000004', 3, '2025-11-06', '2025-11-05', NULL);
 
 -- --------------------------------------------------------
 
@@ -218,7 +182,8 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`session_id`, `expires`, `data`) VALUES
-('ygwN0hfKbUnH6nCJpFGRYzXS0oaIT6ib', 1762832564, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-11T02:04:53.483Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"bmnpQjDuGg0CCSVzqARt9GtH\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}');
+('AnG57XYjhnUgaZCgfE8CZz1tTlmLk8DC', 1763167541, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-15T00:43:10.440Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"QdQPOYkZ87m4QfqqFOLv7qkh\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}'),
+('b7AcsgfslVmAg76HzxzlCmX2eImme6E0', 1763165581, '{\"cookie\":{\"originalMaxAge\":7200000,\"expires\":\"2025-11-14T22:33:21.491Z\",\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"csrfSecret\":\"s6huMQUGBTP5Kyc0i1NRESQC\",\"user\":{\"id_usuario\":2,\"nombre\":\"Admin\",\"apellido\":\"Sistema\",\"correo\":\"admin@hotelarte.mx\",\"rol\":\"Administrador\"}}');
 
 -- --------------------------------------------------------
 
@@ -324,7 +289,7 @@ ALTER TABLE `usuarios`
 -- AUTO_INCREMENT de la tabla `activos_fijos`
 --
 ALTER TABLE `activos_fijos`
-  MODIFY `id_activo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_activo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `areas`
@@ -348,7 +313,7 @@ ALTER TABLE `departamentos`
 -- AUTO_INCREMENT de la tabla `diagnostico`
 --
 ALTER TABLE `diagnostico`
-  MODIFY `id_diagnostico` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id_diagnostico` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `incidencias`
@@ -360,7 +325,7 @@ ALTER TABLE `incidencias`
 -- AUTO_INCREMENT de la tabla `reportesbaja`
 --
 ALTER TABLE `reportesbaja`
-  MODIFY `ID_Baja` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `ID_Baja` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
