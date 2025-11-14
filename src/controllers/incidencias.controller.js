@@ -385,6 +385,9 @@ const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
 };
 
 export const getListadoIncidencias = async (req, res) => {
+  const estadoActualizado = req.query.estadoOk === '1';
+  const estadoErrorActualizacion = req.query.estadoError === '1';
+
   try {
     const [rows] = await pool.query(
       `SELECT
@@ -431,7 +434,9 @@ export const getListadoIncidencias = async (req, res) => {
       incidencias,
       error: null,
       pageTitle: 'Incidencias',
-      estados: ESTADOS
+      estados: ESTADOS,
+      estadoActualizado,
+      estadoErrorActualizacion
     });
   } catch (error) {
     console.error('Error al listar incidencias:', error);
@@ -439,7 +444,9 @@ export const getListadoIncidencias = async (req, res) => {
       incidencias: [],
       error: 'No se pudieron cargar las incidencias registradas. Intenta nuevamente más tarde.',
       pageTitle: 'Incidencias',
-      estados: ESTADOS
+      estados: ESTADOS,
+      estadoActualizado,
+      estadoErrorActualizacion
     });
   }
 };
@@ -868,7 +875,7 @@ export const postCambiarEstadoIncidencia = async (req, res) => {
     typeof req.body.estado === 'string' ? req.body.estado.trim().toUpperCase() : '';
 
   if (!ESTADOS.includes(estadoSolicitado)) {
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
+    return res.redirect('/incidencias?estadoError=1');
   }
 
   let incidencia;
@@ -899,10 +906,10 @@ export const postCambiarEstadoIncidencia = async (req, res) => {
       [estadoSolicitado, cerradaEn, idIncidencia]
     );
 
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoOk=1`);
+    return res.redirect('/incidencias?estadoOk=1');
   } catch (error) {
     console.error('Error al actualizar estado de incidencia:', error);
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
+    return res.redirect('/incidencias?estadoError=1');
   }
 };
 

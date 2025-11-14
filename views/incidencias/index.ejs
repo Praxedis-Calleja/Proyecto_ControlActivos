@@ -13,6 +13,8 @@
       </div>
     </header>
 
+    ${estadoActualizado ? '<div class="ok">Estado de la incidencia actualizado correctamente.</div>' : ''}
+    ${estadoErrorActualizacion ? '<div class="alert">No se pudo actualizar el estado de la incidencia. Inténtalo nuevamente.</div>' : ''}
     ${error ? `<div class="alert">${error}</div>` : ''}
 
     ${(() => {
