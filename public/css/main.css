@@ -974,9 +974,14 @@ textarea {
 .reporte-diagnostico-card__header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: stretch;
+  gap: 1.5rem;
   flex-wrap: wrap;
+}
+
+.reporte-diagnostico-card__header > div:first-child {
+  flex: 1 1 220px;
+  min-width: 220px;
 }
 
 .reporte-diagnostico-card__subtitulo {
@@ -986,15 +991,20 @@ textarea {
 }
 
 .reporte-diagnostico-card__acciones {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+  margin-left: auto;
+  width: min(100%, 420px);
 }
 
 .reporte-diagnostico-card__acciones .btn,
 .reporte-diagnostico-card__acciones .btn-secundario {
   white-space: nowrap;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .reporte-diagnostico-card__contenido {
