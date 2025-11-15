@@ -54,6 +54,11 @@
       const multilinea = (texto = '') =>
         escapeHtml(texto).replace(/\r?\n/g, '<br>');
 
+      const contactoExterno = incidencia && incidencia.contacto_externo ? incidencia.contacto_externo : {};
+      const mostrarContactoExterno = Boolean(
+        incidencia && incidencia.usa_contacto_externo && contactoExterno && contactoExterno.completo
+      );
+
       const opcionesEstado = Array.isArray(estados)
         ? estados
             .map((estado) => {
@@ -84,6 +89,17 @@
               <dt>Reportada por</dt>
               <dd>${escapeHtml(incidencia.nombre_reporta || 'No registrado')}</dd>
             </div>
+            ${mostrarContactoExterno
+              ? `
+            <div>
+              <dt>Tipo de contacto</dt>
+              <dd>${escapeHtml(contactoExterno.tipo || 'No especificado')}</dd>
+            </div>
+            <div>
+              <dt>Datos de contacto</dt>
+              <dd>${escapeHtml(contactoExterno.datos || 'Sin datos registrados')}</dd>
+            </div>`
+              : ''}
             <div>
               <dt>Estado</dt>
               <dd>${escapeHtml(incidencia.estado || 'Sin estado')}</dd>

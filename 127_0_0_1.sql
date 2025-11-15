@@ -169,8 +169,11 @@ CREATE TABLE `incidencias` (
   `tipo_incidencia` enum('CORRECTIVO','PREVENTIVO','INSTALACION','OTRO') NOT NULL DEFAULT 'CORRECTIVO',
   `origen_incidencia` enum('USUARIO','SISTEMA','MANTENIMIENTO','OTRO') NOT NULL DEFAULT 'USUARIO',
   `prioridad` enum('BAJA','MEDIA','ALTA','CRITICA') NOT NULL DEFAULT 'MEDIA',
-  `id_usuario` int(11) NOT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
   `id_activo` int(11) NOT NULL,
+  `nombre_contacto_externo` varchar(150) DEFAULT NULL,
+  `tipo_contacto_externo` varchar(50) DEFAULT NULL,
+  `datos_contacto_externo` varchar(150) DEFAULT NULL,
   `creada_en` timestamp NOT NULL DEFAULT current_timestamp(),
   `cerrada_en` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -179,9 +182,9 @@ CREATE TABLE `incidencias` (
 -- Volcado de datos para la tabla `incidencias`
 --
 
-INSERT INTO `incidencias` (`id_incidencia`, `descripcion_problema`, `estado`, `tipo_incidencia`, `origen_incidencia`, `prioridad`, `id_usuario`, `id_activo`, `creada_en`, `cerrada_en`) VALUES
-(1, 'sdtrfdsfddsf', 'ABIERTA', 'PREVENTIVO', 'USUARIO', 'MEDIA', 2, 2, '2025-11-03 23:43:46', '0000-00-00 00:00:00'),
-(2, 'de3535353453rew', 'CERRADA', 'OTRO', 'SISTEMA', 'MEDIA', 4, 3, '2025-11-05 17:09:23', '0000-00-00 00:00:00');
+INSERT INTO `incidencias` (`id_incidencia`, `descripcion_problema`, `estado`, `tipo_incidencia`, `origen_incidencia`, `prioridad`, `id_usuario`, `id_activo`, `nombre_contacto_externo`, `tipo_contacto_externo`, `datos_contacto_externo`, `creada_en`, `cerrada_en`) VALUES
+(1, 'sdtrfdsfddsf', 'ABIERTA', 'PREVENTIVO', 'USUARIO', 'MEDIA', 2, 2, NULL, NULL, NULL, '2025-11-03 23:43:46', '0000-00-00 00:00:00'),
+(2, 'de3535353453rew', 'CERRADA', 'OTRO', 'SISTEMA', 'MEDIA', 4, 3, NULL, NULL, NULL, '2025-11-05 17:09:23', '0000-00-00 00:00:00');
 
 -- --------------------------------------------------------
 

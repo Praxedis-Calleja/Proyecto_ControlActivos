@@ -12,12 +12,35 @@
       : ''}
 
     ${(() => {
+      const escapeHtml = (texto = '') =>
+        String(texto)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+      const escapeAttr = (texto = '') => escapeHtml(texto);
+
       const formatearEtiqueta = (valor) =>
         String(valor)
           .toLowerCase()
           .split('_')
           .map((segmento) => segmento.charAt(0).toUpperCase() + segmento.slice(1))
           .join(' ');
+
+      const hayUsuarios = Array.isArray(usuarios) && usuarios.length > 0;
+      const contactoCompleto = Boolean(
+        values &&
+        values.nombre_contacto_externo &&
+        values.tipo_contacto_externo &&
+        values.datos_contacto_externo
+      );
+      const selectRequired = hayUsuarios && !contactoCompleto ? ' required' : '';
+      const selectDisabled = hayUsuarios ? '' : ' disabled';
+      const mensajeUsuarios = hayUsuarios
+        ? '<p class="campo-ayuda">Selecciona un usuario registrado o deja el campo vacío y completa el contacto externo.</p>'
+        : '<p class="campo-ayuda campo-ayuda--alerta">No hay usuarios registrados. Completa la sección de contacto externo para identificar quién reporta la incidencia.</p>';
 
       return `
         <form method="post" action="/incidencias/${incidenciaId}/editar" class="form-incidencia">
@@ -39,7 +62,7 @@
 
           <div class="campo">
             <label for="id_usuario">Usuario que reporta</label>
-            <select name="id_usuario" id="id_usuario" required>
+            <select name="id_usuario" id="id_usuario"${selectRequired}${selectDisabled}>
               <option value="">Selecciona quien reporta</option>
               ${(usuarios || [])
                 .map((usuario) => {
@@ -51,7 +74,49 @@
                 })
                 .join('')}
             </select>
+            ${mensajeUsuarios}
           </div>
+
+          <fieldset class="form-incidencia__contacto">
+            <legend>Contacto externo</legend>
+            <p class="form-incidencia__contacto-nota">
+              ${hayUsuarios
+                ? 'Completa esta sección solo si la persona que reporta no está registrada.'
+                : 'Captura estos datos para identificar a la persona que reporta la incidencia.'}
+            </p>
+            <div class="form-incidencia__contacto-grid">
+              <div class="campo">
+                <label for="nombre_contacto_externo">Nombre completo</label>
+                <input
+                  id="nombre_contacto_externo"
+                  name="nombre_contacto_externo"
+                  value="${escapeAttr((values && values.nombre_contacto_externo) || '')}"
+                  placeholder="Nombre de la persona que reporta"
+                  autocomplete="name"
+                >
+              </div>
+              <div class="campo">
+                <label for="tipo_contacto_externo">Tipo de contacto</label>
+                <input
+                  id="tipo_contacto_externo"
+                  name="tipo_contacto_externo"
+                  value="${escapeAttr((values && values.tipo_contacto_externo) || '')}"
+                  placeholder="Ej. Teléfono, Correo, Empresa"
+                  autocomplete="off"
+                >
+              </div>
+              <div class="campo">
+                <label for="datos_contacto_externo">Datos de contacto</label>
+                <input
+                  id="datos_contacto_externo"
+                  name="datos_contacto_externo"
+                  value="${escapeAttr((values && values.datos_contacto_externo) || '')}"
+                  placeholder="Ej. 55 0000 0000 / correo@example.com"
+                  autocomplete="off"
+                >
+              </div>
+            </div>
+          </fieldset>
 
           <div class="campo">
             <label for="tipo_incidencia">Tipo de incidencia</label>

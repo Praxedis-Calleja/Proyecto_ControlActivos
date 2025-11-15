@@ -43,6 +43,8 @@ const descomponerTiempoUso = (valor) => {
 
 const prepararBaja = (registro) => {
   const fechaBajaTexto = formatearFecha(registro.fecha_baja) || 'Sin fecha';
+  const fechaReimpresionTexto =
+    formatearFecha(registro.fecha_reimpresion) || 'Sin fecha';
   const fechaDiagnosticoTexto =
     formatearFecha(registro.fecha_diagnostico) || 'Sin fecha';
 
@@ -56,6 +58,7 @@ const prepararBaja = (registro) => {
   return {
     id: registro.id_baja,
     fechaBajaTexto,
+    fechaReimpresionTexto,
     fechaDiagnosticoTexto,
     motivo: detalles.motivo || 'Sin motivo especificado',
     observaciones: detalles.observaciones || 'Sin observaciones',
@@ -93,6 +96,7 @@ export const getBajas = async (req, res) => {
          b.ID_Baja AS id_baja,
          b.ID_Activo AS id_activo,
          b.Fecha_Baja AS fecha_baja,
+         b.Fecha_Reimpresion AS fecha_reimpresion,
          d.id_diagnostico,
          d.fecha_diagnostico,
          d.tiempo_uso,

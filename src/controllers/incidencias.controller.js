@@ -141,7 +141,13 @@ const esquemaDiagnostico = Joi.object({
 
 const esquemaIncidencia = Joi.object({
   id_activo: Joi.number().integer().required(),
-  id_usuario: Joi.number().integer().required(),
+  id_usuario: Joi.alternatives()
+    .try(Joi.number().integer().positive(), Joi.string().trim().allow('', null))
+    .allow(null)
+    .optional(),
+  nombre_contacto_externo: Joi.string().trim().max(150).allow('', null),
+  tipo_contacto_externo: Joi.string().trim().max(100).allow('', null),
+  datos_contacto_externo: Joi.string().trim().max(150).allow('', null),
   descripcion_problema: Joi.string().trim().min(10).required(),
   tipo_incidencia: Joi.string().valid(...TIPOS_INCIDENCIA).required(),
   origen_incidencia: Joi.string().valid(...ORIGENES_INCIDENCIA).required(),
@@ -173,6 +179,51 @@ const toDatetimeLocal = (valor) => {
   return fecha.toISOString().slice(0, 16);
 };
 
+const limpiarTexto = (valor) => {
+  if (valor === undefined || valor === null) return '';
+  return String(valor).trim();
+};
+
+const enteroPositivoONull = (valor) => {
+  const texto = limpiarTexto(valor);
+  if (!texto) return null;
+  const numero = Number(texto);
+  return Number.isInteger(numero) && numero > 0 ? numero : null;
+};
+
+const extraerContactoExterno = (datos = {}) => {
+  const nombre = limpiarTexto(datos.nombre_contacto_externo);
+  const tipo = limpiarTexto(datos.tipo_contacto_externo);
+  const info = limpiarTexto(datos.datos_contacto_externo);
+  const completo = Boolean(nombre && tipo && info);
+  return {
+    nombre,
+    tipo,
+    datos: info,
+    completo
+  };
+};
+
+const obtenerResumenContacto = (registro = {}) => {
+  const idUsuario = enteroPositivoONull(registro.id_usuario);
+  const contacto = extraerContactoExterno(registro);
+  const nombreRegistrado = limpiarTexto(registro.nombre_reporta);
+  const nombre = nombreRegistrado || contacto.nombre;
+  const esExterno = !idUsuario && contacto.completo;
+
+  return {
+    idUsuario,
+    nombre: nombre || '',
+    esExterno,
+    tipo: contacto.tipo,
+    datos: contacto.datos,
+    contacto
+  };
+};
+
+const MENSAJE_CONTACTO_EXTERNO_INCOMPLETO =
+  'Proporciona el nombre, el tipo y los datos de contacto cuando no hay un usuario registrado.';
+
 const normalizarValores = (datos = {}) => {
   const valores = { ...datos };
   let cerrada = valores.cerrada_en ?? '';
@@ -196,9 +247,24 @@ const normalizarValores = (datos = {}) => {
     }
   }
 
+  const contacto = extraerContactoExterno(valores);
+  const idUsuarioTexto = (() => {
+    if (typeof valores.id_usuario === 'string') {
+      return valores.id_usuario.trim();
+    }
+    if (Number.isInteger(valores.id_usuario) || typeof valores.id_usuario === 'number') {
+      return valores.id_usuario ? String(valores.id_usuario) : '';
+    }
+    return '';
+  })();
+
   return {
     ...valores,
-    cerrada_en: cerrada
+    cerrada_en: cerrada,
+    id_usuario: idUsuarioTexto,
+    nombre_contacto_externo: contacto.nombre,
+    tipo_contacto_externo: contacto.tipo,
+    datos_contacto_externo: contacto.datos
   };
 };
 
@@ -308,6 +374,9 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
        i.id_activo,
        i.creada_en,
        i.cerrada_en,
+       i.nombre_contacto_externo,
+       i.tipo_contacto_externo,
+       i.datos_contacto_externo,
        a.marca,
        a.modelo,
        a.numero_serie,
@@ -341,7 +410,26 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
     [idIncidencia]
   );
 
-  return rows[0] || null;
+  const incidencia = rows[0] || null;
+
+  if (!incidencia) {
+    return null;
+  }
+
+  const resumenContacto = obtenerResumenContacto(incidencia);
+
+  return {
+    ...incidencia,
+    id_usuario: resumenContacto.idUsuario,
+    nombre_reporta: resumenContacto.nombre || 'No registrado',
+    contacto_externo: {
+      nombre: resumenContacto.contacto.nombre,
+      tipo: resumenContacto.contacto.tipo,
+      datos: resumenContacto.contacto.datos,
+      completo: resumenContacto.contacto.completo
+    },
+    usa_contacto_externo: resumenContacto.esExterno
+  };
 };
 
 const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
@@ -385,7 +473,48 @@ const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
 };
 
 export const getListadoIncidencias = async (req, res) => {
+  const estadoActualizado = req.query.estadoOk === '1';
+  const estadoErrorActualizacion = req.query.estadoError === '1';
+  const estadoSolicitado =
+    typeof req.query.estado === 'string' ? req.query.estado.trim().toUpperCase() : '';
+  const textoBusqueda = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const soloActuales = req.query.hoy === '1';
+
+  const estadosPermitidos = new Set(['ABIERTA', 'EN_PROCESO', 'CERRADA']);
+
+  const filtros = {
+    estado: estadosPermitidos.has(estadoSolicitado) ? estadoSolicitado : '',
+    busqueda: textoBusqueda,
+    hoy: soloActuales
+  };
+
   try {
+    const condiciones = ["i.estado <> 'CANCELADA'"];
+    const parametros = [];
+
+    if (filtros.estado) {
+      condiciones.push('i.estado = ?');
+      parametros.push(filtros.estado);
+    }
+
+    if (filtros.busqueda) {
+      const termino = `%${filtros.busqueda.replace(/\s+/g, ' ').trim()}%`;
+      condiciones.push(
+        `(CONCAT_WS(' ', a.marca, a.modelo) LIKE ?
+          OR CONCAT_WS(' ', u.nombre, u.apellido) LIKE ?
+          OR i.descripcion_problema LIKE ?
+          OR i.nombre_contacto_externo LIKE ?
+          OR i.datos_contacto_externo LIKE ?)`
+      );
+      parametros.push(termino, termino, termino, termino, termino);
+    }
+
+    if (filtros.hoy) {
+      condiciones.push('DATE(i.creada_en) = CURDATE()');
+    }
+
+    const whereSql = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+
     const [rows] = await pool.query(
       `SELECT
          i.id_incidencia,
@@ -395,6 +524,10 @@ export const getListadoIncidencias = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.creada_en,
+         i.id_usuario,
+         i.nombre_contacto_externo,
+         i.tipo_contacto_externo,
+         i.datos_contacto_externo,
          a.marca,
          a.modelo,
          a.numero_serie,
@@ -411,27 +544,49 @@ export const getListadoIncidencias = async (req, res) => {
          FROM diagnostico
          GROUP BY id_incidencia
        ) h ON h.id_incidencia = i.id_incidencia
-       ORDER BY i.creada_en DESC`
+       ${whereSql}
+       ORDER BY i.creada_en DESC`,
+      parametros
     );
 
-    const incidencias = rows.map((incidencia) => ({
-      ...incidencia,
-      creada_en_fmt: formatearFechaHoraCorta(incidencia.creada_en) || 'Sin fecha',
-      ultimo_diagnostico_fmt: incidencia.ultimo_diagnostico
-        ? formatearFechaHoraCorta(incidencia.ultimo_diagnostico)
-        : '',
-      descripcion_problema: incidencia.descripcion_problema || '',
-      usuario_reporta: incidencia.usuario_reporta || 'No registrado',
-      activo_nombre: incidencia.activo_nombre || 'Activo sin nombre',
-      numero_serie: incidencia.numero_serie || '',
-      placa_activo: incidencia.placa_activo || ''
-    }));
+    const incidencias = rows.map((incidencia) => {
+      const registro = {
+        ...incidencia,
+        nombre_reporta: incidencia.usuario_reporta
+      };
+
+      const resumenContacto = obtenerResumenContacto(registro);
+
+      return {
+        ...incidencia,
+        id_usuario: resumenContacto.idUsuario,
+        creada_en_fmt: formatearFechaHoraCorta(incidencia.creada_en) || 'Sin fecha',
+        ultimo_diagnostico_fmt: incidencia.ultimo_diagnostico
+          ? formatearFechaHoraCorta(incidencia.ultimo_diagnostico)
+          : '',
+        descripcion_problema: incidencia.descripcion_problema || '',
+        usuario_reporta: resumenContacto.nombre || 'No registrado',
+        activo_nombre: incidencia.activo_nombre || 'Activo sin nombre',
+        numero_serie: incidencia.numero_serie || '',
+        placa_activo: incidencia.placa_activo || '',
+        contacto_externo: {
+          nombre: resumenContacto.contacto.nombre,
+          tipo: resumenContacto.contacto.tipo,
+          datos: resumenContacto.contacto.datos,
+          completo: resumenContacto.contacto.completo
+        },
+        usa_contacto_externo: resumenContacto.esExterno
+      };
+    });
 
     return res.render('incidencias/index', {
       incidencias,
       error: null,
       pageTitle: 'Incidencias',
-      estados: ESTADOS
+      estados: ESTADOS,
+      estadoActualizado,
+      estadoErrorActualizacion,
+      filtros
     });
   } catch (error) {
     console.error('Error al listar incidencias:', error);
@@ -439,7 +594,10 @@ export const getListadoIncidencias = async (req, res) => {
       incidencias: [],
       error: 'No se pudieron cargar las incidencias registradas. Intenta nuevamente más tarde.',
       pageTitle: 'Incidencias',
-      estados: ESTADOS
+      estados: ESTADOS,
+      estadoActualizado,
+      estadoErrorActualizacion,
+      filtros
     });
   }
 };
@@ -590,7 +748,6 @@ export const postNuevaIncidencia = async (req, res) => {
 
     const {
       id_activo,
-      id_usuario,
       descripcion_problema,
       tipo_incidencia,
       origen_incidencia,
@@ -598,6 +755,25 @@ export const postNuevaIncidencia = async (req, res) => {
       estado,
       cerrada_en
     } = value;
+
+    const idUsuario = enteroPositivoONull(value.id_usuario);
+    const contacto = extraerContactoExterno(value);
+    const usarContactoExterno = !idUsuario && contacto.completo;
+
+    if (!idUsuario && !usarContactoExterno) {
+      const catalogos = await obtenerCatalogos();
+      return res.status(400).render('incidencias/nueva', {
+        ...catalogos,
+        prioridades: PRIORIDADES,
+        estados: ESTADOS,
+        tiposIncidencia: TIPOS_INCIDENCIA,
+        origenesIncidencia: ORIGENES_INCIDENCIA,
+        errores: [MENSAJE_CONTACTO_EXTERNO_INCOMPLETO],
+        values: normalizarValores(req.body),
+        ok: false,
+        pageTitle: 'Registrar incidencia'
+      });
+    }
 
     await pool.query(
       `INSERT INTO incidencias (
@@ -608,17 +784,23 @@ export const postNuevaIncidencia = async (req, res) => {
         prioridad,
         id_usuario,
         id_activo,
-        cerrada_en
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        cerrada_en,
+        nombre_contacto_externo,
+        tipo_contacto_externo,
+        datos_contacto_externo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         descripcion_problema,
         estado,
         tipo_incidencia,
         origen_incidencia,
         prioridad,
-        id_usuario,
+        idUsuario,
         id_activo,
-        formatearFechaHora(cerrada_en)
+        formatearFechaHora(cerrada_en),
+        usarContactoExterno ? contacto.nombre : null,
+        usarContactoExterno ? contacto.tipo : null,
+        usarContactoExterno ? contacto.datos : null
       ]
     );
 
@@ -738,7 +920,6 @@ export const postEditarIncidencia = async (req, res) => {
 
   const {
     id_activo,
-    id_usuario,
     descripcion_problema,
     tipo_incidencia,
     origen_incidencia,
@@ -746,6 +927,31 @@ export const postEditarIncidencia = async (req, res) => {
     estado,
     cerrada_en
   } = value;
+
+  const idUsuario = enteroPositivoONull(value.id_usuario);
+  const contacto = extraerContactoExterno(value);
+  const usarContactoExterno = !idUsuario && contacto.completo;
+
+  if (!idUsuario && !usarContactoExterno) {
+    try {
+      const catalogos = await obtenerCatalogos();
+      return res.status(400).render('incidencias/editar', {
+        ...catalogos,
+        prioridades: PRIORIDADES,
+        estados: ESTADOS,
+        tiposIncidencia: TIPOS_INCIDENCIA,
+        origenesIncidencia: ORIGENES_INCIDENCIA,
+        errores: [MENSAJE_CONTACTO_EXTERNO_INCOMPLETO],
+        values: normalizarValores(req.body),
+        ok: false,
+        incidenciaId: idIncidencia,
+        pageTitle: 'Editar incidencia'
+      });
+    } catch (catalogError) {
+      console.error('Error al cargar catálogos en edición:', catalogError);
+      return res.status(500).send('Error al validar la incidencia.');
+    }
+  }
 
   try {
     await pool.query(
@@ -757,7 +963,10 @@ export const postEditarIncidencia = async (req, res) => {
               prioridad = ?,
               id_usuario = ?,
               id_activo = ?,
-              cerrada_en = ?
+              cerrada_en = ?,
+              nombre_contacto_externo = ?,
+              tipo_contacto_externo = ?,
+              datos_contacto_externo = ?
         WHERE id_incidencia = ?
         LIMIT 1`,
       [
@@ -766,9 +975,12 @@ export const postEditarIncidencia = async (req, res) => {
         tipo_incidencia,
         origen_incidencia,
         prioridad,
-        id_usuario,
+        idUsuario,
         id_activo,
         formatearFechaHora(cerrada_en),
+        usarContactoExterno ? contacto.nombre : null,
+        usarContactoExterno ? contacto.tipo : null,
+        usarContactoExterno ? contacto.datos : null,
         idIncidencia
       ]
     );
@@ -868,7 +1080,7 @@ export const postCambiarEstadoIncidencia = async (req, res) => {
     typeof req.body.estado === 'string' ? req.body.estado.trim().toUpperCase() : '';
 
   if (!ESTADOS.includes(estadoSolicitado)) {
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
+    return res.redirect('/incidencias?estadoError=1');
   }
 
   let incidencia;
@@ -899,10 +1111,10 @@ export const postCambiarEstadoIncidencia = async (req, res) => {
       [estadoSolicitado, cerradaEn, idIncidencia]
     );
 
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoOk=1`);
+    return res.redirect('/incidencias?estadoOk=1');
   } catch (error) {
     console.error('Error al actualizar estado de incidencia:', error);
-    return res.redirect(`/incidencias/${idIncidencia}/diagnostico?estadoError=1`);
+    return res.redirect('/incidencias?estadoError=1');
   }
 };
 
@@ -1179,7 +1391,15 @@ export const getDiagnosticoPdf = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.estado,
+         i.id_usuario,
+         i.nombre_contacto_externo,
+         i.tipo_contacto_externo,
+         i.datos_contacto_externo,
          i.creada_en AS incidencia_creada_en,
+         i.id_usuario,
+         i.nombre_contacto_externo,
+         i.tipo_contacto_externo,
+         i.datos_contacto_externo,
          a.marca,
          a.modelo,
          a.numero_serie,
@@ -1211,6 +1431,18 @@ export const getDiagnosticoPdf = async (req, res) => {
     if (!registro) {
       return res.status(404).send('El diagnóstico solicitado no existe.');
     }
+
+    const resumenContacto = obtenerResumenContacto(registro);
+
+    registro.id_usuario = resumenContacto.idUsuario;
+    registro.nombre_reporta = resumenContacto.nombre || 'No registrado';
+    registro.contacto_externo = {
+      nombre: resumenContacto.contacto.nombre,
+      tipo: resumenContacto.contacto.tipo,
+      datos: resumenContacto.contacto.datos,
+      completo: resumenContacto.contacto.completo
+    };
+    registro.usa_contacto_externo = resumenContacto.esExterno;
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
 
@@ -1404,27 +1636,38 @@ export const getDiagnosticoPdf = async (req, res) => {
 
     drawDocumentHeader('Formato de Diagnóstico de Equipo de Cómputo');
 
-    drawSectionTitle('Datos generales');
-    drawKeyValueTable(
+    const contactoTipo = registro.usa_contacto_externo
+      ? limpiarTexto(registro.contacto_externo?.tipo) || 'No especificado'
+      : 'Usuario registrado';
+    const contactoDatos = registro.usa_contacto_externo
+      ? limpiarTexto(registro.contacto_externo?.datos) || 'Sin datos registrados'
+      : 'Consultar directorio interno';
+
+    const filasDatosGenerales = [
       [
-        [
-          { label: 'Área', value: registro.area_nombre || 'No registrada' },
-          { label: 'Categoría', value: categoriaTexto },
-          { label: 'Fecha', value: formatearFechaLarga(registro.fecha_diagnostico) || 'No registrada' }
-        ],
-        [
-          { label: 'Departamento', value: registro.departamento_nombre || 'No registrado' },
-          { label: 'Técnico asignado', value: firma },
-          { label: 'Referencia de incidencia', value: registro.id_incidencia || 'Sin referencia' }
-        ],
-        [
-          { label: 'Estado', value: registro.estado || 'Sin estado' },
-          { label: 'Prioridad', value: registro.prioridad || 'Sin prioridad' },
-          { label: 'Origen', value: registro.origen_incidencia || 'Sin origen' }
-        ]
+        { label: 'Área', value: registro.area_nombre || 'No registrada' },
+        { label: 'Categoría', value: categoriaTexto },
+        { label: 'Fecha', value: formatearFechaLarga(registro.fecha_diagnostico) || 'No registrada' }
       ],
-      columnWidths
-    );
+      [
+        { label: 'Departamento', value: registro.departamento_nombre || 'No registrado' },
+        { label: 'Técnico asignado', value: firma },
+        { label: 'Referencia de incidencia', value: registro.id_incidencia || 'Sin referencia' }
+      ],
+      [
+        { label: 'Estado', value: registro.estado || 'Sin estado' },
+        { label: 'Prioridad', value: registro.prioridad || 'Sin prioridad' },
+        { label: 'Origen', value: registro.origen_incidencia || 'Sin origen' }
+      ],
+      [
+        { label: 'Reportada por', value: registro.nombre_reporta || 'No registrado' },
+        { label: 'Tipo de contacto', value: contactoTipo },
+        { label: 'Datos de contacto', value: contactoDatos }
+      ]
+    ];
+
+    drawSectionTitle('Datos generales');
+    drawKeyValueTable(filasDatosGenerales, columnWidths);
 
     drawSectionTitle('Datos del equipo');
     drawKeyValueTable(
@@ -1576,6 +1819,7 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          cat.nombre AS categoria_nombre,
          b.ID_Baja AS baja_id,
          b.Fecha_Baja AS baja_fecha,
+         b.Fecha_Reimpresion AS baja_fecha_reimpresion,
          CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
          CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico
        FROM diagnostico d
@@ -1597,6 +1841,18 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     if (!registro || !registro.baja_id) {
       return res.status(404).send('El reporte de baja solicitado no existe.');
     }
+
+    const resumenContacto = obtenerResumenContacto(registro);
+
+    registro.id_usuario = resumenContacto.idUsuario;
+    registro.nombre_reporta = resumenContacto.nombre || 'No registrado';
+    registro.contacto_externo = {
+      nombre: resumenContacto.contacto.nombre,
+      tipo: resumenContacto.contacto.tipo,
+      datos: resumenContacto.contacto.datos,
+      completo: resumenContacto.contacto.completo
+    };
+    registro.usa_contacto_externo = resumenContacto.esExterno;
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
     const categoriaTexto = registro.categoria_nombre || 'No registrada';
@@ -1834,18 +2090,33 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     const headerColumn = Math.floor(pageWidth / 2);
     const headerColumns = [headerColumn, pageWidth - headerColumn];
 
-    drawKeyValueTable(
+    const contactoTipo = registro.usa_contacto_externo
+      ? limpiarTexto(registro.contacto_externo?.tipo) || 'No especificado'
+      : 'Usuario registrado';
+    const contactoDatos = registro.usa_contacto_externo
+      ? limpiarTexto(registro.contacto_externo?.datos) || 'Sin datos registrados'
+      : 'Consultar directorio interno';
+
+    const filasEncabezado = [
       [
-        [
-          { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
-          { label: 'Fecha', value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada') }
-        ],
-        [
-          { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
-          { label: 'Usuario', value: valorSeguro(registro.nombre_reporta, 'No registrado') }
-        ]
+        { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
+        { label: 'Fecha', value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada') }
       ],
-      headerColumns
+      [
+        { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
+        { label: 'Usuario', value: valorSeguro(registro.nombre_reporta, 'No registrado') }
+      ],
+      [
+        { label: 'Tipo de contacto', value: contactoTipo },
+        { label: 'Datos de contacto', value: contactoDatos }
+      ]
+    ];
+
+    drawKeyValueTable(filasEncabezado, headerColumns);
+
+    drawKeyValueTable(
+      [[{ label: 'Fecha de reimpresión', value: fechaSegura(registro.baja_fecha_reimpresion, 'Sin fecha registrada') }]],
+      [pageWidth]
     );
 
     const tiempoUsoTexto = (() => {
