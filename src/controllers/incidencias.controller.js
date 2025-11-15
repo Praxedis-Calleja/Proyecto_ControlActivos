@@ -765,7 +765,27 @@ export const postNuevaIncidencia = async (req, res) => {
 
     const usaContactoExterno = usa_contacto_externo === '1';
 
-    const idUsuarioFinal = usaContactoExterno ? null : id_usuario;
+    const idUsuarioSesion = req.session?.user?.id_usuario ?? null;
+    const idUsuarioFinal = usaContactoExterno ? idUsuarioSesion : id_usuario;
+
+    if (idUsuarioFinal === null || idUsuarioFinal === undefined || idUsuarioFinal === '') {
+      const catalogos = await obtenerCatalogos();
+      const mensajeError = usaContactoExterno
+        ? 'No se pudo identificar al usuario que registra la incidencia.'
+        : 'Selecciona el usuario que reporta la incidencia.';
+
+      return res.status(400).render('incidencias/nueva', {
+        ...catalogos,
+        prioridades: PRIORIDADES,
+        estados: ESTADOS,
+        tiposIncidencia: TIPOS_INCIDENCIA,
+        origenesIncidencia: ORIGENES_INCIDENCIA,
+        errores: [mensajeError],
+        values: normalizarValores(req.body),
+        ok: false,
+        pageTitle: 'Registrar incidencia'
+      });
+    }
     const nombreExterno = usaContactoExterno
       ? limpiarTextoOpcional(nombre_contacto_externo)
       : null;
@@ -1394,6 +1414,7 @@ export const getDiagnosticoPdf = async (req, res) => {
          a.placa_activo,
          a.propietario_nombre_completo,
          a.propietario_contacto,
+         a.fecha_garantia,
          a.id_categoria_activos,
          ${camposActivo.join(',\n         ')},
          ar.nombre_area AS area_nombre,
@@ -1459,6 +1480,13 @@ export const getDiagnosticoPdf = async (req, res) => {
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
     const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const quarterWidth = Math.floor(pageWidth / 4);
+    const columnWidthsEspecificos = [
+      quarterWidth,
+      quarterWidth,
+      quarterWidth,
+      pageWidth - quarterWidth * 3
+    ];
 
     const logoPath = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
     const nombreActivo = (registro.marca || registro.modelo)
@@ -1480,6 +1508,7 @@ export const getDiagnosticoPdf = async (req, res) => {
           memoria_ram: 'No aplica',
           almacenamiento: 'No aplica'
         };
+    const garantiaTexto = formatearFechaLarga(registro.fecha_garantia) || 'No registrada';
 
     const formatearValor = (valor, reemplazo = 'No registrado') => {
       const texto = String(valor ?? '').trim();
@@ -1673,10 +1702,11 @@ export const getDiagnosticoPdf = async (req, res) => {
         [
           { label: 'Procesador', value: especificaciones.procesador },
           { label: 'Memoria RAM', value: especificaciones.memoria_ram },
-          { label: 'Almacenamiento', value: especificaciones.almacenamiento }
+          { label: 'Almacenamiento', value: especificaciones.almacenamiento },
+          { label: 'Garantía', value: garantiaTexto }
         ]
       ],
-      columnWidths
+      columnWidthsEspecificos
     );
 
     drawSectionTitle('Descripción gráfica');
@@ -1869,6 +1899,13 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
     const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const quarterWidth = Math.floor(pageWidth / 4);
+    const columnWidthsEspecificos = [
+      quarterWidth,
+      quarterWidth,
+      quarterWidth,
+      pageWidth - quarterWidth * 3
+    ];
     const logoPath = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
 
     const valorSeguro = (valor, reemplazo = 'No registrado') => {
@@ -2144,17 +2181,13 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     drawKeyValueTable(
       [
         [
+          { label: 'Procesador', value: especificaciones.procesador },
           { label: 'Memoria RAM', value: especificaciones.memoria_ram },
           { label: 'Almacenamiento', value: especificaciones.almacenamiento },
-          { label: 'Procesador', value: especificaciones.procesador }
+          { label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }
         ]
       ],
-      columnWidths
-    );
-
-    drawKeyValueTable(
-      [[{ label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }]],
-      [pageWidth]
+      columnWidthsEspecificos
     );
 
     const descripcionGrafica = valorSeguro(
