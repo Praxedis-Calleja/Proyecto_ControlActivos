@@ -765,7 +765,27 @@ export const postNuevaIncidencia = async (req, res) => {
 
     const usaContactoExterno = usa_contacto_externo === '1';
 
-    const idUsuarioFinal = usaContactoExterno ? null : id_usuario;
+    const idUsuarioSesion = req.session?.user?.id_usuario ?? null;
+    const idUsuarioFinal = usaContactoExterno ? idUsuarioSesion : id_usuario;
+
+    if (idUsuarioFinal === null || idUsuarioFinal === undefined || idUsuarioFinal === '') {
+      const catalogos = await obtenerCatalogos();
+      const mensajeError = usaContactoExterno
+        ? 'No se pudo identificar al usuario que registra la incidencia.'
+        : 'Selecciona el usuario que reporta la incidencia.';
+
+      return res.status(400).render('incidencias/nueva', {
+        ...catalogos,
+        prioridades: PRIORIDADES,
+        estados: ESTADOS,
+        tiposIncidencia: TIPOS_INCIDENCIA,
+        origenesIncidencia: ORIGENES_INCIDENCIA,
+        errores: [mensajeError],
+        values: normalizarValores(req.body),
+        ok: false,
+        pageTitle: 'Registrar incidencia'
+      });
+    }
     const nombreExterno = usaContactoExterno
       ? limpiarTextoOpcional(nombre_contacto_externo)
       : null;
