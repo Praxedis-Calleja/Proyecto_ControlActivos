@@ -1479,9 +1479,9 @@ export const getDiagnosticoPdf = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
-    const columnWidthsThree = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
     const quarterWidth = Math.floor(pageWidth / 4);
-    const columnWidthsFour = [
+    const columnWidthsEspecificos = [
       quarterWidth,
       quarterWidth,
       quarterWidth,
@@ -1712,7 +1712,7 @@ export const getDiagnosticoPdf = async (req, res) => {
           { label: 'Garantía', value: garantiaTexto }
         ]
       ],
-      columnWidthsFour
+      columnWidthsEspecificos
     );
 
     drawSectionTitle('Descripción gráfica');
@@ -1904,9 +1904,9 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
-    const columnWidthsThree = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
     const quarterWidth = Math.floor(pageWidth / 4);
-    const columnWidthsFour = [
+    const columnWidthsEspecificos = [
       quarterWidth,
       quarterWidth,
       quarterWidth,
@@ -2198,7 +2198,7 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
           { label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }
         ]
       ],
-      columnWidthsFour
+      columnWidthsEspecificos
     );
 
     const descripcionGrafica = valorSeguro(
