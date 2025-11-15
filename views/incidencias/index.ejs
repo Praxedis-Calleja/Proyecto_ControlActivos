@@ -229,7 +229,7 @@
 
                   <footer class="incidencia-card__footer">
                     <div class="incidencia-card__detalles">
-                      <p><strong>Reportada por:</strong> ${escapeHtml(incidencia.usuario_reporta || 'No registrado')}</p>
+                      <p><strong>Reportada por:</strong> ${escapeHtml(incidencia.contacto_reporte || incidencia.usuario_reporta || 'No registrado')}</p>
                       ${ultimoDiagnostico}
                     </div>
                     <div class="incidencia-card__acciones">
