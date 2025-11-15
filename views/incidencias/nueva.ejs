@@ -114,50 +114,6 @@
               >
             </div>
           </div>
-
-          <div class="campo">
-            <h3>Contacto externo (opcional)</h3>
-            <p class="campo__ayuda">
-              Completa estos datos si la persona que reporta no se encuentra registrada en el sistema.
-            </p>
-          </div>
-
-          <div class="campo">
-            <label for="nombre_contacto_externo">Nombre del contacto externo</label>
-            <input
-              type="text"
-              id="nombre_contacto_externo"
-              name="nombre_contacto_externo"
-              maxlength="120"
-              value="${(values && values.nombre_contacto_externo) || ''}"
-              placeholder="Ej. Juan Pérez"
-            >
-          </div>
-
-          <div class="campo">
-            <label for="tipo_contacto_externo">Tipo de contacto externo</label>
-            <input
-              type="text"
-              id="tipo_contacto_externo"
-              name="tipo_contacto_externo"
-              maxlength="50"
-              value="${(values && values.tipo_contacto_externo) || ''}"
-              placeholder="Ej. Proveedor, Contratista, Invitado"
-            >
-          </div>
-
-          <div class="campo">
-            <label for="datos_contacto_externo">Datos de contacto externo</label>
-            <input
-              type="text"
-              id="datos_contacto_externo"
-              name="datos_contacto_externo"
-              maxlength="120"
-              value="${(values && values.datos_contacto_externo) || ''}"
-              placeholder="Teléfono, correo u otro dato de contacto"
-            >
-          </div>
-
           <div class="campo">
             <label for="tipo_incidencia">Tipo de incidencia</label>
             <select name="tipo_incidencia" id="tipo_incidencia" required>
