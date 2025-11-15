@@ -220,6 +220,31 @@ const limpiarTextoOpcional = (valor) => {
 
 const obtenerTextoPlano = (valor) => String(valor ?? '').trim();
 
+const construirContactoReporte = (registro = {}) => {
+  const nombreExterno = obtenerTextoPlano(registro.nombre_contacto_externo);
+  const tipoExterno = obtenerTextoPlano(registro.tipo_contacto_externo);
+  const datosExterno = obtenerTextoPlano(registro.datos_contacto_externo);
+
+  if (nombreExterno) {
+    const partes = [nombreExterno];
+    if (tipoExterno) {
+      partes.push(tipoExterno);
+    }
+
+    const encabezado = partes.join(' · ');
+    if (datosExterno) {
+      return `${encabezado} (${datosExterno})`;
+    }
+    return encabezado;
+  }
+
+  const nombreUsuario = obtenerTextoPlano(
+    registro.usuario_reporta ?? registro.nombre_reporta ?? ''
+  );
+
+  return nombreUsuario;
+};
+
 const normalizarValores = (datos = {}) => {
   const valores = { ...datos };
   let cerrada = valores.cerrada_en ?? '';
@@ -415,7 +440,15 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
     [idIncidencia]
   );
 
-  return rows[0] || null;
+  const incidencia = rows[0] || null;
+
+  if (!incidencia) {
+    return null;
+  }
+
+  incidencia.contacto_reporte = construirContactoReporte(incidencia);
+
+  return incidencia;
 };
 
 const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
@@ -512,6 +545,9 @@ export const getListadoIncidencias = async (req, res) => {
         a.placa_activo,
         CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
         CONCAT_WS(' ', u.nombre, u.apellido) AS usuario_reporta,
+        i.nombre_contacto_externo,
+        i.tipo_contacto_externo,
+        i.datos_contacto_externo,
         COALESCE(h.total_diagnosticos, 0) AS total_diagnosticos,
         h.ultimo_diagnostico
       FROM incidencias i
@@ -527,18 +563,23 @@ export const getListadoIncidencias = async (req, res) => {
       parametros
     );
 
-    const incidencias = rows.map((incidencia) => ({
-      ...incidencia,
-      creada_en_fmt: formatearFechaHoraCorta(incidencia.creada_en) || 'Sin fecha',
-      ultimo_diagnostico_fmt: incidencia.ultimo_diagnostico
-        ? formatearFechaHoraCorta(incidencia.ultimo_diagnostico)
-        : '',
-      descripcion_problema: incidencia.descripcion_problema || '',
-      usuario_reporta: incidencia.usuario_reporta || 'No registrado',
-      activo_nombre: incidencia.activo_nombre || 'Activo sin nombre',
-      numero_serie: incidencia.numero_serie || '',
-      placa_activo: incidencia.placa_activo || ''
-    }));
+    const incidencias = rows.map((incidencia) => {
+      const contactoReporte = construirContactoReporte(incidencia);
+
+      return {
+        ...incidencia,
+        creada_en_fmt: formatearFechaHoraCorta(incidencia.creada_en) || 'Sin fecha',
+        ultimo_diagnostico_fmt: incidencia.ultimo_diagnostico
+          ? formatearFechaHoraCorta(incidencia.ultimo_diagnostico)
+          : '',
+        descripcion_problema: incidencia.descripcion_problema || '',
+        usuario_reporta: incidencia.usuario_reporta || 'No registrado',
+        contacto_reporte: contactoReporte || incidencia.usuario_reporta || 'No registrado',
+        activo_nombre: incidencia.activo_nombre || 'Activo sin nombre',
+        numero_serie: incidencia.numero_serie || '',
+        placa_activo: incidencia.placa_activo || ''
+      };
+    });
 
     return res.render('incidencias/index', {
       incidencias,
@@ -1342,8 +1383,11 @@ export const getDiagnosticoPdf = async (req, res) => {
          i.tipo_incidencia,
          i.origen_incidencia,
          i.prioridad,
-        i.estado,
-        i.creada_en AS incidencia_creada_en,
+         i.estado,
+         i.nombre_contacto_externo,
+         i.tipo_contacto_externo,
+         i.datos_contacto_externo,
+         i.creada_en AS incidencia_creada_en,
          a.marca,
          a.modelo,
          a.numero_serie,
@@ -1377,6 +1421,11 @@ export const getDiagnosticoPdf = async (req, res) => {
     }
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
+    const contactoReporte =
+      construirContactoReporte({ ...registro, usuario_reporta: registro.nombre_reporta }) ||
+      'No registrado';
+    const tipoContacto = obtenerTextoPlano(registro.tipo_contacto_externo) || 'No aplica';
+    const datosContacto = obtenerTextoPlano(registro.datos_contacto_externo) || 'No registrados';
 
     const firmasSesion = req.session.diagnosticSignatures || {};
     const firmaSesion = firmasSesion[String(idDiagnostico)];
@@ -1590,6 +1639,17 @@ export const getDiagnosticoPdf = async (req, res) => {
       columnWidths
     );
 
+    drawKeyValueTable(
+      [
+        [
+          { label: 'Reportada por', value: contactoReporte },
+          { label: 'Tipo contacto externo', value: tipoContacto },
+          { label: 'Datos contacto externo', value: datosContacto }
+        ]
+      ],
+      columnWidths
+    );
+
     drawSectionTitle('Datos del equipo');
     drawKeyValueTable(
       [
@@ -1723,9 +1783,12 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          i.descripcion_problema,
          i.tipo_incidencia,
          i.origen_incidencia,
-        i.prioridad,
-        i.estado,
-        a.marca,
+         i.prioridad,
+         i.estado,
+         i.nombre_contacto_externo,
+         i.tipo_contacto_externo,
+         i.datos_contacto_externo,
+         a.marca,
          a.modelo,
          a.numero_serie,
          a.placa_activo,
@@ -1764,6 +1827,11 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     }
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
+    const contactoReporte =
+      construirContactoReporte({ ...registro, usuario_reporta: registro.nombre_reporta }) ||
+      'No registrado';
+    const tipoContacto = obtenerTextoPlano(registro.tipo_contacto_externo) || 'No aplica';
+    const datosContacto = obtenerTextoPlano(registro.datos_contacto_externo) || 'No registrados';
     const categoriaTexto = registro.categoria_nombre || 'No registrada';
     const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
     const especificaciones = esEquipoComputo
@@ -2007,7 +2075,20 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
         ],
         [
           { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
-          { label: 'Usuario', value: valorSeguro(registro.nombre_reporta, 'No registrado') }
+          {
+            label: 'Contacto que reporta',
+            value: valorSeguro(contactoReporte, 'No registrado')
+          }
+        ]
+      ],
+      headerColumns
+    );
+
+    drawKeyValueTable(
+      [
+        [
+          { label: 'Tipo contacto externo', value: valorSeguro(tipoContacto, 'No aplica') },
+          { label: 'Datos contacto externo', value: valorSeguro(datosContacto, 'No registrados') }
         ]
       ],
       headerColumns
