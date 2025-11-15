@@ -141,13 +141,52 @@ const esquemaDiagnostico = Joi.object({
 
 const esquemaIncidencia = Joi.object({
   id_activo: Joi.number().integer().required(),
-  id_usuario: Joi.number().integer().required(),
+  usa_contacto_externo: Joi.string().valid('0', '1').default('0'),
+  id_usuario: Joi.when('usa_contacto_externo', {
+    is: '1',
+    then: Joi.alternatives()
+      .try(Joi.number().integer(), Joi.valid(null), Joi.string().valid(''))
+      .optional(),
+    otherwise: Joi.number()
+      .integer()
+      .required()
+      .messages({
+        'any.required': 'Selecciona el usuario que reporta la incidencia.'
+      })
+  }),
   descripcion_problema: Joi.string().trim().min(10).required(),
   tipo_incidencia: Joi.string().valid(...TIPOS_INCIDENCIA).required(),
   origen_incidencia: Joi.string().valid(...ORIGENES_INCIDENCIA).required(),
   prioridad: Joi.string().valid(...PRIORIDADES).required(),
   estado: Joi.string().valid(...ESTADOS).required(),
-  cerrada_en: Joi.alternatives().try(Joi.date(), Joi.string().valid('')).allow(null, '')
+  cerrada_en: Joi.alternatives().try(Joi.date(), Joi.string().valid('')).allow(null, ''),
+  nombre_contacto_externo: Joi.when('usa_contacto_externo', {
+    is: '1',
+    then: Joi.string()
+      .trim()
+      .min(3)
+      .max(120)
+      .required()
+      .messages({
+        'string.empty': 'Captura el nombre del contacto externo.',
+        'any.required': 'Captura el nombre del contacto externo.'
+      }),
+    otherwise: Joi.string().trim().max(120).allow('', null)
+  }),
+  tipo_contacto_externo: Joi.string().trim().max(50).allow('', null),
+  datos_contacto_externo: Joi.when('usa_contacto_externo', {
+    is: '1',
+    then: Joi.string()
+      .trim()
+      .min(5)
+      .max(120)
+      .required()
+      .messages({
+        'string.empty': 'Captura los datos de contacto externo.',
+        'any.required': 'Captura los datos de contacto externo.'
+      }),
+    otherwise: Joi.string().trim().max(120).allow('', null)
+  })
 });
 
 const obtenerCatalogos = async () => {
@@ -173,9 +212,60 @@ const toDatetimeLocal = (valor) => {
   return fecha.toISOString().slice(0, 16);
 };
 
+const limpiarTextoOpcional = (valor) => {
+  if (valor === undefined || valor === null) return null;
+  const texto = String(valor).trim();
+  return texto.length ? texto : null;
+};
+
+const obtenerTextoPlano = (valor) => String(valor ?? '').trim();
+
+const construirContactoReporte = (registro = {}) => {
+  const nombreExterno = obtenerTextoPlano(registro.nombre_contacto_externo);
+  const tipoExterno = obtenerTextoPlano(registro.tipo_contacto_externo);
+  const datosExterno = obtenerTextoPlano(registro.datos_contacto_externo);
+
+  if (nombreExterno) {
+    const partes = [nombreExterno];
+    if (tipoExterno) {
+      partes.push(tipoExterno);
+    }
+
+    const encabezado = partes.join(' · ');
+    if (datosExterno) {
+      return `${encabezado} (${datosExterno})`;
+    }
+    return encabezado;
+  }
+
+  const nombreUsuario = obtenerTextoPlano(
+    registro.usuario_reporta ?? registro.nombre_reporta ?? ''
+  );
+
+  return nombreUsuario;
+};
+
 const normalizarValores = (datos = {}) => {
   const valores = { ...datos };
   let cerrada = valores.cerrada_en ?? '';
+
+  const usaContactoExterno = (() => {
+    if (String(datos.usa_contacto_externo ?? '') === '1') {
+      return true;
+    }
+
+    const sinUsuario =
+      datos.id_usuario === undefined || datos.id_usuario === null || datos.id_usuario === '';
+    if (!sinUsuario) {
+      return false;
+    }
+
+    const nombre = obtenerTextoPlano(datos.nombre_contacto_externo);
+    const tipo = obtenerTextoPlano(datos.tipo_contacto_externo);
+    const datosContacto = obtenerTextoPlano(datos.datos_contacto_externo);
+
+    return Boolean(nombre || tipo || datosContacto);
+  })();
 
   if (cerrada instanceof Date || typeof cerrada === 'number') {
     cerrada = toDatetimeLocal(cerrada);
@@ -198,7 +288,13 @@ const normalizarValores = (datos = {}) => {
 
   return {
     ...valores,
-    cerrada_en: cerrada
+    id_usuario:
+      valores.id_usuario === undefined || valores.id_usuario === null ? '' : valores.id_usuario,
+    cerrada_en: cerrada,
+    nombre_contacto_externo: datos.nombre_contacto_externo ?? '',
+    tipo_contacto_externo: datos.tipo_contacto_externo ?? '',
+    datos_contacto_externo: datos.datos_contacto_externo ?? '',
+    usa_contacto_externo: usaContactoExterno ? '1' : '0'
   };
 };
 
@@ -308,6 +404,9 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
        i.id_activo,
        i.creada_en,
        i.cerrada_en,
+       i.nombre_contacto_externo,
+       i.tipo_contacto_externo,
+       i.datos_contacto_externo,
        a.marca,
        a.modelo,
        a.numero_serie,
@@ -341,7 +440,15 @@ const obtenerIncidenciaPorId = async (idIncidencia) => {
     [idIncidencia]
   );
 
-  return rows[0] || null;
+  const incidencia = rows[0] || null;
+
+  if (!incidencia) {
+    return null;
+  }
+
+  incidencia.contacto_reporte = construirContactoReporte(incidencia);
+
+  return incidencia;
 };
 
 const obtenerDiagnosticosIncidencia = async (idIncidencia) => {
@@ -435,12 +542,15 @@ export const getListadoIncidencias = async (req, res) => {
          a.marca,
          a.modelo,
          a.numero_serie,
-         a.placa_activo,
-         CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
-         CONCAT_WS(' ', u.nombre, u.apellido) AS usuario_reporta,
-         COALESCE(h.total_diagnosticos, 0) AS total_diagnosticos,
-         h.ultimo_diagnostico
-       FROM incidencias i
+        a.placa_activo,
+        CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
+        CONCAT_WS(' ', u.nombre, u.apellido) AS usuario_reporta,
+        i.nombre_contacto_externo,
+        i.tipo_contacto_externo,
+        i.datos_contacto_externo,
+        COALESCE(h.total_diagnosticos, 0) AS total_diagnosticos,
+        h.ultimo_diagnostico
+      FROM incidencias i
        INNER JOIN activos_fijos a ON a.id_activo = i.id_activo
        LEFT JOIN usuarios u ON u.id_usuario = i.id_usuario
        LEFT JOIN (
@@ -453,18 +563,23 @@ export const getListadoIncidencias = async (req, res) => {
       parametros
     );
 
-    const incidencias = rows.map((incidencia) => ({
-      ...incidencia,
-      creada_en_fmt: formatearFechaHoraCorta(incidencia.creada_en) || 'Sin fecha',
-      ultimo_diagnostico_fmt: incidencia.ultimo_diagnostico
-        ? formatearFechaHoraCorta(incidencia.ultimo_diagnostico)
-        : '',
-      descripcion_problema: incidencia.descripcion_problema || '',
-      usuario_reporta: incidencia.usuario_reporta || 'No registrado',
-      activo_nombre: incidencia.activo_nombre || 'Activo sin nombre',
-      numero_serie: incidencia.numero_serie || '',
-      placa_activo: incidencia.placa_activo || ''
-    }));
+    const incidencias = rows.map((incidencia) => {
+      const contactoReporte = construirContactoReporte(incidencia);
+
+      return {
+        ...incidencia,
+        creada_en_fmt: formatearFechaHoraCorta(incidencia.creada_en) || 'Sin fecha',
+        ultimo_diagnostico_fmt: incidencia.ultimo_diagnostico
+          ? formatearFechaHoraCorta(incidencia.ultimo_diagnostico)
+          : '',
+        descripcion_problema: incidencia.descripcion_problema || '',
+        usuario_reporta: incidencia.usuario_reporta || 'No registrado',
+        contacto_reporte: contactoReporte || incidencia.usuario_reporta || 'No registrado',
+        activo_nombre: incidencia.activo_nombre || 'Activo sin nombre',
+        numero_serie: incidencia.numero_serie || '',
+        placa_activo: incidencia.placa_activo || ''
+      };
+    });
 
     return res.render('incidencias/index', {
       incidencias,
@@ -641,8 +756,25 @@ export const postNuevaIncidencia = async (req, res) => {
       origen_incidencia,
       prioridad,
       estado,
-      cerrada_en
+      cerrada_en,
+      nombre_contacto_externo,
+      tipo_contacto_externo,
+      datos_contacto_externo,
+      usa_contacto_externo
     } = value;
+
+    const usaContactoExterno = usa_contacto_externo === '1';
+
+    const idUsuarioFinal = usaContactoExterno ? null : id_usuario;
+    const nombreExterno = usaContactoExterno
+      ? limpiarTextoOpcional(nombre_contacto_externo)
+      : null;
+    const tipoExterno = usaContactoExterno
+      ? limpiarTextoOpcional(tipo_contacto_externo)
+      : null;
+    const datosExterno = usaContactoExterno
+      ? limpiarTextoOpcional(datos_contacto_externo)
+      : null;
 
     await pool.query(
       `INSERT INTO incidencias (
@@ -653,17 +785,23 @@ export const postNuevaIncidencia = async (req, res) => {
         prioridad,
         id_usuario,
         id_activo,
-        cerrada_en
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        cerrada_en,
+        nombre_contacto_externo,
+        tipo_contacto_externo,
+        datos_contacto_externo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         descripcion_problema,
         estado,
         tipo_incidencia,
         origen_incidencia,
         prioridad,
-        id_usuario,
+        idUsuarioFinal,
         id_activo,
-        formatearFechaHora(cerrada_en)
+        formatearFechaHora(cerrada_en),
+        nombreExterno,
+        tipoExterno,
+        datosExterno
       ]
     );
 
@@ -789,8 +927,24 @@ export const postEditarIncidencia = async (req, res) => {
     origen_incidencia,
     prioridad,
     estado,
-    cerrada_en
+    cerrada_en,
+    nombre_contacto_externo,
+    tipo_contacto_externo,
+    datos_contacto_externo,
+    usa_contacto_externo
   } = value;
+
+  const usaContactoExterno = usa_contacto_externo === '1';
+  const idUsuarioFinal = usaContactoExterno ? null : id_usuario;
+  const nombreExterno = usaContactoExterno
+    ? limpiarTextoOpcional(nombre_contacto_externo)
+    : null;
+  const tipoExterno = usaContactoExterno
+    ? limpiarTextoOpcional(tipo_contacto_externo)
+    : null;
+  const datosExterno = usaContactoExterno
+    ? limpiarTextoOpcional(datos_contacto_externo)
+    : null;
 
   try {
     await pool.query(
@@ -802,7 +956,10 @@ export const postEditarIncidencia = async (req, res) => {
               prioridad = ?,
               id_usuario = ?,
               id_activo = ?,
-              cerrada_en = ?
+              cerrada_en = ?,
+              nombre_contacto_externo = ?,
+              tipo_contacto_externo = ?,
+              datos_contacto_externo = ?
         WHERE id_incidencia = ?
         LIMIT 1`,
       [
@@ -811,9 +968,12 @@ export const postEditarIncidencia = async (req, res) => {
         tipo_incidencia,
         origen_incidencia,
         prioridad,
-        id_usuario,
+        idUsuarioFinal,
         id_activo,
         formatearFechaHora(cerrada_en),
+        nombreExterno,
+        tipoExterno,
+        datosExterno,
         idIncidencia
       ]
     );
@@ -1224,6 +1384,9 @@ export const getDiagnosticoPdf = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.estado,
+         i.nombre_contacto_externo,
+         i.tipo_contacto_externo,
+         i.datos_contacto_externo,
          i.creada_en AS incidencia_creada_en,
          a.marca,
          a.modelo,
@@ -1258,6 +1421,11 @@ export const getDiagnosticoPdf = async (req, res) => {
     }
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
+    const contactoReporte =
+      construirContactoReporte({ ...registro, usuario_reporta: registro.nombre_reporta }) ||
+      'No registrado';
+    const tipoContacto = obtenerTextoPlano(registro.tipo_contacto_externo) || 'No aplica';
+    const datosContacto = obtenerTextoPlano(registro.datos_contacto_externo) || 'No registrados';
 
     const firmasSesion = req.session.diagnosticSignatures || {};
     const firmaSesion = firmasSesion[String(idDiagnostico)];
@@ -1471,6 +1639,17 @@ export const getDiagnosticoPdf = async (req, res) => {
       columnWidths
     );
 
+    drawKeyValueTable(
+      [
+        [
+          { label: 'Reportada por', value: contactoReporte },
+          { label: 'Tipo contacto externo', value: tipoContacto },
+          { label: 'Datos contacto externo', value: datosContacto }
+        ]
+      ],
+      columnWidths
+    );
+
     drawSectionTitle('Datos del equipo');
     drawKeyValueTable(
       [
@@ -1606,6 +1785,9 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.estado,
+         i.nombre_contacto_externo,
+         i.tipo_contacto_externo,
+         i.datos_contacto_externo,
          a.marca,
          a.modelo,
          a.numero_serie,
@@ -1645,6 +1827,11 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     }
 
     const detalles = descomponerTiempoUso(registro.tiempo_uso);
+    const contactoReporte =
+      construirContactoReporte({ ...registro, usuario_reporta: registro.nombre_reporta }) ||
+      'No registrado';
+    const tipoContacto = obtenerTextoPlano(registro.tipo_contacto_externo) || 'No aplica';
+    const datosContacto = obtenerTextoPlano(registro.datos_contacto_externo) || 'No registrados';
     const categoriaTexto = registro.categoria_nombre || 'No registrada';
     const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
     const especificaciones = esEquipoComputo
@@ -1888,7 +2075,20 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
         ],
         [
           { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
-          { label: 'Usuario', value: valorSeguro(registro.nombre_reporta, 'No registrado') }
+          {
+            label: 'Contacto que reporta',
+            value: valorSeguro(contactoReporte, 'No registrado')
+          }
+        ]
+      ],
+      headerColumns
+    );
+
+    drawKeyValueTable(
+      [
+        [
+          { label: 'Tipo contacto externo', value: valorSeguro(tipoContacto, 'No aplica') },
+          { label: 'Datos contacto externo', value: valorSeguro(datosContacto, 'No registrados') }
         ]
       ],
       headerColumns
