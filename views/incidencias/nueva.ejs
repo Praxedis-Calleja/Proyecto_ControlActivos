@@ -18,9 +18,10 @@
           .split('_')
           .map((segmento) => segmento.charAt(0).toUpperCase() + segmento.slice(1))
           .join(' ');
+      const usaContactoExterno = String((values && values.usa_contacto_externo) || '') === '1';
 
       return `
-        <form method="post" action="/incidencias/nueva" class="form-incidencia">
+        <form method="post" action="/incidencias/nueva" class="form-incidencia" data-js="form-incidencia">
           <div class="campo">
             <label for="id_activo">Activo involucrado</label>
             <select name="id_activo" id="id_activo" required>
@@ -37,7 +38,7 @@
             </select>
           </div>
 
-          <div class="campo">
+          <div class="campo" data-campo-usuario>
             <label for="id_usuario">Usuario que reporta</label>
             <select name="id_usuario" id="id_usuario" required>
               <option value="">Selecciona quien reporta</option>
@@ -51,6 +52,67 @@
                 })
                 .join('')}
             </select>
+          </div>
+
+          <div class="campo campo--toggle-contacto">
+            <button type="button" class="btn-secundario" data-toggle-contacto>
+              ${usaContactoExterno ? 'Capturar usuario registrado' : 'Usar contacto externo'}
+            </button>
+            <p class="campo__ayuda">
+              Activa esta opción cuando la persona que reporta no aparece en la lista de usuarios registrados.
+            </p>
+            <input type="hidden" name="usa_contacto_externo" id="usa_contacto_externo" value="${
+              usaContactoExterno ? '1' : '0'
+            }">
+          </div>
+
+          <div class="grupo-contacto-externo" data-contacto-externo ${
+            usaContactoExterno ? '' : 'hidden'
+          }>
+            <div class="campo">
+              <h3>Contacto externo</h3>
+              <p class="campo__ayuda">
+                Registra los datos de la persona externa responsable del reporte.
+              </p>
+            </div>
+
+            <div class="campo">
+              <label for="nombre_contacto_externo">Nombre del contacto externo</label>
+              <input
+                type="text"
+                id="nombre_contacto_externo"
+                name="nombre_contacto_externo"
+                maxlength="120"
+                value="${(values && values.nombre_contacto_externo) || ''}"
+                placeholder="Ej. Juan Pérez"
+                data-require-when-externo="true"
+              >
+            </div>
+
+            <div class="campo">
+              <label for="tipo_contacto_externo">Tipo de contacto externo</label>
+              <input
+                type="text"
+                id="tipo_contacto_externo"
+                name="tipo_contacto_externo"
+                maxlength="50"
+                value="${(values && values.tipo_contacto_externo) || ''}"
+                placeholder="Ej. Proveedor, Contratista, Invitado"
+              >
+            </div>
+
+            <div class="campo">
+              <label for="datos_contacto_externo">Datos de contacto externo</label>
+              <input
+                type="text"
+                id="datos_contacto_externo"
+                name="datos_contacto_externo"
+                maxlength="120"
+                value="${(values && values.datos_contacto_externo) || ''}"
+                placeholder="Teléfono, correo u otro dato de contacto"
+                data-require-when-externo="true"
+              >
+            </div>
           </div>
 
           <div class="campo">
@@ -166,6 +228,55 @@
           <input type="hidden" name="_csrf" value="${csrfToken}">
           <button type="submit">Guardar incidencia</button>
         </form>
+        <script>
+          (() => {
+            const form = document.querySelector('[data-js="form-incidencia"]');
+            if (!form) return;
+
+            const toggleBtn = form.querySelector('[data-toggle-contacto]');
+            const hiddenInput = form.querySelector('#usa_contacto_externo');
+            const campoUsuario = form.querySelector('[data-campo-usuario]');
+            const contenedorExterno = form.querySelector('[data-contacto-externo]');
+            if (!toggleBtn || !hiddenInput || !campoUsuario || !contenedorExterno) {
+              return;
+            }
+
+            const selectUsuario = campoUsuario.querySelector('select');
+            const inputsExternos = Array.from(
+              contenedorExterno.querySelectorAll('input')
+            );
+
+            const sincronizar = (usaExterno) => {
+              if (selectUsuario) {
+                selectUsuario.disabled = usaExterno;
+                if (usaExterno) {
+                  selectUsuario.value = '';
+                }
+              }
+
+              inputsExternos.forEach((input) => {
+                const requiere = input.dataset.requireWhenExterno === 'true';
+                input.disabled = !usaExterno;
+                input.required = usaExterno && requiere;
+              });
+
+              contenedorExterno.hidden = !usaExterno;
+              campoUsuario.classList.toggle('campo--deshabilitado', usaExterno);
+              toggleBtn.textContent = usaExterno
+                ? 'Capturar usuario registrado'
+                : 'Usar contacto externo';
+            };
+
+            sincronizar(hiddenInput.value === '1');
+
+            toggleBtn.addEventListener('click', () => {
+              const usaExterno = hiddenInput.value === '1';
+              const nuevoEstado = !usaExterno;
+              hiddenInput.value = nuevoEstado ? '1' : '0';
+              sincronizar(nuevoEstado);
+            });
+          })();
+        </script>
       `;
     })()}
   </section>

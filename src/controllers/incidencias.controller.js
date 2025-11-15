@@ -141,16 +141,52 @@ const esquemaDiagnostico = Joi.object({
 
 const esquemaIncidencia = Joi.object({
   id_activo: Joi.number().integer().required(),
-  id_usuario: Joi.number().integer().required(),
+  usa_contacto_externo: Joi.string().valid('0', '1').default('0'),
+  id_usuario: Joi.when('usa_contacto_externo', {
+    is: '1',
+    then: Joi.alternatives()
+      .try(Joi.number().integer(), Joi.valid(null), Joi.string().valid(''))
+      .optional(),
+    otherwise: Joi.number()
+      .integer()
+      .required()
+      .messages({
+        'any.required': 'Selecciona el usuario que reporta la incidencia.'
+      })
+  }),
   descripcion_problema: Joi.string().trim().min(10).required(),
   tipo_incidencia: Joi.string().valid(...TIPOS_INCIDENCIA).required(),
   origen_incidencia: Joi.string().valid(...ORIGENES_INCIDENCIA).required(),
   prioridad: Joi.string().valid(...PRIORIDADES).required(),
   estado: Joi.string().valid(...ESTADOS).required(),
   cerrada_en: Joi.alternatives().try(Joi.date(), Joi.string().valid('')).allow(null, ''),
-  nombre_contacto_externo: Joi.string().trim().max(120).allow('', null),
+  nombre_contacto_externo: Joi.when('usa_contacto_externo', {
+    is: '1',
+    then: Joi.string()
+      .trim()
+      .min(3)
+      .max(120)
+      .required()
+      .messages({
+        'string.empty': 'Captura el nombre del contacto externo.',
+        'any.required': 'Captura el nombre del contacto externo.'
+      }),
+    otherwise: Joi.string().trim().max(120).allow('', null)
+  }),
   tipo_contacto_externo: Joi.string().trim().max(50).allow('', null),
-  datos_contacto_externo: Joi.string().trim().max(120).allow('', null)
+  datos_contacto_externo: Joi.when('usa_contacto_externo', {
+    is: '1',
+    then: Joi.string()
+      .trim()
+      .min(5)
+      .max(120)
+      .required()
+      .messages({
+        'string.empty': 'Captura los datos de contacto externo.',
+        'any.required': 'Captura los datos de contacto externo.'
+      }),
+    otherwise: Joi.string().trim().max(120).allow('', null)
+  })
 });
 
 const obtenerCatalogos = async () => {
@@ -213,6 +249,24 @@ const normalizarValores = (datos = {}) => {
   const valores = { ...datos };
   let cerrada = valores.cerrada_en ?? '';
 
+  const usaContactoExterno = (() => {
+    if (String(datos.usa_contacto_externo ?? '') === '1') {
+      return true;
+    }
+
+    const sinUsuario =
+      datos.id_usuario === undefined || datos.id_usuario === null || datos.id_usuario === '';
+    if (!sinUsuario) {
+      return false;
+    }
+
+    const nombre = obtenerTextoPlano(datos.nombre_contacto_externo);
+    const tipo = obtenerTextoPlano(datos.tipo_contacto_externo);
+    const datosContacto = obtenerTextoPlano(datos.datos_contacto_externo);
+
+    return Boolean(nombre || tipo || datosContacto);
+  })();
+
   if (cerrada instanceof Date || typeof cerrada === 'number') {
     cerrada = toDatetimeLocal(cerrada);
   } else if (typeof cerrada === 'string') {
@@ -234,10 +288,13 @@ const normalizarValores = (datos = {}) => {
 
   return {
     ...valores,
+    id_usuario:
+      valores.id_usuario === undefined || valores.id_usuario === null ? '' : valores.id_usuario,
     cerrada_en: cerrada,
     nombre_contacto_externo: datos.nombre_contacto_externo ?? '',
     tipo_contacto_externo: datos.tipo_contacto_externo ?? '',
-    datos_contacto_externo: datos.datos_contacto_externo ?? ''
+    datos_contacto_externo: datos.datos_contacto_externo ?? '',
+    usa_contacto_externo: usaContactoExterno ? '1' : '0'
   };
 };
 
@@ -702,8 +759,22 @@ export const postNuevaIncidencia = async (req, res) => {
       cerrada_en,
       nombre_contacto_externo,
       tipo_contacto_externo,
-      datos_contacto_externo
+      datos_contacto_externo,
+      usa_contacto_externo
     } = value;
+
+    const usaContactoExterno = usa_contacto_externo === '1';
+
+    const idUsuarioFinal = usaContactoExterno ? null : id_usuario;
+    const nombreExterno = usaContactoExterno
+      ? limpiarTextoOpcional(nombre_contacto_externo)
+      : null;
+    const tipoExterno = usaContactoExterno
+      ? limpiarTextoOpcional(tipo_contacto_externo)
+      : null;
+    const datosExterno = usaContactoExterno
+      ? limpiarTextoOpcional(datos_contacto_externo)
+      : null;
 
     await pool.query(
       `INSERT INTO incidencias (
@@ -725,12 +796,12 @@ export const postNuevaIncidencia = async (req, res) => {
         tipo_incidencia,
         origen_incidencia,
         prioridad,
-        id_usuario,
+        idUsuarioFinal,
         id_activo,
         formatearFechaHora(cerrada_en),
-        limpiarTextoOpcional(nombre_contacto_externo),
-        limpiarTextoOpcional(tipo_contacto_externo),
-        limpiarTextoOpcional(datos_contacto_externo)
+        nombreExterno,
+        tipoExterno,
+        datosExterno
       ]
     );
 
@@ -859,8 +930,21 @@ export const postEditarIncidencia = async (req, res) => {
     cerrada_en,
     nombre_contacto_externo,
     tipo_contacto_externo,
-    datos_contacto_externo
+    datos_contacto_externo,
+    usa_contacto_externo
   } = value;
+
+  const usaContactoExterno = usa_contacto_externo === '1';
+  const idUsuarioFinal = usaContactoExterno ? null : id_usuario;
+  const nombreExterno = usaContactoExterno
+    ? limpiarTextoOpcional(nombre_contacto_externo)
+    : null;
+  const tipoExterno = usaContactoExterno
+    ? limpiarTextoOpcional(tipo_contacto_externo)
+    : null;
+  const datosExterno = usaContactoExterno
+    ? limpiarTextoOpcional(datos_contacto_externo)
+    : null;
 
   try {
     await pool.query(
@@ -884,12 +968,12 @@ export const postEditarIncidencia = async (req, res) => {
         tipo_incidencia,
         origen_incidencia,
         prioridad,
-        id_usuario,
+        idUsuarioFinal,
         id_activo,
         formatearFechaHora(cerrada_en),
-        limpiarTextoOpcional(nombre_contacto_externo),
-        limpiarTextoOpcional(tipo_contacto_externo),
-        limpiarTextoOpcional(datos_contacto_externo),
+        nombreExterno,
+        tipoExterno,
+        datosExterno,
         idIncidencia
       ]
     );
