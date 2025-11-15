@@ -1479,14 +1479,15 @@ export const getDiagnosticoPdf = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
-    const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const columnWidthsThree = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
     const quarterWidth = Math.floor(pageWidth / 4);
-    const columnWidthsEspecificos = [
+    const columnWidthsFour = [
       quarterWidth,
       quarterWidth,
       quarterWidth,
       pageWidth - quarterWidth * 3
     ];
+    const columnWidthsEspecificos = [...columnWidthsFour];
 
     const logoPath = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
     const nombreActivo = (registro.marca || registro.modelo)
@@ -1904,14 +1905,15 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
-    const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const columnWidthsThree = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
     const quarterWidth = Math.floor(pageWidth / 4);
-    const columnWidthsEspecificos = [
+    const columnWidthsFour = [
       quarterWidth,
       quarterWidth,
       quarterWidth,
       pageWidth - quarterWidth * 3
     ];
+    const columnWidthsEspecificos = [...columnWidthsFour];
     const logoPath = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
 
     const valorSeguro = (valor, reemplazo = 'No registrado') => {
