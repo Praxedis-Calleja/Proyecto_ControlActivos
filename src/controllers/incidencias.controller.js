@@ -765,7 +765,27 @@ export const postNuevaIncidencia = async (req, res) => {
 
     const usaContactoExterno = usa_contacto_externo === '1';
 
-    const idUsuarioFinal = usaContactoExterno ? null : id_usuario;
+    const idUsuarioSesion = req.session?.user?.id_usuario ?? null;
+    const idUsuarioFinal = usaContactoExterno ? idUsuarioSesion : id_usuario;
+
+    if (idUsuarioFinal === null || idUsuarioFinal === undefined || idUsuarioFinal === '') {
+      const catalogos = await obtenerCatalogos();
+      const mensajeError = usaContactoExterno
+        ? 'No se pudo identificar al usuario que registra la incidencia.'
+        : 'Selecciona el usuario que reporta la incidencia.';
+
+      return res.status(400).render('incidencias/nueva', {
+        ...catalogos,
+        prioridades: PRIORIDADES,
+        estados: ESTADOS,
+        tiposIncidencia: TIPOS_INCIDENCIA,
+        origenesIncidencia: ORIGENES_INCIDENCIA,
+        errores: [mensajeError],
+        values: normalizarValores(req.body),
+        ok: false,
+        pageTitle: 'Registrar incidencia'
+      });
+    }
     const nombreExterno = usaContactoExterno
       ? limpiarTextoOpcional(nombre_contacto_externo)
       : null;
@@ -1394,6 +1414,7 @@ export const getDiagnosticoPdf = async (req, res) => {
          a.placa_activo,
          a.propietario_nombre_completo,
          a.propietario_contacto,
+         a.fecha_garantia,
          a.id_categoria_activos,
          ${camposActivo.join(',\n         ')},
          ar.nombre_area AS area_nombre,
@@ -1458,7 +1479,14 @@ export const getDiagnosticoPdf = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
-    const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const columnWidthsThree = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const quarterWidth = Math.floor(pageWidth / 4);
+    const columnWidthsFour = [
+      quarterWidth,
+      quarterWidth,
+      quarterWidth,
+      pageWidth - quarterWidth * 3
+    ];
 
     const logoPath = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
     const nombreActivo = (registro.marca || registro.modelo)
@@ -1480,11 +1508,16 @@ export const getDiagnosticoPdf = async (req, res) => {
           memoria_ram: 'No aplica',
           almacenamiento: 'No aplica'
         };
+    const garantiaTexto = formatearFechaLarga(registro.fecha_garantia) || 'No registrada';
 
     const formatearValor = (valor, reemplazo = 'No registrado') => {
       const texto = String(valor ?? '').trim();
       return texto.length ? texto : reemplazo;
     };
+
+    const propietario = formatearValor(registro.propietario_nombre_completo, 'No registrado');
+    const contactoPropietario = formatearValor(registro.propietario_contacto, 'No registrado');
+    const fechaReporte = formatearFechaLarga(registro.incidencia_creada_en) || 'No registrada';
 
     const drawSectionTitle = (titulo) => {
       doc.font('Helvetica-Bold').fontSize(11).fillColor('#1f1f1f').text(titulo.toUpperCase(), startX);
@@ -1623,48 +1656,50 @@ export const getDiagnosticoPdf = async (req, res) => {
         [
           { label: 'Área', value: registro.area_nombre || 'No registrada' },
           { label: 'Categoría', value: categoriaTexto },
-          { label: 'Fecha', value: formatearFechaLarga(registro.fecha_diagnostico) || 'No registrada' }
+          {
+            label: 'Fecha',
+            value: formatearFechaLarga(registro.fecha_diagnostico) || 'No registrada'
+          }
         ],
         [
           { label: 'Departamento', value: registro.departamento_nombre || 'No registrado' },
-          { label: 'Técnico asignado', value: firma },
-          { label: 'Referencia de incidencia', value: registro.id_incidencia || 'Sin referencia' }
+          { label: 'Encargado de la categoría o activo', value: propietario },
+          { label: 'Folio de incidencia', value: registro.id_incidencia || 'Sin folio' }
         ],
         [
-          { label: 'Estado', value: registro.estado || 'Sin estado' },
           { label: 'Prioridad', value: registro.prioridad || 'Sin prioridad' },
+          { label: 'Estado', value: registro.estado || 'Sin estado' },
           { label: 'Origen', value: registro.origen_incidencia || 'Sin origen' }
-        ]
-      ],
-      columnWidths
-    );
-
-    drawKeyValueTable(
-      [
+        ],
         [
           { label: 'Reportada por', value: contactoReporte },
           { label: 'Tipo contacto externo', value: tipoContacto },
           { label: 'Datos contacto externo', value: datosContacto }
         ]
       ],
-      columnWidths
+      columnWidthsThree
     );
 
     drawSectionTitle('Datos del equipo');
     drawKeyValueTable(
       [
         [
-          { label: 'Equipo', value: nombreActivo },
-          { label: 'Número de serie', value: registro.numero_serie || 'No registrado' },
-          { label: 'Placa', value: registro.placa_activo || 'No registrada' }
+          {
+            label: 'Equipo',
+            value: nombreActivo || categoriaTexto || 'Activo sin nombre'
+          },
+          { label: 'Marca', value: registro.marca || 'No registrada' },
+          { label: 'Modelo', value: registro.modelo || 'No registrado' },
+          { label: 'Número de serie', value: registro.numero_serie || 'No registrado' }
         ],
         [
-          { label: 'Propietario', value: registro.propietario_nombre_completo || 'No registrado' },
-          { label: 'Contacto', value: registro.propietario_contacto || 'No registrado' },
-          { label: 'Fecha de reporte', value: formatearFechaLarga(registro.incidencia_creada_en) || 'No registrada' }
+          { label: 'Placa', value: registro.placa_activo || 'No registrada' },
+          { label: 'Propietario', value: propietario },
+          { label: 'Contacto del propietario', value: contactoPropietario },
+          { label: 'Fecha de reporte', value: fechaReporte }
         ]
       ],
-      columnWidths
+      columnWidthsFour
     );
 
     drawSectionTitle('Datos específicos');
@@ -1673,10 +1708,11 @@ export const getDiagnosticoPdf = async (req, res) => {
         [
           { label: 'Procesador', value: especificaciones.procesador },
           { label: 'Memoria RAM', value: especificaciones.memoria_ram },
-          { label: 'Almacenamiento', value: especificaciones.almacenamiento }
+          { label: 'Almacenamiento', value: especificaciones.almacenamiento },
+          { label: 'Garantía', value: garantiaTexto }
         ]
       ],
-      columnWidths
+      columnWidthsFour
     );
 
     drawSectionTitle('Descripción gráfica');
@@ -1868,7 +1904,14 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const startX = doc.page.margins.left;
     const thirdWidth = Math.floor(pageWidth / 3);
-    const columnWidths = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const columnWidthsThree = [thirdWidth, thirdWidth, pageWidth - thirdWidth * 2];
+    const quarterWidth = Math.floor(pageWidth / 4);
+    const columnWidthsFour = [
+      quarterWidth,
+      quarterWidth,
+      quarterWidth,
+      pageWidth - quarterWidth * 3
+    ];
     const logoPath = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
 
     const valorSeguro = (valor, reemplazo = 'No registrado') => {
@@ -2064,41 +2107,8 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
 
     drawDocumentHeader('Formato de Baja de Equipo de Cómputo');
 
-    const headerColumn = Math.floor(pageWidth / 2);
-    const headerColumns = [headerColumn, pageWidth - headerColumn];
-
-    drawKeyValueTable(
-      [
-        [
-          { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
-          { label: 'Fecha', value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada') }
-        ],
-        [
-          { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
-          {
-            label: 'Contacto que reporta',
-            value: valorSeguro(contactoReporte, 'No registrado')
-          }
-        ]
-      ],
-      headerColumns
-    );
-
-    drawKeyValueTable(
-      [
-        [
-          { label: 'Tipo contacto externo', value: valorSeguro(tipoContacto, 'No aplica') },
-          { label: 'Datos contacto externo', value: valorSeguro(datosContacto, 'No registrados') }
-        ]
-      ],
-      headerColumns
-    );
-
-    drawKeyValueTable(
-      [[{ label: 'Fecha de reimpresión', value: fechaSegura(registro.baja_fecha_reimpresion, 'Sin fecha registrada') }]],
-      [pageWidth]
-    );
-
+    const propietario = valorSeguro(registro.propietario_nombre_completo, 'No registrado');
+    const contactoPropietario = valorSeguro(registro.propietario_contacto, 'No registrado');
     const tiempoUsoTexto = (() => {
       if (detalles.tiempoUso) {
         return detalles.tiempoUso;
@@ -2113,10 +2123,51 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
     })();
 
     const nombreEquipo = (() => {
-      const combinado = [registro.marca, registro.modelo].map((texto) => String(texto ?? '').trim()).filter(Boolean).join(' ');
+      const combinado = [registro.marca, registro.modelo]
+        .map((texto) => String(texto ?? '').trim())
+        .filter(Boolean)
+        .join(' ');
       if (combinado) return combinado;
       return valorSeguro(registro.categoria_nombre, 'No registrado');
     })();
+
+    drawSectionTitle('Datos generales');
+    drawKeyValueTable(
+      [
+        [
+          { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
+          { label: 'Categoría', value: valorSeguro(registro.categoria_nombre, 'No registrada') },
+          {
+            label: 'Fecha de baja',
+            value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada')
+          }
+        ],
+        [
+          { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
+          { label: 'Encargado de la categoría o activo', value: propietario },
+          { label: 'Folio de incidencia', value: valorSeguro(registro.id_incidencia, 'Sin folio') }
+        ],
+        [
+          { label: 'Prioridad', value: valorSeguro(registro.prioridad, 'Sin prioridad') },
+          { label: 'Estado', value: valorSeguro(registro.estado, 'Sin estado') },
+          { label: 'Origen', value: valorSeguro(registro.origen_incidencia, 'Sin origen') }
+        ],
+        [
+          { label: 'Reportada por', value: valorSeguro(contactoReporte, 'No registrado') },
+          { label: 'Tipo contacto externo', value: valorSeguro(tipoContacto, 'No aplica') },
+          { label: 'Datos contacto externo', value: valorSeguro(datosContacto, 'No registrados') }
+        ],
+        [
+          { label: 'ID de baja', value: valorSeguro(registro.baja_id, 'Sin ID') },
+          {
+            label: 'Fecha de reimpresión',
+            value: fechaSegura(registro.baja_fecha_reimpresion, 'Sin fecha registrada')
+          },
+          { label: 'Tiempo de uso', value: tiempoUsoTexto }
+        ]
+      ],
+      columnWidthsThree
+    );
 
     drawSectionTitle('Datos del equipo');
     drawKeyValueTable(
@@ -2124,37 +2175,30 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
         [
           { label: 'Equipo', value: valorSeguro(registro.categoria_nombre, 'No registrado') },
           { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
-          { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') }
+          { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
+          { label: 'Número de serie', value: valorSeguro(registro.numero_serie, 'No registrado') }
         ],
         [
-          { label: 'Placa de AF', value: valorSeguro(registro.placa_activo, 'No registrada') },
-          { label: 'No. Serie', value: valorSeguro(registro.numero_serie, 'No registrado') },
-          { label: 'Tiempo de uso', value: tiempoUsoTexto }
+          { label: 'Placa', value: valorSeguro(registro.placa_activo, 'No registrada') },
+          { label: 'Propietario', value: propietario },
+          { label: 'Contacto del propietario', value: contactoPropietario },
+          { label: 'Nombre de equipo', value: nombreEquipo }
         ]
       ],
-      columnWidths
-    );
-
-    drawKeyValueTable(
-      [[{ label: 'Nombre de equipo', value: nombreEquipo }]],
-      [pageWidth]
+      columnWidthsFour
     );
 
     drawSectionTitle('Datos específicos');
     drawKeyValueTable(
       [
         [
+          { label: 'Procesador', value: especificaciones.procesador },
           { label: 'Memoria RAM', value: especificaciones.memoria_ram },
           { label: 'Almacenamiento', value: especificaciones.almacenamiento },
-          { label: 'Procesador', value: especificaciones.procesador }
+          { label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }
         ]
       ],
-      columnWidths
-    );
-
-    drawKeyValueTable(
-      [[{ label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }]],
-      [pageWidth]
+      columnWidthsFour
     );
 
     const descripcionGrafica = valorSeguro(
