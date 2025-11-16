@@ -1418,8 +1418,9 @@ export const getDiagnosticoPdf = async (req, res) => {
          ar.nombre_area AS area_nombre,
          dpt.nombre_departamento AS departamento_nombre,
          cat.nombre AS categoria_nombre,
-         CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
-         CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico
+        CONCAT_WS(' ', u.nombre, u.apellido) AS nombre_reporta,
+        CONCAT_WS(' ', ut.nombre, ut.apellido) AS nombre_tecnico,
+        ut.correo AS correo_tecnico
        FROM diagnostico d
        INNER JOIN incidencias i ON i.id_incidencia = d.id_incidencia
        INNER JOIN activos_fijos a ON a.id_activo = d.id_activo
