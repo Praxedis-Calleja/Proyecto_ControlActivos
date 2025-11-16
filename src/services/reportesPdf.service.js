@@ -4,6 +4,15 @@ import path from 'node:path';
 
 const LOGO_PATH = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
 
+const valorSeguro = (valor, reemplazo = 'No registrado') => {
+  if (valor === undefined || valor === null) {
+    return reemplazo;
+  }
+
+  const texto = String(valor).trim();
+  return texto.length > 0 ? texto : reemplazo;
+};
+
 const crearDocumentoBase = ({ res, nombreArchivo, esDescarga, titulo, asunto }) => {
   const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
 
