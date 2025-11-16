@@ -456,8 +456,6 @@ export const generarDiagnosticoPdf = ({
     ? `Evidencia: ${registro.diagnostico_evidencia}`
     : 'No se proporcionó evidencia gráfica para este diagnóstico.';
 
-  drawLabeledBox('Descripción gráfica', evidenciaTexto, { height: 150 });
-
   // ==== DIAGNÓSTICO TÉCNICO (caja grande) ====
   const partesDiagnostico = [];
 
@@ -488,11 +486,77 @@ export const generarDiagnosticoPdf = ({
 
   drawLabeledBox('Diagnóstico técnico', diagnosticoCompleto, { height: 160 });
 
-  // ==== BLOQUE DE FIRMA DEL TÉCNICO (similiar a pie del formato) ====
-  doc.moveDown(1.2);
-  doc.font('Helvetica-Bold').fontSize(10).text('Firma del técnico:', startX);
-  doc.moveDown(1);
-  doc.font('Helvetica').fontSize(13).text(firma || '______________________', startX);
+  const nombreTecnico = valorSeguro(
+    registro.nombre_tecnico,
+    'Nombre del técnico no registrado'
+  );
+  const correoTecnico = valorSeguro(
+    registro.correo_tecnico,
+    'Correo no registrado'
+  );
+  const departamentoTecnico = valorSeguro(
+    registro.departamento_nombre,
+    'Departamento no registrado'
+  );
+  const puestoTecnico = 'Ingieniero de Soporte de Hoteles';
+  const direccionHotel =
+    'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
+
+  const dibujarFirmaTecnicoEnNuevaPagina = () => {
+    doc.moveDown(1.1);
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .text('Espacio para firma del técnico responsable', startX);
+
+    doc.moveDown(0.9);
+    const firmaLineWidth = Math.min(pageWidth * 0.65, 320);
+    const firmaLineY = doc.y;
+
+    doc
+      .moveTo(startX, firmaLineY)
+      .lineTo(startX + firmaLineWidth, firmaLineY)
+      .lineWidth(0.9)
+      .strokeColor('#000000')
+      .stroke();
+
+    doc
+      .font('Helvetica')
+      .fontSize(9)
+      .text('Firma del técnico', startX, firmaLineY + 4, {
+        width: firmaLineWidth,
+        align: 'center'
+      });
+
+    doc.moveDown(2);
+
+    const datosTecnico = [
+      { label: 'Nombre del técnico', value: nombreTecnico },
+      { label: 'Departamento', value: departamentoTecnico },
+      { label: 'Puesto', value: puestoTecnico },
+      { label: 'Correo', value: correoTecnico },
+      { label: 'Dirección', value: direccionHotel }
+    ];
+
+    datosTecnico.forEach(({ label, value }) => {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(10)
+        .text(`${label}: `, startX, doc.y, { continued: true });
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .text(value, { continued: false, width: pageWidth, lineGap: 2 });
+      doc.moveDown(0.3);
+    });
+  };
+
+  doc.addPage();
+  doc.y = doc.page.margins.top;
+  drawDocumentHeader('Formato de Diagnóstico de Equipo de Cómputo');
+  drawSectionTitle('Descripción gráfica');
+  drawLabeledBox('Descripción gráfica', evidenciaTexto, { height: 150 });
+  dibujarFirmaTecnicoEnNuevaPagina();
 
   doc.moveDown(1.2);
   doc
