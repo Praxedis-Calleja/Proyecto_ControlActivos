@@ -392,6 +392,10 @@ export const generarDiagnosticoPdf = ({
     registro.propietario_nombre_completo,
     'No registrado'
   );
+  const usuarioIncidencia = valorSeguro(
+    registro.nombre_propietario_externo || contactoReporte || propietario,
+    'No registrado'
+  );
   const contactoPropietario = valorSeguro(
     registro.propietario_contacto,
     'No registrado'
@@ -433,7 +437,7 @@ export const generarDiagnosticoPdf = ({
         { label: '', value: '' }
       ],
       [
-        { label: 'Usuario', value: propietario },
+        { label: 'Usuario', value: usuarioIncidencia },
         { label: '', value: '' }
       ]
     ],
