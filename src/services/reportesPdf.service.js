@@ -202,6 +202,28 @@ const construirUtilidadesLayout = (doc) => {
   const drawLabeledBox = (titulo, contenido, opciones = {}) => {
     const paddingH = 10;
     const paddingV = 10;
+    const minHeightBase = opciones.height ?? 120;
+    const maxY = doc.page.height - doc.page.margins.bottom;
+    const initialY = doc.y;
+
+    // Medimos el espacio requerido antes de dibujar para evitar que se corte la caja
+    doc.font('Helvetica-Bold').fontSize(10);
+    const tituloHeight = doc.heightOfString(titulo, { width: pageWidth });
+
+    doc.font('Helvetica').fontSize(10);
+    const textHeight = doc.heightOfString(contenido, {
+      width: pageWidth - paddingH * 2,
+      lineGap: 3
+    });
+
+    const boxHeight = Math.max(minHeightBase, textHeight + paddingV * 2);
+    const totalHeightNecesario = tituloHeight + 6 + boxHeight + 14;
+
+    if (initialY + totalHeightNecesario > maxY) {
+      doc.addPage();
+      doc.y = doc.page.margins.top;
+    }
+
     const boxY = doc.y;
 
     // Título de la caja
@@ -212,16 +234,6 @@ const construirUtilidadesLayout = (doc) => {
       .text(titulo, startX, boxY);
     const contentY = doc.y + 6;
 
-    // Calculamos la altura necesaria del texto
-    doc.font('Helvetica').fontSize(10);
-    const textHeight = doc.heightOfString(contenido, {
-      width: pageWidth - paddingH * 2,
-      lineGap: 3
-    });
-
-    const minHeightBase = opciones.height ?? 120;
-    const boxHeight = Math.max(minHeightBase, textHeight + paddingV * 2);
-
     // Rectángulo
     doc
       .rect(startX, contentY, pageWidth, boxHeight)
@@ -230,7 +242,7 @@ const construirUtilidadesLayout = (doc) => {
     doc.strokeColor('#000000');
 
     // Texto dentro de la caja
-    doc.text(contenido, startX + paddingH, contentY + paddingV, {
+    doc.font('Helvetica').fontSize(10).text(contenido, startX + paddingH, contentY + paddingV, {
       width: pageWidth - paddingH * 2,
       lineGap: 3
     });
