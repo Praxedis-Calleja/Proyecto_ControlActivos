@@ -3,6 +3,80 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const LOGO_PATH = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
+const PUESTO_TECNICO_DEFAULT = 'Ingieniero de Soporte de Hoteles';
+const DIRECCION_HOTEL_XCARET_ARTE =
+  'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
+
+const agregarPaginaDescripcionGraficaYFirma = ({
+  doc,
+  drawDocumentHeader,
+  drawSectionTitle,
+  drawLabeledBox,
+  startX,
+  pageWidth,
+  encabezado,
+  tituloDescripcion,
+  contenidoDescripcion,
+  datosTecnico = {}
+}) => {
+  const {
+    nombreTecnico = 'Nombre del técnico no registrado',
+    departamentoTecnico = 'Departamento no registrado',
+    correoTecnico = 'Correo no registrado',
+    puestoTecnico = PUESTO_TECNICO_DEFAULT,
+    direccionHotel = DIRECCION_HOTEL_XCARET_ARTE
+  } = datosTecnico;
+
+  doc.addPage();
+  doc.y = doc.page.margins.top;
+  drawDocumentHeader(encabezado);
+
+  drawSectionTitle(tituloDescripcion);
+  drawLabeledBox(tituloDescripcion, contenidoDescripcion, { height: 150 });
+
+  doc.moveDown(1.1);
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(11)
+    .text('Espacio para firma del técnico responsable', startX);
+
+  doc.moveDown(0.9);
+  const firmaLineWidth = Math.min(pageWidth * 0.65, 320);
+  const firmaLineY = doc.y;
+
+  doc
+    .moveTo(startX, firmaLineY)
+    .lineTo(startX + firmaLineWidth, firmaLineY)
+    .lineWidth(0.9)
+    .strokeColor('#000000')
+    .stroke();
+
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .text('Firma del técnico', startX, firmaLineY + 4, {
+      width: firmaLineWidth,
+      align: 'center'
+    });
+
+  doc.moveDown(2);
+
+  const infoLines = [
+    `Nombre del técnico: ${nombreTecnico}`,
+    `Departamento: ${departamentoTecnico}`,
+    puestoTecnico,
+    `Correo: ${correoTecnico}`,
+    `Dirección: ${direccionHotel}`
+  ];
+
+  infoLines.forEach((linea) => {
+    doc.font('Helvetica').fontSize(10).text(linea, startX, doc.y, {
+      width: pageWidth,
+      lineGap: 2
+    });
+    doc.moveDown(0.3);
+  });
+};
 
 const valorSeguro = (valor, reemplazo = 'No registrado') => {
   if (valor === undefined || valor === null) {
@@ -128,6 +202,28 @@ const construirUtilidadesLayout = (doc) => {
   const drawLabeledBox = (titulo, contenido, opciones = {}) => {
     const paddingH = 10;
     const paddingV = 10;
+    const minHeightBase = opciones.height ?? 120;
+    const maxY = doc.page.height - doc.page.margins.bottom;
+    const initialY = doc.y;
+
+    // Medimos el espacio requerido antes de dibujar para evitar que se corte la caja
+    doc.font('Helvetica-Bold').fontSize(10);
+    const tituloHeight = doc.heightOfString(titulo, { width: pageWidth });
+
+    doc.font('Helvetica').fontSize(10);
+    const textHeight = doc.heightOfString(contenido, {
+      width: pageWidth - paddingH * 2,
+      lineGap: 3
+    });
+
+    const boxHeight = Math.max(minHeightBase, textHeight + paddingV * 2);
+    const totalHeightNecesario = tituloHeight + 6 + boxHeight + 14;
+
+    if (initialY + totalHeightNecesario > maxY) {
+      doc.addPage();
+      doc.y = doc.page.margins.top;
+    }
+
     const boxY = doc.y;
 
     // Título de la caja
@@ -138,16 +234,6 @@ const construirUtilidadesLayout = (doc) => {
       .text(titulo, startX, boxY);
     const contentY = doc.y + 6;
 
-    // Calculamos la altura necesaria del texto
-    doc.font('Helvetica').fontSize(10);
-    const textHeight = doc.heightOfString(contenido, {
-      width: pageWidth - paddingH * 2,
-      lineGap: 3
-    });
-
-    const minHeightBase = opciones.height ?? 120;
-    const boxHeight = Math.max(minHeightBase, textHeight + paddingV * 2);
-
     // Rectángulo
     doc
       .rect(startX, contentY, pageWidth, boxHeight)
@@ -156,68 +242,13 @@ const construirUtilidadesLayout = (doc) => {
     doc.strokeColor('#000000');
 
     // Texto dentro de la caja
-    doc.text(contenido, startX + paddingH, contentY + paddingV, {
+    doc.font('Helvetica').fontSize(10).text(contenido, startX + paddingH, contentY + paddingV, {
       width: pageWidth - paddingH * 2,
       lineGap: 3
     });
 
     // Dejamos espacio debajo de la caja
     doc.y = contentY + boxHeight + 14;
-  };
-
-  const drawSignatureBlock = () => {
-    const lineWidth = Math.min(pageWidth * 0.5, 260);
-
-    doc.moveDown(1.2);
-    const lineY = doc.y;
-
-    doc
-      .moveTo(startX, lineY)
-      .lineTo(startX + lineWidth, lineY)
-      .lineWidth(0.7)
-      .strokeColor('#000000')
-      .stroke();
-
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .text('Usuario administrador o técnico', startX, lineY + 4, {
-        width: lineWidth,
-        align: 'center'
-      });
-
-    const infoX = startX + lineWidth + 24;
-    const infoWidth = pageWidth - (infoX - startX);
-
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(10)
-      .text('Departamento de Tecnología', infoX, lineY - 12, {
-        width: infoWidth,
-        align: 'left'
-      });
-
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .text('Ingeniero de Soporte de Hoteles', infoX, doc.y + 6, {
-        width: infoWidth
-      });
-
-    const drawInfoLine = (label) => {
-      doc.moveDown(0.4);
-      doc
-        .font('Helvetica')
-        .fontSize(9)
-        .text(`${label}: _________________________________`, infoX, doc.y, {
-          width: infoWidth
-        });
-    };
-
-    drawInfoLine('Correo');
-    drawInfoLine('Dirección');
-
-    doc.y += 16;
   };
 
   const drawDocumentHeader = (titulo) => {
@@ -287,7 +318,6 @@ const construirUtilidadesLayout = (doc) => {
     drawSectionTitle,
     drawKeyValueTable,
     drawLabeledBox,
-    drawSignatureBlock,
     drawDocumentHeader
   };
 };
@@ -498,65 +528,23 @@ export const generarDiagnosticoPdf = ({
     registro.departamento_nombre,
     'Departamento no registrado'
   );
-  const puestoTecnico = 'Ingieniero de Soporte de Hoteles';
-  const direccionHotel =
-    'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
 
-  const dibujarFirmaTecnicoEnNuevaPagina = () => {
-    doc.moveDown(1.1);
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(11)
-      .text('Espacio para firma del técnico responsable', startX);
-
-    doc.moveDown(0.9);
-    const firmaLineWidth = Math.min(pageWidth * 0.65, 320);
-    const firmaLineY = doc.y;
-
-    doc
-      .moveTo(startX, firmaLineY)
-      .lineTo(startX + firmaLineWidth, firmaLineY)
-      .lineWidth(0.9)
-      .strokeColor('#000000')
-      .stroke();
-
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .text('Firma del técnico', startX, firmaLineY + 4, {
-        width: firmaLineWidth,
-        align: 'center'
-      });
-
-    doc.moveDown(2);
-
-    const datosTecnico = [
-      { label: 'Nombre del técnico', value: nombreTecnico },
-      { label: 'Departamento', value: departamentoTecnico },
-      { label: 'Puesto', value: puestoTecnico },
-      { label: 'Correo', value: correoTecnico },
-      { label: 'Dirección', value: direccionHotel }
-    ];
-
-    datosTecnico.forEach(({ label, value }) => {
-      doc
-        .font('Helvetica-Bold')
-        .fontSize(10)
-        .text(`${label}: `, startX, doc.y, { continued: true });
-      doc
-        .font('Helvetica')
-        .fontSize(10)
-        .text(value, { continued: false, width: pageWidth, lineGap: 2 });
-      doc.moveDown(0.3);
-    });
-  };
-
-  doc.addPage();
-  doc.y = doc.page.margins.top;
-  drawDocumentHeader('Formato de Diagnóstico de Equipo de Cómputo');
-  drawSectionTitle('Descripción gráfica');
-  drawLabeledBox('Descripción gráfica', evidenciaTexto, { height: 150 });
-  dibujarFirmaTecnicoEnNuevaPagina();
+  agregarPaginaDescripcionGraficaYFirma({
+    doc,
+    drawDocumentHeader,
+    drawSectionTitle,
+    drawLabeledBox,
+    startX,
+    pageWidth,
+    encabezado: 'Formato de Diagnóstico de Equipo de Cómputo',
+    tituloDescripcion: 'Descripción gráfica',
+    contenidoDescripcion: evidenciaTexto,
+    datosTecnico: {
+      nombreTecnico,
+      departamentoTecnico,
+      correoTecnico
+    }
+  });
 
   doc.moveDown(1.2);
   doc
@@ -603,7 +591,6 @@ export const generarBajaPdf = ({
     drawSectionTitle,
     drawKeyValueTable,
     drawLabeledBox,
-    drawSignatureBlock,
     drawDocumentHeader
   } = construirUtilidadesLayout(doc);
 
@@ -718,12 +705,6 @@ export const generarBajaPdf = ({
     columnWidthsEspecificos
   );
 
-  const descripcionGrafica = valorSeguro(
-    registro.diagnostico_evidencia,
-    'No se proporcionó descripción gráfica para esta baja.'
-  );
-  drawLabeledBox('Descripción gráfica', descripcionGrafica, { height: 140 });
-
   drawSectionTitle('Diagnóstico técnico');
 
   const escribirBloqueDiagnostico = (etiqueta, contenido) => {
@@ -743,8 +724,40 @@ export const generarBajaPdf = ({
   escribirBloqueDiagnostico('Observaciones', detalles.observaciones);
   escribirBloqueDiagnostico('Autorizado por', detalles.autorizado_por);
 
-  drawSectionTitle('Espacio para firma');
-  drawSignatureBlock();
+  const descripcionGrafica = valorSeguro(
+    registro.diagnostico_evidencia,
+    'No se proporcionó descripción gráfica para esta baja.'
+  );
+
+  const nombreTecnico = valorSeguro(
+    registro.nombre_tecnico,
+    'Nombre del técnico no registrado'
+  );
+  const correoTecnico = valorSeguro(
+    registro.correo_tecnico,
+    'Correo no registrado'
+  );
+  const departamentoTecnico = valorSeguro(
+    registro.departamento_nombre,
+    'Departamento no registrado'
+  );
+
+  agregarPaginaDescripcionGraficaYFirma({
+    doc,
+    drawDocumentHeader,
+    drawSectionTitle,
+    drawLabeledBox,
+    startX,
+    pageWidth,
+    encabezado: 'Formato de Baja de Equipo de Cómputo',
+    tituloDescripcion: 'Descripción gráfica',
+    contenidoDescripcion: descripcionGrafica,
+    datosTecnico: {
+      nombreTecnico,
+      departamentoTecnico,
+      correoTecnico
+    }
+  });
 
   doc.font('Helvetica').fontSize(9).fillColor('#555555').text(
     'Documento generado automáticamente por el Sistema de Control de Activos.',
