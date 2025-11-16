@@ -513,16 +513,6 @@ export const generarDiagnosticoPdf = ({
     const firmaLineWidth = Math.min(pageWidth * 0.65, 320);
     const firmaLineY = doc.y;
 
-    if (firma && firma !== 'Firma no registrada') {
-      doc
-        .font('Helvetica')
-        .fontSize(11)
-        .text(firma, startX, firmaLineY - 16, {
-          width: firmaLineWidth,
-          align: 'center'
-        });
-    }
-
     doc
       .moveTo(startX, firmaLineY)
       .lineTo(startX + firmaLineWidth, firmaLineY)
@@ -538,21 +528,25 @@ export const generarDiagnosticoPdf = ({
         align: 'center'
       });
 
-    doc.moveDown(1.6);
+    doc.moveDown(2);
 
-    const informacionFirma = [
-      `Nombre del técnico: ${nombreTecnico}`,
-      `Departamento: ${departamentoTecnico}`,
-      puestoTecnico,
-      `Correo del técnico: ${correoTecnico}`,
-      `Dirección: ${direccionHotel}`
+    const datosTecnico = [
+      { label: 'Nombre del técnico', value: nombreTecnico },
+      { label: 'Departamento', value: departamentoTecnico },
+      { label: 'Puesto', value: puestoTecnico },
+      { label: 'Correo', value: correoTecnico },
+      { label: 'Dirección', value: direccionHotel }
     ];
 
-    informacionFirma.forEach((linea) => {
+    datosTecnico.forEach(({ label, value }) => {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(10)
+        .text(`${label}: `, startX, doc.y, { continued: true });
       doc
         .font('Helvetica')
         .fontSize(10)
-        .text(linea, startX, doc.y, { width: pageWidth, lineGap: 2 });
+        .text(value, { continued: false, width: pageWidth, lineGap: 2 });
       doc.moveDown(0.3);
     });
   };
@@ -561,7 +555,7 @@ export const generarDiagnosticoPdf = ({
   doc.y = doc.page.margins.top;
   drawDocumentHeader('Formato de Diagnóstico de Equipo de Cómputo');
   drawSectionTitle('Descripción gráfica');
-  drawLabeledBox('Descripción gráfica', evidenciaTexto, { height: 160 });
+  drawLabeledBox('Descripción gráfica', evidenciaTexto, { height: 150 });
   dibujarFirmaTecnicoEnNuevaPagina();
 
   doc.moveDown(1.2);
