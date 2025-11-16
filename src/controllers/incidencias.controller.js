@@ -1414,8 +1414,12 @@ export const getDiagnosticoPdf = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.estado,
-         i.nombre_propietario_externo,
-         i.nombre_contacto_externo,
+        COALESCE(
+          NULLIF(i.nombre_contacto_externo, ''),
+          NULLIF(a.propietario_nombre_completo, ''),
+          CONCAT_WS(' ', u.nombre, u.apellido)
+        ) AS nombre_propietario_externo,
+        i.nombre_contacto_externo,
          i.tipo_contacto_externo,
          i.datos_contacto_externo,
          i.creada_en AS incidencia_creada_en,
@@ -1521,8 +1525,12 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.estado,
-         i.nombre_propietario_externo,
-         i.nombre_contacto_externo,
+        COALESCE(
+          NULLIF(i.nombre_contacto_externo, ''),
+          NULLIF(a.propietario_nombre_completo, ''),
+          CONCAT_WS(' ', u.nombre, u.apellido)
+        ) AS nombre_propietario_externo,
+        i.nombre_contacto_externo,
          i.tipo_contacto_externo,
          i.datos_contacto_externo,
          a.marca,
