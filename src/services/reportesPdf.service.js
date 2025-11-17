@@ -7,6 +7,7 @@ const PUESTO_TECNICO_DEFAULT = 'Ingieniero de Soporte de Hoteles';
 const DEPARTAMENTO_TECNICO_DEFAULT = 'Departamente de sistemas';
 const DIRECCION_HOTEL_XCARET_ARTE =
   'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
+const COLOR_ACCENT = '#a0192f';
 
 const agregarPaginaDescripcionGraficaYFirma = ({
   doc,
