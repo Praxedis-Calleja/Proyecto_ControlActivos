@@ -331,6 +331,75 @@ const formatearFecha = (valor) => {
   }
 };
 
+const DIAS_REPORTE_RECIENTE = 30;
+
+const normalizarFechaFiltro = (valor) => {
+  if (!valor) return null;
+  const texto = String(valor).trim();
+  if (!texto) return null;
+  const formato = /^\d{4}-\d{2}-\d{2}$/;
+  if (formato.test(texto)) {
+    return texto;
+  }
+  const fecha = new Date(texto);
+  if (Number.isNaN(fecha.getTime())) return null;
+  return fecha.toISOString().slice(0, 10);
+};
+
+const obtenerFechaIso = (fecha = new Date()) => {
+  try {
+    const instancia = fecha instanceof Date ? fecha : new Date(fecha);
+    if (Number.isNaN(instancia.getTime())) return null;
+    return instancia.toISOString().slice(0, 10);
+  } catch (error) {
+    return null;
+  }
+};
+
+const esFechaReciente = (valor) => {
+  if (!valor) return false;
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return false;
+  const diferencia = Date.now() - fecha.getTime();
+  const limite = DIAS_REPORTE_RECIENTE * 24 * 60 * 60 * 1000;
+  return diferencia <= limite;
+};
+
+const construirFiltrosReportes = (query = {}) => {
+  const tipo = ['diagnostico', 'baja', 'todos'].includes(query.tipo)
+    ? query.tipo
+    : 'todos';
+  const termino = typeof query.q === 'string' ? query.q.trim() : '';
+  let desde = normalizarFechaFiltro(query.desde);
+  let hasta = normalizarFechaFiltro(query.hasta);
+  const recientes = query.recientes === '1';
+
+  if (recientes && !hasta) {
+    hasta = obtenerFechaIso();
+  }
+
+  if (recientes && !desde) {
+    const limite = new Date();
+    limite.setDate(limite.getDate() - DIAS_REPORTE_RECIENTE);
+    desde = obtenerFechaIso(limite);
+  }
+
+  if (desde && hasta && desde > hasta) {
+    const temp = desde;
+    desde = hasta;
+    hasta = temp;
+  }
+
+  return {
+    tipo,
+    termino,
+    desde,
+    hasta,
+    recientes,
+    aplicoFiltros: Boolean(termino || desde || hasta || recientes || tipo !== 'todos')
+  };
+};
+
 const formatearFechaLarga = (valor) => {
   if (!valor) return '';
   try {
@@ -609,78 +678,234 @@ export const getListadoIncidencias = async (req, res) => {
   }
 };
 
+const obtenerReportesDiagnostico = async (filtros) => {
+  const condiciones = [];
+  const parametros = [];
+
+  if (filtros.termino) {
+    const like = `%${filtros.termino}%`;
+    condiciones.push(`(
+      i.descripcion_problema LIKE ? OR
+      a.marca LIKE ? OR
+      a.modelo LIKE ? OR
+      a.numero_serie LIKE ? OR
+      a.placa_activo LIKE ? OR
+      d.diagnostico LIKE ? OR
+      CONCAT_WS(' ', ut.nombre, ut.apellido) LIKE ?
+    )`);
+    parametros.push(like, like, like, like, like, like, like);
+  }
+
+  if (filtros.desde) {
+    condiciones.push('DATE(d.fecha_diagnostico) >= ?');
+    parametros.push(filtros.desde);
+  }
+
+  if (filtros.hasta) {
+    condiciones.push('DATE(d.fecha_diagnostico) <= ?');
+    parametros.push(filtros.hasta);
+  }
+
+  const whereClausula = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+
+  const [rows] = await pool.query(
+    `SELECT
+        d.id_diagnostico,
+        d.id_incidencia,
+        d.fecha_diagnostico,
+        d.creado_en,
+        d.diagnostico,
+        d.tiempo_uso,
+        d.evidenciaURL,
+        i.estado,
+        i.prioridad,
+        i.descripcion_problema,
+        CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
+        a.numero_serie,
+        a.placa_activo,
+        CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre,
+        b.ID_Baja AS baja_id,
+        b.Fecha_Baja AS baja_fecha
+      FROM diagnostico d
+      INNER JOIN incidencias i ON i.id_incidencia = d.id_incidencia
+      INNER JOIN activos_fijos a ON a.id_activo = d.id_activo
+      LEFT JOIN usuarios ut ON ut.id_usuario = d.id_usuario_tecnico
+      LEFT JOIN reportesbaja b ON b.id_diagnostico = d.id_diagnostico
+      ${whereClausula}
+      ORDER BY d.fecha_diagnostico DESC, d.creado_en DESC`,
+    parametros
+  );
+
+  return rows.map((registro) => {
+    const detalles = descomponerTiempoUso(registro.tiempo_uso);
+
+    return {
+      id: registro.id_diagnostico,
+      incidenciaId: registro.id_incidencia,
+      fechaDiagnostico: formatearFechaLarga(registro.fecha_diagnostico) || 'Sin fecha registrada',
+      creadoEn: formatearFechaHoraCorta(registro.creado_en) || 'Sin registro',
+      diagnostico: registro.diagnostico || '',
+      trabajo: detalles.trabajo || '',
+      descripcionProblema: registro.descripcion_problema || '',
+      evidencia: registro.evidenciaURL || '',
+      tecnico: registro.tecnico_nombre || 'Técnico sin asignar',
+      activo: {
+        nombre: registro.activo_nombre || 'Activo sin nombre',
+        numeroSerie: registro.numero_serie || 'No registrado',
+        placa: registro.placa_activo || 'No registrada'
+      },
+      incidencia: {
+        estado: registro.estado || 'Sin estado',
+        prioridad: registro.prioridad || 'Sin prioridad'
+      },
+      reporteBaja: registro.baja_id
+        ? {
+            id: registro.baja_id,
+            fecha: formatearFechaLarga(registro.baja_fecha) || 'Sin fecha registrada',
+            url: `/incidencias/${registro.id_incidencia}/diagnostico/baja/pdf/${registro.id_diagnostico}`
+          }
+        : null,
+      pdfUrl: `/incidencias/${registro.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}`,
+      esReciente: esFechaReciente(registro.fecha_diagnostico)
+    };
+  });
+};
+
+const obtenerReportesBaja = async (filtros) => {
+  const condiciones = [];
+  const parametros = [];
+
+  if (filtros.termino) {
+    const like = `%${filtros.termino}%`;
+    condiciones.push(`(
+      i.descripcion_problema LIKE ? OR
+      a.marca LIKE ? OR
+      a.modelo LIKE ? OR
+      a.numero_serie LIKE ? OR
+      a.placa_activo LIKE ? OR
+      d.diagnostico LIKE ? OR
+      CONCAT_WS(' ', ut.nombre, ut.apellido) LIKE ?
+    )`);
+    parametros.push(like, like, like, like, like, like, like);
+  }
+
+  if (filtros.desde) {
+    condiciones.push('DATE(b.Fecha_Baja) >= ?');
+    parametros.push(filtros.desde);
+  }
+
+  if (filtros.hasta) {
+    condiciones.push('DATE(b.Fecha_Baja) <= ?');
+    parametros.push(filtros.hasta);
+  }
+
+  const whereClausula = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+
+  const [rows] = await pool.query(
+    `SELECT
+        b.ID_Baja AS id_baja,
+        b.ID_Activo AS id_activo,
+        b.Fecha_Baja AS fecha_baja,
+        b.Fecha_Reimpresion AS fecha_reimpresion,
+        d.id_diagnostico,
+        d.fecha_diagnostico,
+        d.tiempo_uso,
+        d.diagnostico,
+        d.evidenciaURL AS evidencia,
+        CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico,
+        a.marca,
+        a.modelo,
+        a.numero_serie,
+        a.placa_activo,
+        a.propietario_nombre_completo AS propietario,
+        a.propietario_contacto AS contacto,
+        c.nombre AS categoria,
+        ar.nombre_area AS area,
+        dep.nombre_departamento AS departamento,
+        i.id_incidencia,
+        i.descripcion_problema
+      FROM reportesbaja b
+      INNER JOIN diagnostico d ON d.id_diagnostico = b.id_diagnostico
+      INNER JOIN activos_fijos a ON a.id_activo = b.ID_Activo
+      LEFT JOIN categorias_activos c ON c.id_categoria_activos = a.id_categoria_activos
+      LEFT JOIN areas ar ON ar.id_area = a.id_area
+      LEFT JOIN departamentos dep ON dep.id_departamento = ar.id_departamento
+      LEFT JOIN usuarios ut ON ut.id_usuario = d.id_usuario_tecnico
+      LEFT JOIN incidencias i ON i.id_incidencia = d.id_incidencia
+      ${whereClausula}
+      ORDER BY b.Fecha_Baja DESC, b.ID_Baja DESC`,
+    parametros
+  );
+
+  return rows.map((registro) => {
+    const detalles = descomponerTiempoUso(registro.tiempo_uso);
+
+    return {
+      id: registro.id_baja,
+      fechaBajaTexto: formatearFechaLarga(registro.fecha_baja) || 'Sin fecha',
+      fechaReimpresionTexto: formatearFechaLarga(registro.fecha_reimpresion) || 'Sin fecha',
+      fechaDiagnosticoTexto: formatearFechaLarga(registro.fecha_diagnostico) || 'Sin fecha',
+      motivo: detalles.motivo || 'Sin motivo especificado',
+      observaciones: detalles.observaciones || 'Sin observaciones',
+      autorizadoPor: detalles.autorizado_por || '',
+      trabajo: detalles.trabajo || '',
+      tecnico: registro.tecnico || 'No registrado',
+      evidencia: registro.evidencia || null,
+      diagnostico: registro.diagnostico || 'Sin diagnóstico capturado',
+      diagnosticoId: registro.id_diagnostico,
+      pdfUrl: `/incidencias/${registro.id_incidencia}/diagnostico/baja/pdf/${registro.id_diagnostico}`,
+      incidencia: registro.id_incidencia
+        ? {
+            id: registro.id_incidencia,
+            descripcion: registro.descripcion_problema || 'Sin descripción'
+          }
+        : null,
+      activo: {
+        id: registro.id_activo,
+        nombre: [registro.marca, registro.modelo]
+          .map((parte) => (parte ? String(parte).trim() : ''))
+          .filter(Boolean)
+          .join(' ') || 'Activo sin nombre',
+        numeroSerie: registro.numero_serie || 'No registrado',
+        placa: registro.placa_activo || 'No registrada',
+        categoria: registro.categoria || 'Sin categoría',
+        area: registro.area || 'Sin área',
+        departamento: registro.departamento || 'Sin departamento',
+        propietario: registro.propietario || 'Sin propietario',
+        contacto: registro.contacto || 'Sin contacto'
+      },
+      esReciente: esFechaReciente(registro.fecha_baja)
+    };
+  });
+};
+
 export const getReportesDiagnostico = async (req, res) => {
+  const filtros = construirFiltrosReportes(req.query);
+
   try {
-    const [rows] = await pool.query(
-      `SELECT
-         d.id_diagnostico,
-         d.id_incidencia,
-         d.fecha_diagnostico,
-         d.creado_en,
-         d.diagnostico,
-         d.tiempo_uso,
-         d.evidenciaURL,
-         i.estado,
-         i.prioridad,
-         i.descripcion_problema,
-         CONCAT_WS(' ', a.marca, a.modelo) AS activo_nombre,
-         a.numero_serie,
-         a.placa_activo,
-         CONCAT_WS(' ', ut.nombre, ut.apellido) AS tecnico_nombre,
-         b.ID_Baja AS baja_id,
-         b.Fecha_Baja AS baja_fecha
-       FROM diagnostico d
-       INNER JOIN incidencias i ON i.id_incidencia = d.id_incidencia
-       INNER JOIN activos_fijos a ON a.id_activo = d.id_activo
-       LEFT JOIN usuarios ut ON ut.id_usuario = d.id_usuario_tecnico
-       LEFT JOIN reportesbaja b ON b.id_diagnostico = d.id_diagnostico
-       ORDER BY d.creado_en DESC`
-    );
+    const diagnosticosPromise =
+      filtros.tipo === 'baja' ? Promise.resolve([]) : obtenerReportesDiagnostico(filtros);
+    const bajasPromise = filtros.tipo === 'diagnostico' ? Promise.resolve([]) : obtenerReportesBaja(filtros);
 
-    const reportes = rows.map((registro) => {
-      const detalles = descomponerTiempoUso(registro.tiempo_uso);
-
-      return {
-        id: registro.id_diagnostico,
-        incidenciaId: registro.id_incidencia,
-        fechaDiagnostico: formatearFechaLarga(registro.fecha_diagnostico) || 'Sin fecha registrada',
-        creadoEn: formatearFechaHoraCorta(registro.creado_en) || 'Sin registro',
-        diagnostico: registro.diagnostico || '',
-        trabajo: detalles.trabajo || '',
-        descripcionProblema: registro.descripcion_problema || '',
-        evidencia: registro.evidenciaURL || '',
-        tecnico: registro.tecnico_nombre || 'Técnico sin asignar',
-        activo: {
-          nombre: registro.activo_nombre || 'Activo sin nombre',
-          numeroSerie: registro.numero_serie || 'No registrado',
-          placa: registro.placa_activo || 'No registrada'
-        },
-        incidencia: {
-          estado: registro.estado || 'Sin estado',
-          prioridad: registro.prioridad || 'Sin prioridad'
-        },
-        reporteBaja: registro.baja_id
-          ? {
-              id: registro.baja_id,
-              fecha: formatearFechaLarga(registro.baja_fecha) || 'Sin fecha registrada',
-              url: `/incidencias/${registro.id_incidencia}/diagnostico/baja/pdf/${registro.id_diagnostico}`
-            }
-          : null,
-        pdfUrl: `/incidencias/${registro.id_incidencia}/diagnostico/pdf/${registro.id_diagnostico}`
-      };
-    });
+    const [reportesDiagnostico, reportesBaja] = await Promise.all([diagnosticosPromise, bajasPromise]);
 
     return res.render('incidencias/reportes', {
-      reportes,
+      reportesDiagnostico,
+      reportesBaja,
+      filtros,
+      tipoSeleccionado: filtros.tipo,
       error: null,
-      pageTitle: 'Reportes de diagnóstico'
+      pageTitle: 'Buscador de reportes'
     });
   } catch (error) {
     console.error('Error al listar reportes de diagnóstico:', error);
     return res.status(500).render('incidencias/reportes', {
-      reportes: [],
-      error: 'No se pudieron cargar los reportes de diagnóstico. Intenta nuevamente más tarde.',
-      pageTitle: 'Reportes de diagnóstico'
+      reportesDiagnostico: [],
+      reportesBaja: [],
+      filtros,
+      tipoSeleccionado: filtros.tipo,
+      error: 'No se pudieron cargar los reportes. Intenta nuevamente más tarde.',
+      pageTitle: 'Buscador de reportes'
     });
   }
 };
@@ -1055,10 +1280,20 @@ export const getDiagnosticoIncidencia = async (req, res) => {
       values.fecha_diagnostico = formatearFecha(new Date());
     }
 
-    const reporteBajaCreado =
-      typeof req.query.b === 'string' && req.query.b.startsWith('/')
-        ? req.query.b
-        : null;
+    const reporteBajaCreado = (() => {
+      if (typeof req.query.b === 'string' && req.query.b.startsWith('/')) {
+        const idBaja = Number.isInteger(Number(req.query.bid))
+          ? Number(req.query.bid)
+          : null;
+        const fechaBaja = typeof req.query.bf === 'string' ? req.query.bf : null;
+        return {
+          url: req.query.b,
+          id: idBaja,
+          fecha: fechaBaja
+        };
+      }
+      return null;
+    })();
 
     const pageTitle = 'Diagnóstico de incidencia';
 
@@ -1299,7 +1534,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     const diagnosticoId = resultado.insertId;
 
     let reporteBajaUrl = null;
+    let reporteBajaCreado = null;
     if (requiere_baja === 'SI') {
+      if (!incidencia.id_activo) {
+        throw new Error('El activo asociado a la incidencia es obligatorio para generar el reporte de baja.');
+      }
+
       const fechaBaja = fechaNormalizada || formatearFecha(new Date()) || null;
       const [resultadoBaja] = await connection.query(
         `INSERT INTO reportesbaja (
@@ -1307,12 +1547,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
            Fecha_Baja,
            id_diagnostico
          ) VALUES (?, ?, ?)`,
-        [
-          null,
-          incidencia.id_activo,
-          fechaBaja,
-          diagnosticoId
-        ]
+        [incidencia.id_activo, fechaBaja, diagnosticoId]
       );
 
       if (incidencia.id_activo !== null && incidencia.id_activo !== undefined) {
@@ -1324,7 +1559,14 @@ export const postDiagnosticoIncidencia = async (req, res) => {
           ['BAJA', incidencia.id_activo]
         );
       }
+      const bajaId = resultadoBaja?.insertId;
       reporteBajaUrl = `/incidencias/${idIncidencia}/diagnostico/baja/pdf/${diagnosticoId}`;
+      if (bajaId) {
+        reporteBajaCreado = {
+          id: bajaId,
+          fecha: fechaBaja
+        };
+      }
     }
 
     await connection.commit();
@@ -1338,6 +1580,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     const queryParams = new URLSearchParams({ ok: '1', h: String(diagnosticoId) });
     if (reporteBajaUrl) {
       queryParams.set('b', reporteBajaUrl);
+      if (reporteBajaCreado?.id) {
+        queryParams.set('bid', String(reporteBajaCreado.id));
+      }
+      if (reporteBajaCreado?.fecha) {
+        queryParams.set('bf', reporteBajaCreado.fecha);
+      }
     }
 
     return res.redirect(`/incidencias/${idIncidencia}/diagnostico?${queryParams.toString()}`);

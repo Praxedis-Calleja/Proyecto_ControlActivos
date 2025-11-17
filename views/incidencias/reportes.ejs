@@ -2,9 +2,9 @@
   <section class="reportes-diagnostico">
     <header class="reportes-diagnostico__header">
       <div>
-        <h2>Reportes de diagnóstico</h2>
+        <h2>Buscador de reportes</h2>
         <p class="reportes-diagnostico__descripcion section-description">
-          Consulta los diagnósticos registrados para los activos con incidencias, revisa los detalles técnicos y descarga los informes en PDF.
+          Filtra los reportes por tipo, palabra clave o periodo para ubicar rápidamente los diagnósticos o las bajas emitidas.
         </p>
       </div>
     </header>
@@ -12,6 +12,14 @@
     ${error ? `<div class="alert">${error}</div>` : ''}
 
     ${(() => {
+      const filtrosNormalizados = typeof filtros === 'object' && filtros !== null ? filtros : {};
+      const tipo = filtrosNormalizados.tipo || tipoSeleccionado || 'todos';
+      const termino = filtrosNormalizados.termino || '';
+      const desde = filtrosNormalizados.desde || '';
+      const hasta = filtrosNormalizados.hasta || '';
+      const recientes = Boolean(filtrosNormalizados.recientes);
+      const tieneFiltros = Boolean(filtrosNormalizados.aplicoFiltros);
+
       const escapeHtml = (texto = '') =>
         String(texto)
           .replace(/&/g, '&amp;')
@@ -24,107 +32,303 @@
 
       const multilinea = (texto = '') => escapeHtml(texto).replace(/\r?\n/g, '<br>');
 
-      if (!Array.isArray(reportes) || reportes.length === 0) {
-        if (error) {
+      const diagnosticos = Array.isArray(reportesDiagnostico) ? reportesDiagnostico : [];
+      const bajas = Array.isArray(reportesBaja) ? reportesBaja : [];
+      const mostrarDiagnosticos = tipo !== 'baja';
+      const mostrarBajas = tipo !== 'diagnostico';
+
+      const totalDiagnosticos = mostrarDiagnosticos ? diagnosticos.length : 0;
+      const totalBajas = mostrarBajas ? bajas.length : 0;
+      const totalRegistros = totalDiagnosticos + totalBajas;
+
+      const resumenBusqueda = (() => {
+        if (tipo === 'diagnostico') {
+          return `${totalDiagnosticos} reporte${totalDiagnosticos === 1 ? '' : 's'} de diagnóstico encontrados.`;
+        }
+        if (tipo === 'baja') {
+          return `${totalBajas} reporte${totalBajas === 1 ? '' : 's'} de baja encontrados.`;
+        }
+        return `${totalRegistros} reporte${totalRegistros === 1 ? '' : 's'} encontrados (${diagnosticos.length} diagnósticos y ${bajas.length} bajas).`;
+      })();
+
+      const renderDiagnosticos = () => {
+        if (!mostrarDiagnosticos) return '';
+
+        if (diagnosticos.length === 0) {
           return `
             <div class="reportes-diagnostico__vacio">
-              <p>No pudimos cargar los reportes de diagnóstico en este momento.</p>
+              <p>No encontramos diagnósticos con los filtros aplicados.</p>
             </div>
           `;
         }
 
         return `
-          <div class="reportes-diagnostico__vacio">
-            <p>Aún no se han registrado diagnósticos.</p>
-            <p>Cuando registres un diagnóstico desde una incidencia aparecerá en esta sección.</p>
-          </div>
+          <section class="reportes-buscador__seccion">
+            <div class="reportes-buscador__seccion-header">
+              <h3>Diagnósticos</h3>
+              <p>${diagnosticos.length} resultado${diagnosticos.length === 1 ? '' : 's'}</p>
+            </div>
+            <div class="reportes-diagnostico__grid">
+              ${diagnosticos
+                .map((reporte) => {
+                  const evidencia = reporte.evidencia
+                    ? `<p><strong>Evidencia:</strong> ${escapeHtml(reporte.evidencia)}</p>`
+                    : '';
+
+                  const accionesBaja = reporte.reporteBaja
+                    ? `
+                          <a class="btn-secundario" href="${escapeAttr(reporte.reporteBaja.url)}" target="_blank" rel="noopener">Ver PDF de baja</a>
+                          <a class="btn" href="${escapeAttr(reporte.reporteBaja.url)}?descargar=1" download>Descargar PDF de baja</a>
+                        `
+                    : '';
+
+                  const resumenBaja = reporte.reporteBaja
+                    ? `
+                          <div class="reporte-diagnostico-card__texto">
+                            <h5>Reporte de baja asociado</h5>
+                            <p><strong>Identificador:</strong> #${escapeHtml(reporte.reporteBaja.id)}</p>
+                            <p><strong>Fecha:</strong> ${escapeHtml(reporte.reporteBaja.fecha)}</p>
+                          </div>
+                        `
+                    : '';
+
+                  const badgeReciente = reporte.esReciente
+                    ? '<span class="reporte-chip">Reciente</span>'
+                    : '';
+
+                  return `
+                    <article class="reporte-diagnostico-card">
+                      <header class="reporte-diagnostico-card__header">
+                        <div>
+                          <h3>Diagnóstico ${badgeReciente}</h3>
+                          <p class="reporte-diagnostico-card__subtitulo">
+                            Incidencia · ${escapeHtml(reporte.fechaDiagnostico)}
+                          </p>
+                        </div>
+                        <div class="reporte-diagnostico-card__acciones">
+                          <a class="btn-secundario" href="/incidencias/${escapeAttr(reporte.incidenciaId)}/diagnostico" rel="noopener">Ver incidencia</a>
+                          <a class="btn-secundario" href="${escapeAttr(reporte.pdfUrl)}" target="_blank" rel="noopener">Ver PDF diagnóstico</a>
+                          <a class="btn" href="${escapeAttr(reporte.pdfUrl)}?descargar=1" download>Descargar PDF diagnóstico</a>
+                          ${accionesBaja}
+                        </div>
+                      </header>
+
+                      <section class="reporte-diagnostico-card__contenido">
+                        <div class="reporte-diagnostico-card__bloque">
+                          <h4>Activo diagnosticado</h4>
+                          <dl>
+                            <div>
+                              <dt>Activo</dt>
+                              <dd>${escapeHtml(reporte.activo.nombre)}</dd>
+                            </div>
+                            <div>
+                              <dt>Número de serie</dt>
+                              <dd>${escapeHtml(reporte.activo.numeroSerie)}</dd>
+                            </div>
+                            <div>
+                              <dt>Placa</dt>
+                              <dd>${escapeHtml(reporte.activo.placa)}</dd>
+                            </div>
+                          </dl>
+                        </div>
+
+                        <div class="reporte-diagnostico-card__bloque">
+                          <h4>Detalle del diagnóstico</h4>
+                          <p><strong>Registrado:</strong> ${escapeHtml(reporte.creadoEn)}</p>
+                          <p><strong>Técnico:</strong> ${escapeHtml(reporte.tecnico)}</p>
+                          <p><strong>Estado de la incidencia:</strong> ${escapeHtml(reporte.incidencia.estado)}</p>
+                          <p><strong>Prioridad:</strong> ${escapeHtml(reporte.incidencia.prioridad)}</p>
+                          <div class="reporte-diagnostico-card__texto">
+                            <h5>Descripción reportada</h5>
+                            <p>${multilinea(reporte.descripcionProblema || 'Sin descripción registrada.')}</p>
+                          </div>
+                          <div class="reporte-diagnostico-card__texto">
+                            <h5>Diagnóstico técnico</h5>
+                            <p>${multilinea(reporte.diagnostico || 'Sin diagnóstico registrado.')}</p>
+                          </div>
+                          ${resumenBaja}
+                          ${evidencia}
+                        </div>
+                      </section>
+                    </article>
+                  `;
+                })
+                .join('')}
+            </div>
+          </section>
         `;
+      };
+
+      const renderBajas = () => {
+        if (!mostrarBajas) return '';
+
+        if (bajas.length === 0) {
+          return `
+            <div class="reportes-diagnostico__vacio">
+              <p>No encontramos reportes de baja con los filtros aplicados.</p>
+            </div>
+          `;
+        }
+
+        return `
+          <section class="reportes-buscador__seccion">
+            <div class="reportes-buscador__seccion-header">
+              <h3>Bajas</h3>
+              <p>${bajas.length} resultado${bajas.length === 1 ? '' : 's'}</p>
+            </div>
+            <div class="bajas-grid">
+              ${bajas
+                .map((baja) => {
+                  const pdfControles = baja.pdfUrl
+                    ? `
+                          <a class="btn-secundario" href="${escapeAttr(baja.pdfUrl)}" target="_blank" rel="noopener">Ver reporte PDF</a>
+                          <a class="btn" href="${escapeAttr(baja.pdfUrl)}?descargar=1" download>Descargar PDF</a>
+                        `
+                    : '';
+
+                  const incidencia = baja.incidencia
+                    ? `<p><strong>Incidencia relacionada:</strong> <a href="/incidencias/${escapeAttr(baja.incidencia.id)}/diagnostico" class="baja-card__link">Ver incidencia</a></p>
+                        <p><strong>Referencia de incidencia:</strong> ${escapeHtml(baja.incidencia.id)}</p>
+                        <p><strong>Descripción:</strong> ${escapeHtml(baja.incidencia.descripcion)}</p>`
+                    : '<p><strong>Incidencia relacionada:</strong> No disponible</p>';
+
+                  const badgeReciente = baja.esReciente
+                    ? '<span class="reporte-chip">Reciente</span>'
+                    : '';
+
+                  return `
+                    <article class="baja-card">
+                      <header class="baja-card__header">
+                        <div>
+                          <h3>Reporte de baja #${escapeHtml(baja.id)} ${badgeReciente}</h3>
+                          <p class="baja-card__fecha"><strong>Fecha de baja:</strong> ${escapeHtml(baja.fechaBajaTexto)}</p>
+                          <p class="baja-card__fecha"><strong>Fecha de reimpresión:</strong> ${escapeHtml(baja.fechaReimpresionTexto)}</p>
+                          <p class="baja-card__fecha"><strong>Fecha del diagnóstico:</strong> ${escapeHtml(baja.fechaDiagnosticoTexto)}</p>
+                        </div>
+                        <div class="baja-card__acciones">
+                          ${pdfControles}
+                        </div>
+                      </header>
+
+                      <section class="baja-card__contenido">
+                        <div class="baja-card__bloque">
+                          <h4>Datos del activo</h4>
+                          <dl class="baja-card__datos">
+                            <div>
+                              <dt>Activo</dt>
+                              <dd>${escapeHtml(baja.activo.nombre)}</dd>
+                            </div>
+                            <div>
+                              <dt>Número de serie</dt>
+                              <dd>${escapeHtml(baja.activo.numeroSerie)}</dd>
+                            </div>
+                            <div>
+                              <dt>Placa</dt>
+                              <dd>${escapeHtml(baja.activo.placa)}</dd>
+                            </div>
+                            <div>
+                              <dt>Categoría</dt>
+                              <dd>${escapeHtml(baja.activo.categoria)}</dd>
+                            </div>
+                            <div>
+                              <dt>Área</dt>
+                              <dd>${escapeHtml(baja.activo.area)}</dd>
+                            </div>
+                            <div>
+                              <dt>Departamento</dt>
+                              <dd>${escapeHtml(baja.activo.departamento)}</dd>
+                            </div>
+                            <div>
+                              <dt>Propietario</dt>
+                              <dd>${escapeHtml(baja.activo.propietario)}</dd>
+                            </div>
+                            <div>
+                              <dt>Contacto</dt>
+                              <dd>${escapeHtml(baja.activo.contacto)}</dd>
+                            </div>
+                          </dl>
+                        </div>
+
+                        <div class="baja-card__bloque">
+                          <h4>Diagnóstico asociado</h4>
+                          ${incidencia}
+                          <p><strong>Diagnóstico técnico:</strong></p>
+                          <p>${multilinea(baja.diagnostico)}</p>
+                        </div>
+                      </section>
+                    </article>
+                  `;
+                })
+                .join('')}
+            </div>
+          </section>
+        `;
+      };
+
+      const resultados = [];
+
+      if (mostrarDiagnosticos) {
+        resultados.push(renderDiagnosticos());
       }
 
+      if (mostrarBajas) {
+        resultados.push(renderBajas());
+      }
+
+      const contenidoResultados = resultados.some((seccion) => seccion.trim())
+        ? resultados.join('')
+        : `
+            <div class="reportes-diagnostico__vacio">
+              <p>No encontramos reportes con los filtros seleccionados.</p>
+              <p>Intenta cambiar los criterios de búsqueda o ampliar el periodo.</p>
+            </div>
+          `;
+
       return `
-        <div class="reportes-diagnostico__grid">
-          ${reportes
-            .map((reporte) => {
-              const evidencia = reporte.evidencia
-                ? `<p><strong>Evidencia:</strong> ${escapeHtml(reporte.evidencia)}</p>`
-                : '';
+        <form method="get" class="reportes-buscador__filtros">
+          <div class="reportes-buscador__grupo">
+            <label for="filtro-tipo">Tipo de reporte</label>
+            <select id="filtro-tipo" name="tipo">
+              <option value="todos" ${tipo === 'todos' ? 'selected' : ''}>Diagnósticos y bajas</option>
+              <option value="diagnostico" ${tipo === 'diagnostico' ? 'selected' : ''}>Sólo diagnósticos</option>
+              <option value="baja" ${tipo === 'baja' ? 'selected' : ''}>Sólo bajas</option>
+            </select>
+          </div>
+          <div class="reportes-buscador__grupo reportes-buscador__grupo--busqueda">
+            <label for="filtro-q">Palabra clave</label>
+            <input
+              type="search"
+              id="filtro-q"
+              name="q"
+              placeholder="Activo, incidencia o técnico"
+              value="${escapeAttr(termino)}"
+            >
+          </div>
+          <div class="reportes-buscador__grupo">
+            <label for="filtro-desde">Desde</label>
+            <input type="date" id="filtro-desde" name="desde" value="${escapeAttr(desde)}">
+          </div>
+          <div class="reportes-buscador__grupo">
+            <label for="filtro-hasta">Hasta</label>
+            <input type="date" id="filtro-hasta" name="hasta" value="${escapeAttr(hasta)}">
+          </div>
+          <div class="reportes-buscador__grupo reportes-buscador__grupo--checkbox">
+            <label class="reportes-buscador__checkbox">
+              <input type="checkbox" name="recientes" value="1" ${recientes ? 'checked' : ''}>
+              Sólo mostrar reportes recientes (últimos 30 días)
+            </label>
+          </div>
+          <div class="reportes-buscador__acciones">
+            <button type="submit" class="btn">Buscar</button>
+            ${tieneFiltros ? '<a href="/incidencias/reportes" class="btn-secundario">Limpiar filtros</a>' : ''}
+          </div>
+        </form>
 
-              const accionesBaja = reporte.reporteBaja
-                ? `
-                      <a class="btn-secundario" href="${escapeAttr(reporte.reporteBaja.url)}" target="_blank" rel="noopener">Ver PDF de baja</a>
-                      <a class="btn" href="${escapeAttr(reporte.reporteBaja.url)}?descargar=1" download>Descargar PDF de baja</a>
-                    `
-                : '';
-
-              const resumenBaja = reporte.reporteBaja
-                ? `
-                      <div class="reporte-diagnostico-card__texto">
-                        <h5>Reporte de baja asociado</h5>
-                        <p><strong>Identificador:</strong> #${escapeHtml(reporte.reporteBaja.id)}</p>
-                        <p><strong>Fecha:</strong> ${escapeHtml(reporte.reporteBaja.fecha)}</p>
-                      </div>
-                    `
-                : '';
-
-              return `
-                <article class="reporte-diagnostico-card">
-                  <header class="reporte-diagnostico-card__header">
-                    <div>
-                      <h3>Diagnóstico</h3>
-                      <p class="reporte-diagnostico-card__subtitulo">
-                        Incidencia · ${escapeHtml(reporte.fechaDiagnostico)}
-                      </p>
-                    </div>
-                    <div class="reporte-diagnostico-card__acciones">
-                      <a class="btn-secundario" href="/incidencias/${escapeAttr(reporte.incidenciaId)}/diagnostico" rel="noopener">Ver incidencia</a>
-                      <a class="btn-secundario" href="${escapeAttr(reporte.pdfUrl)}" target="_blank" rel="noopener">Ver PDF diagnóstico</a>
-                      <a class="btn" href="${escapeAttr(reporte.pdfUrl)}?descargar=1" download>Descargar PDF diagnóstico</a>
-                      ${accionesBaja}
-                    </div>
-                  </header>
-
-                  <section class="reporte-diagnostico-card__contenido">
-                    <div class="reporte-diagnostico-card__bloque">
-                      <h4>Activo diagnosticado</h4>
-                      <dl>
-                        <div>
-                          <dt>Activo</dt>
-                          <dd>${escapeHtml(reporte.activo.nombre)}</dd>
-                        </div>
-                        <div>
-                          <dt>Número de serie</dt>
-                          <dd>${escapeHtml(reporte.activo.numeroSerie)}</dd>
-                        </div>
-                        <div>
-                          <dt>Placa</dt>
-                          <dd>${escapeHtml(reporte.activo.placa)}</dd>
-                        </div>
-                      </dl>
-                    </div>
-
-                    <div class="reporte-diagnostico-card__bloque">
-                      <h4>Detalle del diagnóstico</h4>
-                      <p><strong>Registrado:</strong> ${escapeHtml(reporte.creadoEn)}</p>
-                      <p><strong>Técnico:</strong> ${escapeHtml(reporte.tecnico)}</p>
-                      <p><strong>Estado de la incidencia:</strong> ${escapeHtml(reporte.incidencia.estado)}</p>
-                      <p><strong>Prioridad:</strong> ${escapeHtml(reporte.incidencia.prioridad)}</p>
-                      <div class="reporte-diagnostico-card__texto">
-                        <h5>Descripción reportada</h5>
-                        <p>${multilinea(reporte.descripcionProblema || 'Sin descripción registrada.')}</p>
-                      </div>
-                      <div class="reporte-diagnostico-card__texto">
-                        <h5>Diagnóstico técnico</h5>
-                        <p>${multilinea(reporte.diagnostico || 'Sin diagnóstico registrado.')}</p>
-                      </div>
-                      ${resumenBaja}
-                      ${evidencia}
-                    </div>
-                  </section>
-                </article>
-              `;
-            })
-            .join('')}
+        <div class="reportes-buscador__resumen">
+          <p>${resumenBusqueda} ${recientes ? 'Mostrando únicamente los reportes recientes.' : ''}</p>
         </div>
+
+        ${contenidoResultados}
       `;
     })()}
   </section>

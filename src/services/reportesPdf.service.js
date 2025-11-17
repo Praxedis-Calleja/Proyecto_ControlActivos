@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const LOGO_PATH = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
 const PUESTO_TECNICO_DEFAULT = 'Ingieniero de Soporte de Hoteles';
+const DEPARTAMENTO_TECNICO_DEFAULT = 'Departamente de sistemas';
 const DIRECCION_HOTEL_XCARET_ARTE =
   'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
 
@@ -21,7 +22,7 @@ const agregarPaginaDescripcionGraficaYFirma = ({
 }) => {
   const {
     nombreTecnico = 'Nombre del técnico no registrado',
-    departamentoTecnico = 'Departamento no registrado',
+    departamentoTecnico = DEPARTAMENTO_TECNICO_DEFAULT,
     correoTecnico = 'Correo no registrado',
     puestoTecnico = PUESTO_TECNICO_DEFAULT,
     direccionHotel = DIRECCION_HOTEL_XCARET_ARTE
@@ -521,7 +522,7 @@ export const generarDiagnosticoPdf = ({
   );
   const departamentoTecnico = valorSeguro(
     registro.departamento_nombre,
-    'Departamento no registrado'
+    DEPARTAMENTO_TECNICO_DEFAULT
   );
 
   agregarPaginaDescripcionGraficaYFirma({
@@ -723,7 +724,7 @@ export const generarBajaPdf = ({
   );
   const departamentoTecnico = valorSeguro(
     registro.departamento_nombre,
-    'Departamento no registrado'
+    DEPARTAMENTO_TECNICO_DEFAULT
   );
 
   agregarPaginaDescripcionGraficaYFirma({
