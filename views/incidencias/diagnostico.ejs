@@ -14,6 +14,14 @@
         </div>`
       : ''}
 
+    ${reporteBajaCreado
+      ? `<div class="ok">
+          Reporte de baja generado correctamente${reporteBajaCreado.id ? ` (#${reporteBajaCreado.id})` : ''}.
+          <a class="btn-secundario" href="${reporteBajaCreado.url}" target="_blank" rel="noopener">Ver reporte</a>
+          <a class="btn" href="${reporteBajaCreado.url}?descargar=1" download>Descargar PDF</a>
+        </div>`
+      : ''}
+
     ${estadoActualizado
       ? '<div class="ok">Estado de la incidencia actualizado correctamente.</div>'
       : ''}
