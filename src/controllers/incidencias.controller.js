@@ -118,31 +118,21 @@ const esquemaDiagnostico = Joi.object({
   requiere_baja: Joi.string()
     .valid('SI', 'NO')
     .default('NO'),
-  motivo_baja: Joi.when('requiere_baja', {
+  fecha_baja: Joi.when('requiere_baja', {
     is: 'SI',
-    then: Joi.string()
-      .trim()
-      .min(10)
+    then: Joi.date()
       .required()
       .messages({
-        'string.empty': 'Describe el motivo de baja del activo.',
-        'string.min': 'El motivo de baja debe tener al menos 10 caracteres.'
+        'date.base': 'Proporciona una fecha de baja válida.',
+        'any.required': 'La fecha de baja es obligatoria cuando se genera el reporte.'
       }),
-    otherwise: Joi.string().allow('').trim().optional()
+    otherwise: Joi.alternatives()
+      .try(Joi.date(), Joi.valid(null), Joi.string().allow(''))
+      .optional()
   }),
-  autorizado_por: Joi.when('requiere_baja', {
-    is: 'SI',
-    then: Joi.string()
-      .trim()
-      .min(3)
-      .required()
-      .messages({
-        'string.empty': 'Indica quién autoriza la baja del activo.',
-        'string.min': 'El nombre de autorización debe tener al menos 3 caracteres.'
-      }),
-    otherwise: Joi.string().allow('').trim().optional()
-  }),
-  observaciones_baja: Joi.string().allow('').trim().optional(),
+  fecha_reimpresion: Joi.alternatives()
+    .try(Joi.date(), Joi.valid(null), Joi.string().allow(''))
+    .optional(),
   evidencia_url: Joi.string()
     .uri()
     .allow('', null)
@@ -308,23 +298,53 @@ const normalizarValores = (datos = {}) => {
   };
 };
 
-const normalizarValoresDiagnostico = (datos = {}, tecnicoActual = '') => ({
-  descripcion_trabajo: datos.descripcion_trabajo ?? '',
-  diagnostico: datos.diagnostico ?? '',
-  fecha_diagnostico: datos.fecha_diagnostico
-    ? String(datos.fecha_diagnostico).slice(0, 10)
-    : '',
-  firma_tecnico: datos.firma_tecnico ?? tecnicoActual,
-  procesador: datos.procesador ?? '',
-  memoria_ram: datos.memoria_ram ?? '',
-  almacenamiento: datos.almacenamiento ?? '',
-  tiempo_uso: datos.tiempo_uso ?? '',
-  requiere_baja: datos.requiere_baja ?? 'NO',
-  motivo_baja: datos.motivo_baja ?? '',
-  autorizado_por: datos.autorizado_por ?? '',
-  observaciones_baja: datos.observaciones_baja ?? '',
-  evidencia_url: datos.evidencia_url ?? ''
-});
+const normalizarCampoFecha = (valor) => {
+  if (!valor) return '';
+  try {
+    const fecha = valor instanceof Date ? valor : new Date(valor);
+    if (Number.isNaN(fecha.getTime())) {
+      return '';
+    }
+    return fecha.toISOString().slice(0, 10);
+  } catch (error) {
+    return '';
+  }
+};
+
+const normalizarValoresDiagnostico = (datos = {}, tecnicoActual = '') => {
+  const fechaDiagnostico = normalizarCampoFecha(datos.fecha_diagnostico);
+  const fechaBaja = normalizarCampoFecha(datos.fecha_baja) || fechaDiagnostico;
+  const fechaReimpresion = normalizarCampoFecha(datos.fecha_reimpresion);
+
+  return {
+    descripcion_trabajo: datos.descripcion_trabajo ?? '',
+    diagnostico: datos.diagnostico ?? '',
+    fecha_diagnostico: fechaDiagnostico,
+    firma_tecnico: datos.firma_tecnico ?? tecnicoActual,
+    procesador: datos.procesador ?? '',
+    memoria_ram: datos.memoria_ram ?? '',
+    almacenamiento: datos.almacenamiento ?? '',
+    tiempo_uso: datos.tiempo_uso ?? '',
+    requiere_baja: datos.requiere_baja ?? 'NO',
+    fecha_baja: fechaBaja,
+    fecha_reimpresion: fechaReimpresion,
+    evidencia_url: datos.evidencia_url ?? ''
+  };
+};
+
+const construirConfigVistaEvidencias = () => {
+  const maxPeso = (EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes / (1024 * 1024)).toFixed(1);
+  const maxPesoMB = maxPeso.endsWith('.0') ? maxPeso.slice(0, -2) : maxPeso;
+  return {
+    maxImagenes: EVIDENCIA_TEMPORAL_CONFIG.maxImagenes,
+    maxPesoBytes: EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes,
+    maxPesoMB,
+    formatos: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos,
+    formatosTexto: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos
+      .map((tipo) => tipo.replace('image/', '').toUpperCase())
+      .join(', ')
+  };
+};
 
 const construirConfigVistaEvidencias = () => {
   const maxPeso = (EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes / (1024 * 1024)).toFixed(1);
@@ -1300,6 +1320,10 @@ export const getDiagnosticoIncidencia = async (req, res) => {
       values.fecha_diagnostico = formatearFecha(new Date());
     }
 
+    if (!values.fecha_baja) {
+      values.fecha_baja = values.fecha_diagnostico;
+    }
+
     const reporteBajaCreado = (() => {
       if (typeof req.query.b === 'string' && req.query.b.startsWith('/')) {
         const idBaja = Number.isInteger(Number(req.query.bid))
@@ -1488,9 +1512,8 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     memoria_ram,
     almacenamiento,
     requiere_baja,
-    motivo_baja,
-    autorizado_por,
-    observaciones_baja,
+    fecha_baja,
+    fecha_reimpresion,
     evidencia_url,
     tiempo_uso
   } = value;
@@ -1502,6 +1525,8 @@ export const postDiagnosticoIncidencia = async (req, res) => {
 
   try {
     const fechaNormalizada = formatearFecha(fecha_diagnostico) || null;
+    const fechaBajaNormalizada = formatearFecha(fecha_baja) || null;
+    const fechaReimpresionNormalizada = formatearFecha(fecha_reimpresion) || null;
     const procesadorTexto = (procesador || incidencia.procesador || '').trim();
     const memoriaTexto = (memoria_ram || incidencia.memoria_ram || '').trim();
     const almacenamientoTexto = (almacenamiento || incidencia.almacenamiento || '').trim();
@@ -1514,17 +1539,6 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     }
     if (descripcion_trabajo?.trim()) {
       segmentosTiempoUso.push(descripcion_trabajo.trim());
-    }
-    if (requiere_baja === 'SI') {
-      if (motivo_baja?.trim()) {
-        segmentosTiempoUso.push(`Motivo: ${motivo_baja.trim()}`);
-      }
-      if (autorizado_por?.trim()) {
-        segmentosTiempoUso.push(`Autorizado por: ${autorizado_por.trim()}`);
-      }
-      if (observaciones_baja?.trim()) {
-        segmentosTiempoUso.push(`Observaciones: ${observaciones_baja.trim()}`);
-      }
     }
 
     const tiempoUsoTexto = segmentosTiempoUso.join('\n');
@@ -1568,14 +1582,15 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         throw new Error('El activo asociado a la incidencia es obligatorio para generar el reporte de baja.');
       }
 
-      const fechaBaja = fechaNormalizada || formatearFecha(new Date()) || null;
+      const fechaBaja = fechaBajaNormalizada || fechaNormalizada || formatearFecha(new Date()) || null;
       const [resultadoBaja] = await connection.query(
         `INSERT INTO reportesbaja (
            ID_Activo,
            Fecha_Baja,
+           Fecha_Reimpresion,
            id_diagnostico
-         ) VALUES (?, ?, ?)`,
-        [incidencia.id_activo, fechaBaja, diagnosticoId]
+         ) VALUES (?, ?, ?, ?)`,
+        [incidencia.id_activo, fechaBaja, fechaReimpresionNormalizada, diagnosticoId]
       );
 
       if (incidencia.id_activo !== null && incidencia.id_activo !== undefined) {

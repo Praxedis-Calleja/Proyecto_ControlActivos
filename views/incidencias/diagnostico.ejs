@@ -208,26 +208,34 @@
           </fieldset>
 
           <div class="grupo-baja" data-baja-extra ${values.requiere_baja === 'SI' ? '' : 'hidden'}>
-            <p class="campo-nota">Completa la siguiente información únicamente si el activo será dado de baja.</p>
+            <p class="campo-nota">Completa las fechas que se registrarán en el formato de baja.</p>
 
             <div class="campo">
-              <label for="motivo_baja">Motivo de baja <small>(requerido si aplica)</small></label>
-              <textarea id="motivo_baja" name="motivo_baja" rows="3">${escapeHtml(values.motivo_baja || '')}</textarea>
-            </div>
-
-            <div class="campo">
-              <label for="autorizado_por">Autorizado por <small>(requerido si aplica)</small></label>
+              <label for="fecha_baja">Fecha de baja</label>
               <input
-                type="text"
-                id="autorizado_por"
-                name="autorizado_por"
-                value="${escapeAttr(values.autorizado_por || '')}"
+                type="date"
+                id="fecha_baja"
+                name="fecha_baja"
+                value="${escapeAttr(values.fecha_baja || '')}"
+                ${values.requiere_baja === 'SI' ? '' : 'disabled'}
+                data-baja-campo
+                data-baja-required
               >
+              <small>Esta fecha se utilizará como referencia oficial del reporte de baja.</small>
             </div>
 
             <div class="campo">
-              <label for="observaciones_baja">Observaciones adicionales</label>
-              <textarea id="observaciones_baja" name="observaciones_baja" rows="3">${escapeHtml(values.observaciones_baja || '')}</textarea>
+              <label for="fecha_reimpresion">Fecha de reimpresión <small>(opcional)</small></label>
+              <input
+                type="date"
+                id="fecha_reimpresion"
+                name="fecha_reimpresion"
+                value="${escapeAttr(values.fecha_reimpresion || '')}"
+                ${values.requiere_baja === 'SI' ? '' : 'disabled'}
+                data-baja-campo
+                data-reset-on-hide
+              >
+              <small>Déjala en blanco si aún no existe una reimpresión del formato.</small>
             </div>
           </div>
 
@@ -332,21 +340,51 @@
           (() => {
             const form = document.querySelector('[data-form-diagnostico]');
             if (!form) return;
+            const contenedor = form.querySelector('[data-baja-extra]');
+            const fechaDiagnosticoInput = form.querySelector('#fecha_diagnostico');
+            const fechaBajaInput = form.querySelector('#fecha_baja');
+
             const toggleContainer = () => {
               const seleccionado = form.querySelector('input[name="requiere_baja"]:checked');
               const requiereBaja = seleccionado && seleccionado.value === 'SI';
-              const contenedor = form.querySelector('[data-baja-extra]');
               if (!contenedor) return;
+
               if (requiereBaja) {
                 contenedor.removeAttribute('hidden');
               } else {
                 contenedor.setAttribute('hidden', '');
+              }
+
+              const campos = contenedor.querySelectorAll('[data-baja-campo]');
+              campos.forEach((campo) => {
+                campo.disabled = !requiereBaja;
+                if (campo.hasAttribute('data-baja-required')) {
+                  campo.required = requiereBaja;
+                }
+                if (!requiereBaja && campo.hasAttribute('data-reset-on-hide')) {
+                  campo.value = '';
+                }
+              });
+
+              if (requiereBaja && fechaBajaInput && fechaDiagnosticoInput && !fechaBajaInput.value) {
+                fechaBajaInput.value = fechaDiagnosticoInput.value || '';
               }
             };
 
             form.querySelectorAll('input[name="requiere_baja"]').forEach((radio) => {
               radio.addEventListener('change', toggleContainer);
             });
+
+            if (fechaDiagnosticoInput && fechaBajaInput) {
+              fechaDiagnosticoInput.addEventListener('change', () => {
+                const seleccionado = form.querySelector('input[name="requiere_baja"]:checked');
+                const requiereBaja = seleccionado && seleccionado.value === 'SI';
+                if (!requiereBaja) return;
+                if (!fechaBajaInput.value) {
+                  fechaBajaInput.value = fechaDiagnosticoInput.value || '';
+                }
+              });
+            }
 
             toggleContainer();
 
