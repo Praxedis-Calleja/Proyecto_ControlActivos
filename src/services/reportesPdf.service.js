@@ -18,7 +18,8 @@ const agregarPaginaDescripcionGraficaYFirma = ({
   encabezado,
   tituloDescripcion,
   contenidoDescripcion,
-  datosTecnico = {}
+  datosTecnico = {},
+  opcionesEncabezado = {}
 }) => {
   const {
     nombreTecnico = 'Nombre del técnico no registrado',
@@ -30,7 +31,7 @@ const agregarPaginaDescripcionGraficaYFirma = ({
 
   doc.addPage();
   doc.y = doc.page.margins.top;
-  drawDocumentHeader(encabezado);
+  drawDocumentHeader(encabezado, opcionesEncabezado);
 
   drawSectionTitle(tituloDescripcion);
   drawLabeledBox(tituloDescripcion, contenidoDescripcion, { height: 150 });
@@ -86,6 +87,12 @@ const valorSeguro = (valor, reemplazo = 'No registrado') => {
 
   const texto = String(valor).trim();
   return texto.length > 0 ? texto : reemplazo;
+};
+
+const textoOpcional = (valor) => {
+  if (valor === undefined || valor === null) return null;
+  const texto = String(valor).trim();
+  return texto.length ? texto : null;
 };
 
 const crearDocumentoBase = ({ res, nombreArchivo, esDescarga, titulo, asunto }) => {
@@ -252,7 +259,12 @@ const construirUtilidadesLayout = (doc) => {
     doc.y = contentY + boxHeight + 14;
   };
 
-  const drawDocumentHeader = (titulo) => {
+  const drawDocumentHeader = (titulo, opciones = {}) => {
+    const {
+      mostrarNombreHotel = false,
+      direccionTitulo = 'DIRECCIÓN DE TECNOLOGÍA',
+      tagline = 'SISTEMAS · SOPORTE TÉCNICO'
+    } = opciones;
     const initialY = doc.y;
     let headerX = startX;
     let availableWidth = pageWidth;
@@ -278,11 +290,20 @@ const construirUtilidadesLayout = (doc) => {
 
     const headerTextOptions = { width: availableWidth, align: 'left' };
 
+    if (mostrarNombreHotel) {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(12)
+        .fillColor('#1f1f1f');
+      doc.text('Hotel Xcaret Arte', headerX, initialY, headerTextOptions);
+      doc.moveDown(0.15);
+    }
+
     doc
       .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor('#1f1f1f');
-    doc.text('DIRECCIÓN DE TECNOLOGÍA', headerX, initialY, {
+    doc.text(direccionTitulo, headerX, doc.y, {
       ...headerTextOptions,
       lineGap: 1
     });
@@ -292,7 +313,7 @@ const construirUtilidadesLayout = (doc) => {
       .font('Helvetica')
       .fontSize(10)
       .fillColor('#1f1f1f');
-    doc.text('SISTEMAS · SOPORTE TÉCNICO', headerX, doc.y, {
+    doc.text(tagline, headerX, doc.y, {
       ...headerTextOptions,
       lineGap: 1
     });
@@ -581,22 +602,22 @@ export const generarBajaPdf = ({
   const {
     pageWidth,
     startX,
-    columnWidthsThree,
-    columnWidthsFour,
-    columnWidthsEspecificos,
-    drawSectionTitle,
-    drawKeyValueTable,
     drawLabeledBox,
     drawDocumentHeader
   } = construirUtilidadesLayout(doc);
 
-  const categoriaTexto = registro.categoria_nombre || 'No registrada';
+  const categoriaTexto = valorSeguro(registro.categoria_nombre, 'No registrada');
   const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
   const especificaciones = esEquipoComputo
     ? {
-        procesador: registro.diagnostico_procesador || registro.activo_procesador || 'N/A',
-        memoria_ram: registro.diagnostico_memoria_ram || registro.activo_memoria_ram || 'N/A',
-        almacenamiento: registro.diagnostico_almacenamiento || registro.activo_almacenamiento || 'N/A'
+        procesador:
+          registro.diagnostico_procesador || registro.activo_procesador || 'No registrado',
+        memoria_ram:
+          registro.diagnostico_memoria_ram || registro.activo_memoria_ram || 'No registrada',
+        almacenamiento:
+          registro.diagnostico_almacenamiento ||
+          registro.activo_almacenamiento ||
+          'No registrado'
       }
     : {
         procesador: 'No aplica',
@@ -604,114 +625,41 @@ export const generarBajaPdf = ({
         almacenamiento: 'No aplica'
       };
 
-  const propietario = valorSeguro(registro.propietario_nombre_completo, 'No registrado');
-  const contactoPropietario = valorSeguro(registro.propietario_contacto, 'No registrado');
-  const fechaSegura = (valor, reemplazo = 'No registrada') => formatearFechaLarga?.(valor) || reemplazo;
-  const tiempoUsoTexto = valorSeguro(detalles?.tiempoUso, 'No registrado');
-
-  const nombreEquipo = (() => {
-    const combinado = [registro.marca, registro.modelo]
-      .map((texto) => String(texto ?? '').trim())
-      .filter(Boolean)
-      .join(' ');
-    if (combinado) return combinado;
-    return valorSeguro(registro.categoria_nombre, 'No registrado');
-  })();
-
-  drawDocumentHeader('Formato de Baja de Equipo de Cómputo');
-
-  drawSectionTitle('Datos generales');
-  drawKeyValueTable(
-    [
-      [
-        { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
-        { label: 'Categoría', value: valorSeguro(registro.categoria_nombre, 'No registrada') },
-        {
-          label: 'Fecha de baja',
-          value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada')
-        }
-      ],
-      [
-        { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
-        { label: 'Encargado de la categoría o activo', value: propietario },
-        { label: 'Folio de incidencia', value: valorSeguro(registro.id_incidencia, 'Sin folio') }
-      ],
-      [
-        { label: 'Prioridad', value: valorSeguro(registro.prioridad, 'Sin prioridad') },
-        { label: 'Estado', value: valorSeguro(registro.estado, 'Sin estado') },
-        { label: 'Origen', value: valorSeguro(registro.origen_incidencia, 'Sin origen') }
-      ],
-      [
-        { label: 'Reportada por', value: valorSeguro(contactoReporte, 'No registrado') },
-        { label: 'Tipo contacto externo', value: valorSeguro(tipoContacto, 'No aplica') },
-        { label: 'Datos contacto externo', value: valorSeguro(datosContacto, 'No registrados') }
-      ],
-      [
-        { label: 'ID de baja', value: valorSeguro(registro.baja_id, 'Sin ID') },
-        {
-          label: 'Fecha de reimpresión',
-          value: fechaSegura(registro.baja_fecha_reimpresion, 'Sin fecha registrada')
-        },
-        { label: 'Tiempo de uso', value: tiempoUsoTexto }
-      ]
-    ],
-    columnWidthsThree
+  const nombreEquipoCalculado = [registro.marca, registro.modelo]
+    .map((texto) => String(texto ?? '').trim())
+    .filter(Boolean)
+    .join(' ');
+  const nombreEquipo = valorSeguro(
+    registro.nombre_equipo || registro.nombre_activo || nombreEquipoCalculado,
+    'N/A'
   );
 
-  drawSectionTitle('Datos del equipo');
-  drawKeyValueTable(
-    [
-      [
-        { label: 'Equipo', value: valorSeguro(registro.categoria_nombre, 'No registrado') },
-        { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
-        { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
-        { label: 'Número de serie', value: valorSeguro(registro.numero_serie, 'No registrado') }
-      ],
-      [
-        { label: 'Placa', value: valorSeguro(registro.placa_activo, 'No registrada') },
-        { label: 'Propietario', value: propietario },
-        { label: 'Contacto del propietario', value: contactoPropietario },
-        { label: 'Nombre de equipo', value: nombreEquipo }
-      ]
-    ],
-    columnWidthsFour
-  );
-
-  drawSectionTitle('Datos específicos');
-  drawKeyValueTable(
-    [
-      [
-        { label: 'Procesador', value: especificaciones.procesador },
-        { label: 'Memoria RAM', value: especificaciones.memoria_ram },
-        { label: 'Almacenamiento', value: especificaciones.almacenamiento },
-        { label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }
-      ]
-    ],
-    columnWidthsEspecificos
-  );
-
-  drawSectionTitle('Diagnóstico técnico');
-
-  const escribirBloqueDiagnostico = (etiqueta, contenido) => {
-    const texto = String(contenido ?? '').trim();
-    if (!texto) return;
-
-    doc.font('Helvetica-Bold').fontSize(10).text(`${etiqueta}:`);
-    doc.font('Helvetica').fontSize(10).text(texto, {
-      width: pageWidth,
-      lineGap: 3
-    });
-    doc.moveDown(0.4);
+  const formatearFechaOpcional = (valor) => {
+    if (!valor) return null;
+    return formatearFechaLarga?.(valor) || null;
   };
 
-  escribirBloqueDiagnostico('Diagnóstico', registro.diagnostico_tecnico);
-  escribirBloqueDiagnostico('Motivo de baja', detalles.motivo);
-  escribirBloqueDiagnostico('Observaciones', detalles.observaciones);
-  escribirBloqueDiagnostico('Autorizado por', detalles.autorizado_por);
+  const fechaSegura = (valor, reemplazo = 'No registrada') =>
+    formatearFechaOpcional(valor) || reemplazo;
+
+  const vigenciaGarantiaTexto = (() => {
+    const lineas = [
+      formatearFechaOpcional(registro.fecha_compra),
+      formatearFechaOpcional(registro.fecha_garantia)
+    ].filter(Boolean);
+    return lineas.length ? lineas.join('\n') : 'No registrada';
+  })();
+
+  const tiempoUsoTexto =
+    textoOpcional(detalles?.tiempoUso) || textoOpcional(registro.tiempo_uso) || 'No registrado';
 
   const descripcionGrafica = valorSeguro(
     registro.diagnostico_evidencia,
     'No se proporcionó descripción gráfica para esta baja.'
+  );
+  const diagnosticoTecnico = valorSeguro(
+    registro.diagnostico_tecnico,
+    'No se registró un diagnóstico técnico para esta baja.'
   );
 
   const nombreTecnico = valorSeguro(
@@ -727,29 +675,121 @@ export const generarBajaPdf = ({
     DEPARTAMENTO_TECNICO_DEFAULT
   );
 
-  agregarPaginaDescripcionGraficaYFirma({
-    doc,
-    drawDocumentHeader,
-    drawSectionTitle,
-    drawLabeledBox,
-    startX,
-    pageWidth,
-    encabezado: 'Formato de Baja de Equipo de Cómputo',
-    tituloDescripcion: 'Descripción gráfica',
-    contenidoDescripcion: descripcionGrafica,
-    datosTecnico: {
-      nombreTecnico,
-      departamentoTecnico,
-      correoTecnico
-    }
+  drawDocumentHeader('Formato de Baja de Equipo de Cómputo', {
+    mostrarNombreHotel: true,
+    tagline: 'SISTEMAS - SOPORTE TÉCNICO'
   });
 
-  doc.font('Helvetica').fontSize(9).fillColor('#555555').text(
-    'Documento generado automáticamente por el Sistema de Control de Activos.',
-    startX,
-    doc.y,
-    { width: pageWidth, align: 'center' }
-  );
+  const escribirCampoBloque = (label, valor) => {
+    const texto = textoOpcional(valor) || 'No registrado';
+    const lineas = texto.split(/\r?\n/).filter((linea, indice) => indice === 0 || linea.trim().length);
+    doc.font('Helvetica-Bold').fontSize(10).text(`${label}:`, startX, doc.y);
+    doc.moveDown(0.08);
+    lineas.forEach((linea, index) => {
+      const contenido = index === 0 && linea.trim().length === 0 ? 'No registrado' : linea;
+      doc.font('Helvetica').fontSize(10).text(contenido || 'No registrado', startX + 12);
+    });
+    if (!lineas.length) {
+      doc.font('Helvetica').fontSize(10).text('No registrado', startX + 12);
+    }
+    doc.moveDown(0.2);
+  };
+
+  const escribirTituloSeccion = (titulo) => {
+    doc.moveDown(0.45);
+    doc.font('Helvetica-Bold').fontSize(11).text(titulo, startX);
+    doc.moveDown(0.15);
+  };
+
+  const camposPrincipales = [
+    { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
+    { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
+    { label: 'Usuario que reporta', value: valorSeguro(contactoReporte, 'No registrado') },
+    { label: 'Fecha de Diagnóstico', value: fechaSegura(registro.fecha_diagnostico) },
+    {
+      label: 'Fecha de Reimpresión',
+      value: fechaSegura(registro.baja_fecha_reimpresion, 'No registrada')
+    }
+  ];
+  camposPrincipales.forEach((campo) => escribirCampoBloque(campo.label, campo.value));
+
+  escribirTituloSeccion('Datos del Equipo');
+  [
+    { label: 'Equipo', value: categoriaTexto },
+    { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
+    { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
+    { label: 'Placa de AF', value: valorSeguro(registro.placa_activo, 'No registrada') },
+    { label: 'S/N', value: valorSeguro(registro.numero_serie, 'No registrado') },
+    { label: 'Tiempo total de uso', value: tiempoUsoTexto },
+    { label: 'Nombre de Equipo', value: nombreEquipo }
+  ].forEach((campo) => escribirCampoBloque(campo.label, campo.value));
+
+  escribirTituloSeccion('Datos Específicos');
+  [
+    { label: 'Procesador', value: especificaciones.procesador },
+    { label: 'Almacenamiento', value: especificaciones.almacenamiento },
+    { label: 'Memoria RAM', value: especificaciones.memoria_ram },
+    { label: 'Vigencia de garantía', value: vigenciaGarantiaTexto }
+  ].forEach((campo) => escribirCampoBloque(campo.label, campo.value));
+
+  escribirTituloSeccion('Descripción Gráfica');
+  drawLabeledBox('Descripción Gráfica', descripcionGrafica, { height: 120 });
+
+  escribirTituloSeccion('Diagnóstico Técnico');
+  drawLabeledBox('Diagnóstico Técnico', diagnosticoTecnico, { height: 140 });
+
+  doc.moveDown(0.8);
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(10)
+    .text('Espacio para firma del técnico responsable', startX);
+
+  doc.moveDown(0.6);
+  const firmaLineWidth = Math.min(pageWidth * 0.65, 320);
+  const firmaLineY = doc.y;
+  doc
+    .moveTo(startX, firmaLineY)
+    .lineTo(startX + firmaLineWidth, firmaLineY)
+    .lineWidth(0.9)
+    .strokeColor('#000000')
+    .stroke();
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .text('Firma del técnico', startX, firmaLineY + 4, {
+      width: firmaLineWidth,
+      align: 'center'
+    });
+
+  doc.moveDown(2);
+
+  const infoFirma = [
+    `Nombre del técnico: ${nombreTecnico}`,
+    `Departamento: ${departamentoTecnico}`,
+    PUESTO_TECNICO_DEFAULT,
+    `Correo: ${correoTecnico}`,
+    `Dirección: ${DIRECCION_HOTEL_XCARET_ARTE}`
+  ];
+
+  infoFirma.forEach((linea) => {
+    doc.font('Helvetica').fontSize(10).text(linea, startX, doc.y, {
+      width: pageWidth,
+      lineGap: 2
+    });
+    doc.moveDown(0.15);
+  });
+
+  doc.moveDown(0.5);
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor('#555555')
+    .text(
+      'Documento generado automáticamente por el Sistema de Control de Activos.',
+      startX,
+      doc.y,
+      { width: pageWidth, align: 'center' }
+    );
   doc.fillColor('#000000');
 
   doc.end();
