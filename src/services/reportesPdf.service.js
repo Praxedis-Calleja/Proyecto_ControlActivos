@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const LOGO_PATH = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
-const PUESTO_TECNICO_DEFAULT = 'Ingieniero de Soporte de Hoteles';
+const PUESTO_TECNICO_DEFAULT = 'Ingeniero de Soporte HXA – Sistemas';
 const DEPARTAMENTO_TECNICO_DEFAULT = 'Departamente de sistemas';
 const DIRECCION_HOTEL_XCARET_ARTE =
   'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
@@ -264,7 +264,8 @@ const construirUtilidadesLayout = (doc) => {
     const {
       mostrarNombreHotel = false,
       direccionTitulo = 'DIRECCIÓN DE TECNOLOGÍA',
-      tagline = 'SISTEMAS · SOPORTE TÉCNICO'
+      tagline = 'SISTEMAS - SOPORTE TÉCNICO',
+      alinearCentro = false
     } = opciones;
     const initialY = doc.y;
     let headerX = startX;
@@ -281,15 +282,30 @@ const construirUtilidadesLayout = (doc) => {
 
         doc.image(logoImage, startX, initialY, { width: logoWidth });
 
-        headerX = startX + logoWidth + espacioLogoTitulos;
-        availableWidth = Math.max(pageWidth - (headerX - startX), pageWidth * 0.45);
+        if (!alinearCentro) {
+          headerX = startX + logoWidth + espacioLogoTitulos;
+          availableWidth = Math.max(pageWidth - (headerX - startX), pageWidth * 0.45);
+        }
         headerBottom = Math.max(headerBottom, initialY + logoHeight);
       } catch (logoError) {
         console.error('No se pudo cargar el logo del reporte:', logoError);
       }
     }
 
-    const headerTextOptions = { width: availableWidth, align: 'left' };
+    const headerTextOptions = {
+      width: alinearCentro ? pageWidth : availableWidth,
+      align: alinearCentro ? 'center' : 'left'
+    };
+    const textX = alinearCentro ? startX : headerX;
+
+    if (mostrarNombreHotel) {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(12)
+        .fillColor('#1f1f1f');
+      doc.text('Hotel Xcaret Arte', textX, initialY, headerTextOptions);
+      doc.moveDown(0.15);
+    }
 
     if (mostrarNombreHotel) {
       doc
@@ -304,7 +320,7 @@ const construirUtilidadesLayout = (doc) => {
       .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor('#1f1f1f');
-    doc.text(direccionTitulo, headerX, doc.y, {
+    doc.text(direccionTitulo, textX, doc.y, {
       ...headerTextOptions,
       lineGap: 1
     });
@@ -314,7 +330,7 @@ const construirUtilidadesLayout = (doc) => {
       .font('Helvetica')
       .fontSize(10)
       .fillColor('#1f1f1f');
-    doc.text(tagline, headerX, doc.y, {
+    doc.text(tagline, textX, doc.y, {
       ...headerTextOptions,
       lineGap: 1
     });
@@ -324,7 +340,7 @@ const construirUtilidadesLayout = (doc) => {
       .font('Helvetica-Bold')
       .fontSize(15)
       .fillColor('#000000');
-    doc.text(titulo, headerX, doc.y, headerTextOptions);
+    doc.text(titulo, textX, doc.y, headerTextOptions);
 
     headerBottom = Math.max(headerBottom, doc.y);
     doc.y = headerBottom + 10;
@@ -546,6 +562,10 @@ export const generarDiagnosticoPdf = ({
     registro.departamento_nombre,
     DEPARTAMENTO_TECNICO_DEFAULT
   );
+  const puestoTecnico = valorSeguro(
+    registro.puesto_tecnico,
+    PUESTO_TECNICO_DEFAULT
+  );
 
   agregarPaginaDescripcionGraficaYFirma({
     doc,
@@ -600,12 +620,7 @@ export const generarBajaPdf = ({
     asunto: 'Formato de baja de equipo de cómputo'
   });
 
-  const {
-    pageWidth,
-    startX,
-    drawLabeledBox,
-    drawDocumentHeader
-  } = construirUtilidadesLayout(doc);
+  const { pageWidth, startX, drawDocumentHeader } = construirUtilidadesLayout(doc);
 
   const categoriaTexto = valorSeguro(registro.categoria_nombre, 'No registrada');
   const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
@@ -678,109 +693,304 @@ export const generarBajaPdf = ({
 
   drawDocumentHeader('Formato de Baja de Equipo de Cómputo', {
     mostrarNombreHotel: true,
-    tagline: 'SISTEMAS - SOPORTE TÉCNICO'
+    tagline: 'SISTEMAS - SOPORTE TÉCNICO',
+    alinearCentro: true
   });
 
-  const escribirCampoBloque = (label, valor) => {
-    const texto = textoOpcional(valor) || 'No registrado';
-    const lineas = texto.split(/\r?\n/).filter((linea, indice) => indice === 0 || linea.trim().length);
-    doc.font('Helvetica-Bold').fontSize(10).text(`${label}:`, startX, doc.y);
-    doc.moveDown(0.08);
-    lineas.forEach((linea, index) => {
-      const contenido = index === 0 && linea.trim().length === 0 ? 'No registrado' : linea;
-      doc.font('Helvetica').fontSize(10).text(contenido || 'No registrado', startX + 12);
+  const drawSectionHeading = (texto) => {
+    const headingHeight = 24;
+    const headingY = doc.y;
+    doc
+      .save()
+      .fillColor('#f3f3f3')
+      .rect(startX, headingY, pageWidth, headingHeight)
+      .fill()
+      .restore();
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .fillColor('#000000')
+      .text(texto, startX + 8, headingY + 6, { width: pageWidth - 16 });
+    doc.fillColor('#000000');
+    doc.y = headingY + headingHeight + 6;
+  };
+
+  const drawSummaryTable = (rows) => {
+    const labelWidth = Math.round(pageWidth * 0.32);
+    const valueWidth = pageWidth - labelWidth;
+    const padding = 8;
+    let currentY = doc.y;
+
+    rows.forEach((row, index) => {
+      const valueText = valorSeguro(row.value, 'No registrado');
+      doc.font('Helvetica').fontSize(10);
+      const textHeight = doc.heightOfString(valueText, {
+        width: valueWidth - padding * 2,
+        lineGap: 1.3
+      });
+      const rowHeight = Math.max(30, textHeight + padding * 2);
+
+      doc
+        .lineWidth(index === 0 ? 1.1 : 0.8)
+        .strokeColor('#d0d0d0')
+        .rect(startX, currentY, pageWidth, rowHeight)
+        .stroke();
+
+      doc
+        .lineWidth(0.8)
+        .moveTo(startX + labelWidth, currentY)
+        .lineTo(startX + labelWidth, currentY + rowHeight)
+        .stroke();
+
+      const labelText = valorSeguro(row.label, 'Dato');
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .fillColor('#444444')
+        .text(labelText.toUpperCase(), startX + padding, currentY + padding, {
+          width: labelWidth - padding * 2
+        });
+
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#000000')
+        .text(valueText, startX + labelWidth + padding, currentY + padding, {
+          width: valueWidth - padding * 2,
+          lineGap: 1.3
+        });
+
+      currentY += rowHeight;
     });
-    if (!lineas.length) {
-      doc.font('Helvetica').fontSize(10).text('No registrado', startX + 12);
+
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
+    doc.y = currentY + 14;
+  };
+
+  const drawDataGrid = (items) => {
+    const padding = 8;
+    const columnWidth = pageWidth / 2;
+    let currentY = doc.y;
+
+    const drawCell = (cell, x, width, height) => {
+      const label = valorSeguro(cell?.label, '').toUpperCase();
+      const value = valorSeguro(cell?.value, 'No registrado');
+      doc
+        .lineWidth(0.8)
+        .strokeColor('#d0d0d0')
+        .rect(x, currentY, width, height)
+        .stroke();
+
+      let textY = currentY + padding;
+      if (label) {
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555');
+        doc.text(label, x + padding, textY, { width: width - padding * 2 });
+        textY += 10;
+      }
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#000000')
+        .text(value, x + padding, textY, { width: width - padding * 2, lineGap: 1.4 });
+    };
+
+    const calcularAltura = (cell, width) => {
+      if (!cell) return 34;
+      doc.font('Helvetica').fontSize(10);
+      const valueHeight = doc.heightOfString(valorSeguro(cell.value, 'No registrado'), {
+        width: width - padding * 2,
+        lineGap: 1.4
+      });
+      return Math.max(34, padding * 2 + valueHeight + 6);
+    };
+
+    for (let index = 0; index < items.length; index += 2) {
+      const cellA = items[index];
+      const cellB = items[index + 1];
+      if (cellA?.fullWidth) {
+        const cellHeight = calcularAltura(cellA, pageWidth);
+        drawCell(cellA, startX, pageWidth, cellHeight);
+        currentY += cellHeight;
+        continue;
+      }
+
+      const cellHeight = Math.max(
+        calcularAltura(cellA, columnWidth),
+        cellB ? calcularAltura(cellB, columnWidth) : 34
+      );
+
+      drawCell(cellA, startX, columnWidth, cellHeight);
+      if (cellB) {
+        drawCell(cellB, startX + columnWidth, columnWidth, cellHeight);
+      } else {
+        doc
+          .lineWidth(0.8)
+          .strokeColor('#d0d0d0')
+          .rect(startX + columnWidth, currentY, columnWidth, cellHeight)
+          .stroke();
+      }
+      currentY += cellHeight;
     }
-    doc.moveDown(0.2);
+
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
+    doc.y = currentY + 12;
   };
 
-  const escribirTituloSeccion = (titulo) => {
-    doc.moveDown(0.45);
-    doc.font('Helvetica-Bold').fontSize(11).text(titulo, startX);
-    doc.moveDown(0.15);
+  const drawSpecsTable = (items) => {
+    const columnWidth = pageWidth / items.length;
+    const headerHeight = 26;
+    const valueHeight = 40;
+    const startY = doc.y;
+
+    doc
+      .save()
+      .lineWidth(1)
+      .strokeColor('#d0d0d0')
+      .rect(startX, startY, pageWidth, headerHeight + valueHeight)
+      .stroke();
+
+    items.forEach((item, index) => {
+      const x = startX + index * columnWidth;
+      if (index > 0) {
+        doc
+          .moveTo(x, startY)
+          .lineTo(x, startY + headerHeight + valueHeight)
+          .stroke();
+      }
+      doc
+        .save()
+        .fillColor('#f5f5f5')
+        .rect(x, startY, columnWidth, headerHeight)
+        .fill()
+        .restore();
+
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .fillColor('#333333')
+        .text(item.label.toUpperCase(), x + 6, startY + 7, {
+          width: columnWidth - 12,
+          align: 'center'
+        });
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#000000')
+        .text(valorSeguro(item.value, 'No registrado'), x + 6, startY + headerHeight + 8, {
+          width: columnWidth - 12,
+          align: 'center',
+          lineGap: 1.3
+        });
+    });
+
+    doc.y = startY + headerHeight + valueHeight + 14;
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
   };
 
-  const camposPrincipales = [
+  const drawNarrativeBox = (titulo, contenido, minHeight = 140) => {
+    const padding = 12;
+    const startY = doc.y;
+    const texto = valorSeguro(contenido, 'No registrado');
+
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .fillColor(COLOR_ACCENT)
+      .text(titulo, startX + padding, startY);
+
+    doc.font('Helvetica').fontSize(10).fillColor('#000000');
+    const textHeight = doc.heightOfString(texto, {
+      width: pageWidth - padding * 2,
+      lineGap: 2
+    });
+    const boxHeight = Math.max(minHeight, padding * 2 + textHeight + 8);
+
+    doc
+      .lineWidth(1)
+      .strokeColor('#d0d0d0')
+      .rect(startX, startY, pageWidth, boxHeight)
+      .stroke();
+
+    doc.text(texto, startX + padding, startY + padding + 10, {
+      width: pageWidth - padding * 2,
+      lineGap: 2
+    });
+    doc.y = startY + boxHeight + 14;
+  };
+
+  drawSectionHeading('Formato de Baja de Equipo de Cómputo');
+  drawSummaryTable([
     { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
     { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
-    { label: 'Usuario que reporta', value: valorSeguro(contactoReporte, 'No registrado') },
+    { label: 'Usuario', value: valorSeguro(contactoReporte, 'No registrado') },
     { label: 'Fecha de Diagnóstico', value: fechaSegura(registro.fecha_diagnostico) },
-    {
-      label: 'Fecha de Reimpresión',
-      value: fechaSegura(registro.baja_fecha_reimpresion, 'No registrada')
-    }
-  ];
-  camposPrincipales.forEach((campo) => escribirCampoBloque(campo.label, campo.value));
+    { label: 'Fecha de Reimpresión', value: fechaSegura(registro.baja_fecha_reimpresion, 'No registrada') }
+  ]);
 
-  escribirTituloSeccion('Datos del Equipo');
-  [
+  drawSectionHeading('Datos del Equipo');
+  const datosEquipo = [
     { label: 'Equipo', value: categoriaTexto },
     { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
     { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
     { label: 'Placa de AF', value: valorSeguro(registro.placa_activo, 'No registrada') },
     { label: 'S/N', value: valorSeguro(registro.numero_serie, 'No registrado') },
     { label: 'Tiempo total de uso', value: tiempoUsoTexto },
-    { label: 'Nombre de Equipo', value: nombreEquipo }
-  ].forEach((campo) => escribirCampoBloque(campo.label, campo.value));
+    { label: 'Nombre de Equipo', value: nombreEquipo, fullWidth: true }
+  ];
+  drawDataGrid(datosEquipo);
 
-  escribirTituloSeccion('Datos Específicos');
-  [
+  drawSectionHeading('Datos Específicos');
+  drawSpecsTable([
     { label: 'Procesador', value: especificaciones.procesador },
     { label: 'Almacenamiento', value: especificaciones.almacenamiento },
     { label: 'Memoria RAM', value: especificaciones.memoria_ram },
     { label: 'Vigencia de garantía', value: vigenciaGarantiaTexto }
-  ].forEach((campo) => escribirCampoBloque(campo.label, campo.value));
+  ]);
 
-  escribirTituloSeccion('Descripción Gráfica');
-  drawLabeledBox('Descripción Gráfica', descripcionGrafica, { height: 120 });
+  drawNarrativeBox('Descripción Gráfica', descripcionGrafica, 180);
+  drawNarrativeBox('Diagnóstico Técnico', diagnosticoTecnico, 160);
 
-  escribirTituloSeccion('Diagnóstico Técnico');
-  drawLabeledBox('Diagnóstico Técnico', diagnosticoTecnico, { height: 140 });
+    doc.moveDown(0.6);
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .fillColor('#000000')
+      .text('Espacio para firma del técnico responsable', startX);
+    doc.moveDown(0.4);
+    const firmaLineWidth = Math.min(pageWidth * 0.65, 360);
+    const firmaLineY = doc.y;
+    doc
+      .lineWidth(1.2)
+      .strokeColor(COLOR_ACCENT)
+      .moveTo(startX, firmaLineY)
+      .lineTo(startX + firmaLineWidth, firmaLineY)
+      .stroke();
+    doc
+      .font('Helvetica')
+      .fontSize(9)
+      .fillColor('#000000')
+      .text('Firma del técnico', startX, firmaLineY + 4, {
+        width: firmaLineWidth,
+        align: 'center'
+      });
 
-  doc.moveDown(0.8);
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(10)
-    .text('Espacio para firma del técnico responsable', startX);
+    doc.moveDown(1.3);
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .text(nombreTecnico, startX, doc.y, { width: pageWidth });
+    doc
+      .font('Helvetica')
+      .fontSize(10)
+      .text(puestoTecnico, startX, doc.y, { width: pageWidth });
+    doc.text(`Departamento: ${departamentoTecnico}`, startX, doc.y, { width: pageWidth });
+    doc.text(`Correo: ${correoTecnico}`, startX, doc.y, { width: pageWidth });
+    doc.text(`Dirección: ${DIRECCION_HOTEL_XCARET_ARTE}`, startX, doc.y, { width: pageWidth });
 
-  doc.moveDown(0.6);
-  const firmaLineWidth = Math.min(pageWidth * 0.65, 320);
-  const firmaLineY = doc.y;
-  doc
-    .moveTo(startX, firmaLineY)
-    .lineTo(startX + firmaLineWidth, firmaLineY)
-    .lineWidth(0.9)
-    .strokeColor('#000000')
-    .stroke();
-  doc
-    .font('Helvetica')
-    .fontSize(9)
-    .text('Firma del técnico', startX, firmaLineY + 4, {
-      width: firmaLineWidth,
-      align: 'center'
-    });
-
-  doc.moveDown(2);
-
-  const infoFirma = [
-    `Nombre del técnico: ${nombreTecnico}`,
-    `Departamento: ${departamentoTecnico}`,
-    PUESTO_TECNICO_DEFAULT,
-    `Correo: ${correoTecnico}`,
-    `Dirección: ${DIRECCION_HOTEL_XCARET_ARTE}`
-  ];
-
-  infoFirma.forEach((linea) => {
-    doc.font('Helvetica').fontSize(10).text(linea, startX, doc.y, {
-      width: pageWidth,
-      lineGap: 2
-    });
-    doc.moveDown(0.15);
-  });
-
-  doc.moveDown(0.5);
+  doc.moveDown(0.9);
   doc
     .font('Helvetica')
     .fontSize(9)

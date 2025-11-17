@@ -517,21 +517,12 @@ export const postEliminarActivo = async (req, res) => {
   }
 
   let connection;
+  let fkChecksDisabled = false;
   try {
     connection = await pool.getConnection();
     await connection.beginTransaction();
-
-    await connection.query(
-      `DELETE b
-        FROM reportesbaja b
-        INNER JOIN diagnostico d ON d.id_diagnostico = b.id_diagnostico
-       WHERE d.id_activo = ?`,
-      [idActivo]
-    );
-
-    await connection.query('DELETE FROM diagnostico WHERE id_activo = ?', [idActivo]);
-
-    await connection.query('DELETE FROM incidencias WHERE id_activo = ?', [idActivo]);
+    await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+    fkChecksDisabled = true;
 
     const [resultado] = await connection.query(
       'DELETE FROM activos_fijos WHERE id_activo = ? LIMIT 1',
@@ -539,18 +530,23 @@ export const postEliminarActivo = async (req, res) => {
     );
 
     if (!resultado.affectedRows) {
-      await connection.rollback();
-      return res.status(500).render('activos/detalle', {
-        activo,
-        ok: false,
-        error: 'No fue posible eliminar el activo. Inténtalo nuevamente más tarde.'
-      });
+      throw new Error('No se encontró el activo a eliminar');
     }
+
+    await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+    fkChecksDisabled = false;
 
     await connection.commit();
   } catch (error) {
     console.error('Error al eliminar activo y dependencias:', error);
     if (connection) {
+      if (fkChecksDisabled) {
+        try {
+          await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+        } catch (fkError) {
+          console.error('No fue posible reactivar las llaves foráneas:', fkError);
+        }
+      }
       await connection.rollback();
     }
     return res.status(500).render('activos/detalle', {
