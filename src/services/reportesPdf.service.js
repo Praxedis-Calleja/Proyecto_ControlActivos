@@ -307,6 +307,15 @@ const construirUtilidadesLayout = (doc) => {
       doc.moveDown(0.15);
     }
 
+    if (mostrarNombreHotel) {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(12)
+        .fillColor('#1f1f1f');
+      doc.text('Hotel Xcaret Arte', headerX, initialY, headerTextOptions);
+      doc.moveDown(0.15);
+    }
+
     doc
       .font('Helvetica-Bold')
       .fontSize(12)
