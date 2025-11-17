@@ -32,6 +32,13 @@
 
       const multilinea = (texto = '') => escapeHtml(texto).replace(/\r?\n/g, '<br>');
 
+      const formatoFechaInput = (fecha) => {
+        const year = fecha.getFullYear();
+        const month = `${fecha.getMonth() + 1}`.padStart(2, '0');
+        const day = `${fecha.getDate()}`.padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
       const diagnosticos = Array.isArray(reportesDiagnostico) ? reportesDiagnostico : [];
       const bajas = Array.isArray(reportesBaja) ? reportesBaja : [];
       const mostrarDiagnosticos = tipo !== 'baja';
@@ -42,6 +49,9 @@
       const totalRegistros = totalDiagnosticos + totalBajas;
 
       const resumenBusqueda = (() => {
+        if (totalRegistros === 0) {
+          return 'No encontramos reportes con los filtros seleccionados.';
+        }
         if (tipo === 'diagnostico') {
           return `${totalDiagnosticos} reporte${totalDiagnosticos === 1 ? '' : 's'} de diagnóstico encontrados.`;
         }
@@ -50,6 +60,109 @@
         }
         return `${totalRegistros} reporte${totalRegistros === 1 ? '' : 's'} encontrados (${diagnosticos.length} diagnósticos y ${bajas.length} bajas).`;
       })();
+
+      const resumenRecientes = recientes
+        ? 'Mostrando únicamente los reportes generados en los últimos 30 días.'
+        : '';
+
+      const normalizadosParaUrl = {
+        tipo,
+        q: termino,
+        desde,
+        hasta,
+        recientes: recientes ? '1' : '',
+      };
+
+      const construirUrl = (overrides = {}) => {
+        const params = new URLSearchParams();
+        const combinado = { ...normalizadosParaUrl, ...overrides };
+        Object.entries(combinado).forEach(([key, value]) => {
+          if (!value) return;
+          params.set(key, value);
+        });
+        const query = params.toString();
+        return `/incidencias/reportes${query ? `?${query}` : ''}`;
+      };
+
+      const hoy = new Date();
+      const sieteDias = new Date(hoy);
+      sieteDias.setDate(hoy.getDate() - 6);
+      const inicioAnio = new Date(hoy.getFullYear(), 0, 1);
+      const finAnio = new Date(hoy.getFullYear(), 11, 31);
+
+      const quickFilters = [
+        {
+          label: 'Hoy',
+          descripcion: 'Registros generados el día de hoy',
+          params: { desde: formatoFechaInput(hoy), hasta: formatoFechaInput(hoy), recientes: null },
+        },
+        {
+          label: 'Últimos 7 días',
+          descripcion: 'Incluye la semana actual',
+          params: { desde: formatoFechaInput(sieteDias), hasta: formatoFechaInput(hoy), recientes: null },
+        },
+        {
+          label: 'Últimos 30 días',
+          descripcion: 'Aplica el filtro de reportes recientes',
+          params: { desde: null, hasta: null, recientes: '1' },
+        },
+        {
+          label: `Año ${hoy.getFullYear()}`,
+          descripcion: 'Todo el año en curso',
+          params: { desde: formatoFechaInput(inicioAnio), hasta: formatoFechaInput(finAnio), recientes: null },
+        },
+      ];
+
+      const esChipActivo = (chip) =>
+        Object.entries(chip.params || {}).every(([clave, valor]) => {
+          if (valor === null || typeof valor === 'undefined') return normalizadosParaUrl[clave] === '';
+          const actual = normalizadosParaUrl[clave] || '';
+          return actual === valor;
+        });
+
+      const quickFiltersHtml = quickFilters
+        .map((chip) => {
+          const activo = esChipActivo(chip) ? ' reportes-buscador__chip--activo' : '';
+          return `
+            <a class="reportes-buscador__chip${activo}" href="${construirUrl(chip.params)}">
+              <span>${escapeHtml(chip.label)}</span>
+              <small>${escapeHtml(chip.descripcion)}</small>
+            </a>
+          `;
+        })
+        .join('');
+
+      const metricas = [
+        {
+          titulo: 'Diagnósticos',
+          valor: totalDiagnosticos,
+          detalle: 'Con reporte PDF generado',
+        },
+        {
+          titulo: 'Bajas',
+          valor: totalBajas,
+          detalle: 'Formularios de baja emitidos',
+        },
+        {
+          titulo: 'Reportes recientes',
+          valor:
+            diagnosticos.filter((diagnostico) => Boolean(diagnostico.esReciente)).length +
+            bajas.filter((baja) => Boolean(baja.esReciente)).length,
+          detalle: 'Últimos 30 días',
+        },
+      ];
+
+      const metricasHtml = metricas
+        .map(
+          (metrica) => `
+            <article class="reportes-metrica">
+              <p class="reportes-metrica__titulo">${escapeHtml(metrica.titulo)}</p>
+              <p class="reportes-metrica__valor">${escapeHtml(metrica.valor)}</p>
+              <p class="reportes-metrica__detalle">${escapeHtml(metrica.detalle)}</p>
+            </article>
+          `,
+        )
+        .join('');
 
       const renderDiagnosticos = () => {
         if (!mostrarDiagnosticos) return '';
@@ -285,47 +398,82 @@
           `;
 
       return `
-        <form method="get" class="reportes-buscador__filtros">
-          <div class="reportes-buscador__grupo">
-            <label for="filtro-tipo">Tipo de reporte</label>
-            <select id="filtro-tipo" name="tipo">
-              <option value="todos" ${tipo === 'todos' ? 'selected' : ''}>Diagnósticos y bajas</option>
-              <option value="diagnostico" ${tipo === 'diagnostico' ? 'selected' : ''}>Sólo diagnósticos</option>
-              <option value="baja" ${tipo === 'baja' ? 'selected' : ''}>Sólo bajas</option>
-            </select>
+        <div class="reportes-buscador__panel">
+          <div class="reportes-buscador__panel-header">
+            <div>
+              <p class="reportes-buscador__eyebrow">Criterios de búsqueda</p>
+              <h3>Filtra y encuentra reportes</h3>
+              <p>Combina filtros por tipo, palabra clave y fechas para localizar el reporte que necesitas.</p>
+            </div>
+            <div class="reportes-buscador__panel-indicador">
+              <span>Total</span>
+              <strong>${totalRegistros}</strong>
+            </div>
           </div>
-          <div class="reportes-buscador__grupo reportes-buscador__grupo--busqueda">
-            <label for="filtro-q">Palabra clave</label>
-            <input
-              type="search"
-              id="filtro-q"
-              name="q"
-              placeholder="Activo, incidencia o técnico"
-              value="${escapeAttr(termino)}"
-            >
-          </div>
-          <div class="reportes-buscador__grupo">
-            <label for="filtro-desde">Desde</label>
-            <input type="date" id="filtro-desde" name="desde" value="${escapeAttr(desde)}">
-          </div>
-          <div class="reportes-buscador__grupo">
-            <label for="filtro-hasta">Hasta</label>
-            <input type="date" id="filtro-hasta" name="hasta" value="${escapeAttr(hasta)}">
-          </div>
-          <div class="reportes-buscador__grupo reportes-buscador__grupo--checkbox">
-            <label class="reportes-buscador__checkbox">
-              <input type="checkbox" name="recientes" value="1" ${recientes ? 'checked' : ''}>
-              Sólo mostrar reportes recientes (últimos 30 días)
-            </label>
-          </div>
-          <div class="reportes-buscador__acciones">
-            <button type="submit" class="btn">Buscar</button>
-            ${tieneFiltros ? '<a href="/incidencias/reportes" class="btn-secundario">Limpiar filtros</a>' : ''}
-          </div>
-        </form>
+          <form method="get" class="reportes-buscador__filtros">
+            <div class="reportes-buscador__fila">
+              <div class="reportes-buscador__grupo">
+                <label for="filtro-tipo">Tipo de reporte</label>
+                <select id="filtro-tipo" name="tipo">
+                  <option value="todos" ${tipo === 'todos' ? 'selected' : ''}>Diagnósticos y bajas</option>
+                  <option value="diagnostico" ${tipo === 'diagnostico' ? 'selected' : ''}>Sólo diagnósticos</option>
+                  <option value="baja" ${tipo === 'baja' ? 'selected' : ''}>Sólo bajas</option>
+                </select>
+              </div>
+              <div class="reportes-buscador__grupo reportes-buscador__grupo--busqueda">
+                <label for="filtro-q">Palabra clave</label>
+                <input
+                  type="search"
+                  id="filtro-q"
+                  name="q"
+                  placeholder="Activo, incidencia o técnico"
+                  value="${escapeAttr(termino)}"
+                >
+              </div>
+            </div>
+            <div class="reportes-buscador__fila reportes-buscador__fila--rangos">
+              <div class="reportes-buscador__grupo">
+                <label for="filtro-desde">Desde</label>
+                <input type="date" id="filtro-desde" name="desde" value="${escapeAttr(desde)}">
+              </div>
+              <div class="reportes-buscador__grupo">
+                <label for="filtro-hasta">Hasta</label>
+                <input type="date" id="filtro-hasta" name="hasta" value="${escapeAttr(hasta)}">
+              </div>
+              <div class="reportes-buscador__grupo reportes-buscador__grupo--checkbox">
+                <label class="reportes-buscador__checkbox">
+                  <input type="checkbox" name="recientes" value="1" ${recientes ? 'checked' : ''}>
+                  Sólo mostrar reportes recientes (últimos 30 días)
+                </label>
+              </div>
+            </div>
+            <div class="reportes-buscador__acciones">
+              <button type="submit" class="btn">Buscar</button>
+              ${tieneFiltros ? '<a href="/incidencias/reportes" class="btn-secundario">Limpiar filtros</a>' : ''}
+            </div>
+          </form>
+          ${quickFiltersHtml
+            ? `
+                <div class="reportes-buscador__chips">
+                  <p class="reportes-buscador__chips-titulo">Atajos rápidos</p>
+                  <div class="reportes-buscador__chips-list">
+                    ${quickFiltersHtml}
+                  </div>
+                </div>
+              `
+            : ''}
+        </div>
 
         <div class="reportes-buscador__resumen">
-          <p>${resumenBusqueda} ${recientes ? 'Mostrando únicamente los reportes recientes.' : ''}</p>
+          <div>
+            <p class="reportes-buscador__eyebrow">Resumen</p>
+            <h4>${totalRegistros === 0 ? 'Sin coincidencias' : 'Resultados encontrados'}</h4>
+            <p>${resumenBusqueda} ${resumenRecientes}</p>
+          </div>
+        </div>
+
+        <div class="reportes-buscador__metricas">
+          ${metricasHtml}
         </div>
 
         ${contenidoResultados}
