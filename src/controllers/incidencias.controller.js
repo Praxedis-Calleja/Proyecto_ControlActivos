@@ -1280,10 +1280,20 @@ export const getDiagnosticoIncidencia = async (req, res) => {
       values.fecha_diagnostico = formatearFecha(new Date());
     }
 
-    const reporteBajaCreado =
-      typeof req.query.b === 'string' && req.query.b.startsWith('/')
-        ? req.query.b
-        : null;
+    const reporteBajaCreado = (() => {
+      if (typeof req.query.b === 'string' && req.query.b.startsWith('/')) {
+        const idBaja = Number.isInteger(Number(req.query.bid))
+          ? Number(req.query.bid)
+          : null;
+        const fechaBaja = typeof req.query.bf === 'string' ? req.query.bf : null;
+        return {
+          url: req.query.b,
+          id: idBaja,
+          fecha: fechaBaja
+        };
+      }
+      return null;
+    })();
 
     const pageTitle = 'Diagnóstico de incidencia';
 
@@ -1524,7 +1534,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     const diagnosticoId = resultado.insertId;
 
     let reporteBajaUrl = null;
+    let reporteBajaCreado = null;
     if (requiere_baja === 'SI') {
+      if (!incidencia.id_activo) {
+        throw new Error('El activo asociado a la incidencia es obligatorio para generar el reporte de baja.');
+      }
+
       const fechaBaja = fechaNormalizada || formatearFecha(new Date()) || null;
       const [resultadoBaja] = await connection.query(
         `INSERT INTO reportesbaja (
@@ -1532,12 +1547,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
            Fecha_Baja,
            id_diagnostico
          ) VALUES (?, ?, ?)`,
-        [
-          null,
-          incidencia.id_activo,
-          fechaBaja,
-          diagnosticoId
-        ]
+        [incidencia.id_activo, fechaBaja, diagnosticoId]
       );
 
       if (incidencia.id_activo !== null && incidencia.id_activo !== undefined) {
@@ -1549,7 +1559,14 @@ export const postDiagnosticoIncidencia = async (req, res) => {
           ['BAJA', incidencia.id_activo]
         );
       }
+      const bajaId = resultadoBaja?.insertId;
       reporteBajaUrl = `/incidencias/${idIncidencia}/diagnostico/baja/pdf/${diagnosticoId}`;
+      if (bajaId) {
+        reporteBajaCreado = {
+          id: bajaId,
+          fecha: fechaBaja
+        };
+      }
     }
 
     await connection.commit();
@@ -1563,6 +1580,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     const queryParams = new URLSearchParams({ ok: '1', h: String(diagnosticoId) });
     if (reporteBajaUrl) {
       queryParams.set('b', reporteBajaUrl);
+      if (reporteBajaCreado?.id) {
+        queryParams.set('bid', String(reporteBajaCreado.id));
+      }
+      if (reporteBajaCreado?.fecha) {
+        queryParams.set('bf', reporteBajaCreado.fecha);
+      }
     }
 
     return res.redirect(`/incidencias/${idIncidencia}/diagnostico?${queryParams.toString()}`);
