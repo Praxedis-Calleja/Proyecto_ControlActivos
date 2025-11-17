@@ -516,17 +516,48 @@ export const postEliminarActivo = async (req, res) => {
       });
   }
 
-  const [resultado] = await pool.query(
-    'DELETE FROM activos_fijos WHERE id_activo = ? LIMIT 1',
-    [idActivo]
-  );
+  let connection;
+  let fkChecksDisabled = false;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+    fkChecksDisabled = true;
 
-  if (!resultado.affectedRows) {
+    const [resultado] = await connection.query(
+      'DELETE FROM activos_fijos WHERE id_activo = ? LIMIT 1',
+      [idActivo]
+    );
+
+    if (!resultado.affectedRows) {
+      throw new Error('No se encontró el activo a eliminar');
+    }
+
+    await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+    fkChecksDisabled = false;
+
+    await connection.commit();
+  } catch (error) {
+    console.error('Error al eliminar activo y dependencias:', error);
+    if (connection) {
+      if (fkChecksDisabled) {
+        try {
+          await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+        } catch (fkError) {
+          console.error('No fue posible reactivar las llaves foráneas:', fkError);
+        }
+      }
+      await connection.rollback();
+    }
     return res.status(500).render('activos/detalle', {
       activo,
       ok: false,
       error: 'No fue posible eliminar el activo. Inténtalo nuevamente más tarde.'
     });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 
   return res.redirect('/activos?deleted=1');
