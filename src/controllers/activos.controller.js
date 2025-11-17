@@ -516,17 +516,52 @@ export const postEliminarActivo = async (req, res) => {
       });
   }
 
-  const [resultado] = await pool.query(
-    'DELETE FROM activos_fijos WHERE id_activo = ? LIMIT 1',
-    [idActivo]
-  );
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
 
-  if (!resultado.affectedRows) {
+    await connection.query(
+      `DELETE b
+        FROM reportesbaja b
+        INNER JOIN diagnostico d ON d.id_diagnostico = b.id_diagnostico
+       WHERE d.id_activo = ?`,
+      [idActivo]
+    );
+
+    await connection.query('DELETE FROM diagnostico WHERE id_activo = ?', [idActivo]);
+
+    await connection.query('DELETE FROM incidencias WHERE id_activo = ?', [idActivo]);
+
+    const [resultado] = await connection.query(
+      'DELETE FROM activos_fijos WHERE id_activo = ? LIMIT 1',
+      [idActivo]
+    );
+
+    if (!resultado.affectedRows) {
+      await connection.rollback();
+      return res.status(500).render('activos/detalle', {
+        activo,
+        ok: false,
+        error: 'No fue posible eliminar el activo. Inténtalo nuevamente más tarde.'
+      });
+    }
+
+    await connection.commit();
+  } catch (error) {
+    console.error('Error al eliminar activo y dependencias:', error);
+    if (connection) {
+      await connection.rollback();
+    }
     return res.status(500).render('activos/detalle', {
       activo,
       ok: false,
       error: 'No fue posible eliminar el activo. Inténtalo nuevamente más tarde.'
     });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 
   return res.redirect('/activos?deleted=1');
