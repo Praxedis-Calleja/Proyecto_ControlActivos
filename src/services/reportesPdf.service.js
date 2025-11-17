@@ -307,15 +307,6 @@ const construirUtilidadesLayout = (doc) => {
       doc.moveDown(0.15);
     }
 
-    if (mostrarNombreHotel) {
-      doc
-        .font('Helvetica-Bold')
-        .fontSize(12)
-        .fillColor('#1f1f1f');
-      doc.text('Hotel Xcaret Arte', headerX, initialY, headerTextOptions);
-      doc.moveDown(0.15);
-    }
-
     doc
       .font('Helvetica-Bold')
       .fontSize(12)
@@ -689,6 +680,10 @@ export const generarBajaPdf = ({
   const departamentoTecnico = valorSeguro(
     registro.departamento_nombre,
     DEPARTAMENTO_TECNICO_DEFAULT
+  );
+  const puestoTecnico = valorSeguro(
+    registro.puesto_tecnico,
+    PUESTO_TECNICO_DEFAULT
   );
 
   drawDocumentHeader('Formato de Baja de Equipo de Cómputo', {
