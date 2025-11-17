@@ -405,6 +405,27 @@ form .campo {
   margin-top: 1rem;
 }
 
+.campo-ayuda {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.campo-error {
+  font-size: 0.85rem;
+  color: var(--color-danger);
+  margin-top: 0.15rem;
+}
+
+.campo-error[hidden] {
+  display: none;
+}
+
+.campo-archivos input[type='file'] {
+  border: 1px dashed var(--color-border);
+  padding: 0.4rem 0.6rem;
+  background: #fff;
+}
+
 label {
   font-weight: 600;
   color: var(--color-text);

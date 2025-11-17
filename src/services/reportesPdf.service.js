@@ -14,11 +14,13 @@ const agregarPaginaDescripcionGraficaYFirma = ({
   drawDocumentHeader,
   drawSectionTitle,
   drawLabeledBox,
+  drawEvidenceGallery,
   startX,
   pageWidth,
   encabezado,
   tituloDescripcion,
   contenidoDescripcion,
+  imagenesEvidencia = [],
   datosTecnico = {},
   opcionesEncabezado = {}
 }) => {
@@ -36,6 +38,16 @@ const agregarPaginaDescripcionGraficaYFirma = ({
 
   drawSectionTitle(tituloDescripcion);
   drawLabeledBox(tituloDescripcion, contenidoDescripcion, { height: 150 });
+
+  if (
+    Array.isArray(imagenesEvidencia) &&
+    imagenesEvidencia.length &&
+    typeof drawEvidenceGallery === 'function'
+  ) {
+    doc.moveDown(0.4);
+    drawEvidenceGallery(imagenesEvidencia);
+    doc.moveDown(0.6);
+  }
 
   doc.moveDown(1.1);
   doc
@@ -260,6 +272,61 @@ const construirUtilidadesLayout = (doc) => {
     doc.y = contentY + boxHeight + 14;
   };
 
+  const drawEvidenceGallery = (imagenes = []) => {
+    if (!Array.isArray(imagenes) || !imagenes.length) {
+      return;
+    }
+
+    const gap = 14;
+    const columnas = imagenes.length >= 3 ? 3 : 2;
+    const cellWidth = (pageWidth - gap * (columnas - 1)) / columnas;
+    const cellHeight = 120;
+    const maxY = doc.page.height - doc.page.margins.bottom;
+    let currentX = startX;
+    let currentY = doc.y;
+
+    imagenes.forEach((imagen, index) => {
+      if (currentY + cellHeight > maxY) {
+        doc.addPage();
+        currentY = doc.page.margins.top;
+        doc.y = currentY;
+      }
+
+      doc
+        .lineWidth(0.8)
+        .strokeColor('#d0d0d0')
+        .rect(currentX, currentY, cellWidth, cellHeight)
+        .stroke();
+
+      try {
+        const fuente = imagen?.buffer ?? imagen;
+        doc.image(fuente, currentX + 6, currentY + 6, {
+          fit: [cellWidth - 12, cellHeight - 12],
+          align: 'center',
+          valign: 'center'
+        });
+      } catch (error) {
+        console.warn('No se pudo renderizar una evidencia temporal:', error);
+      }
+
+      const esUltimaColumna = (index + 1) % columnas === 0;
+      if (esUltimaColumna) {
+        currentX = startX;
+        currentY += cellHeight + gap;
+      } else {
+        currentX += cellWidth + gap;
+      }
+    });
+
+    if (imagenes.length % columnas !== 0) {
+      currentY += cellHeight + gap;
+    }
+
+    doc.y = currentY;
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
+  };
+
   const drawDocumentHeader = (titulo, opciones = {}) => {
     const {
       mostrarNombreHotel = false,
@@ -348,6 +415,7 @@ const construirUtilidadesLayout = (doc) => {
     drawSectionTitle,
     drawKeyValueTable,
     drawLabeledBox,
+    drawEvidenceGallery,
     drawDocumentHeader
   };
 };
@@ -362,7 +430,8 @@ export const generarDiagnosticoPdf = ({
   datosContacto,
   firma,
   esDescarga,
-  formatearFechaLarga
+  formatearFechaLarga,
+  evidenciaImagenes = []
 }) => {
   const nombreArchivo = `diagnostico_incidencia_${registro.id_incidencia}.pdf`;
   const doc = crearDocumentoBase({
@@ -383,6 +452,7 @@ export const generarDiagnosticoPdf = ({
     drawSectionTitle,
     drawKeyValueTable,
     drawLabeledBox,
+    drawEvidenceGallery,
     drawDocumentHeader
   } = construirUtilidadesLayout(doc);
 
@@ -417,6 +487,8 @@ export const generarDiagnosticoPdf = ({
       };
 
   const garantiaTexto = formatearFechaLarga?.(registro.fecha_garantia) || 'No registrada';
+  const tieneEvidenciasTemporales =
+    Array.isArray(evidenciaImagenes) && evidenciaImagenes.length > 0;
 
   const propietario = valorSeguro(
     registro.propietario_nombre_completo,
@@ -509,7 +581,9 @@ export const generarDiagnosticoPdf = ({
   // ==== DESCRIPCIÓN GRÁFICA (caja grande tipo formato) ====
   const evidenciaTexto = registro.diagnostico_evidencia
     ? `Evidencia: ${registro.diagnostico_evidencia}`
-    : 'No se proporcionó evidencia gráfica para este diagnóstico.';
+    : tieneEvidenciasTemporales
+      ? 'Se adjuntaron evidencias gráficas temporales para este diagnóstico.'
+      : 'No se proporcionó evidencia gráfica para este diagnóstico.';
 
   // ==== DIAGNÓSTICO TÉCNICO (caja grande) ====
   const partesDiagnostico = [];
@@ -563,11 +637,13 @@ export const generarDiagnosticoPdf = ({
     drawDocumentHeader,
     drawSectionTitle,
     drawLabeledBox,
+    drawEvidenceGallery,
     startX,
     pageWidth,
     encabezado: 'Formato de Diagnóstico de Equipo de Cómputo',
     tituloDescripcion: 'Descripción gráfica',
     contenidoDescripcion: evidenciaTexto,
+    imagenesEvidencia: evidenciaImagenes,
     datosTecnico: {
       nombreTecnico,
       departamentoTecnico,
@@ -600,7 +676,8 @@ export const generarBajaPdf = ({
   tipoContacto,
   datosContacto,
   esDescarga,
-  formatearFechaLarga
+  formatearFechaLarga,
+  evidenciaImagenes = []
 }) => {
   const nombreArchivo = `baja_activo_${registro.id_incidencia}_${registro.baja_id}.pdf`;
   const doc = crearDocumentoBase({
@@ -611,7 +688,8 @@ export const generarBajaPdf = ({
     asunto: 'Formato de baja de equipo de cómputo'
   });
 
-  const { pageWidth, startX, drawDocumentHeader } = construirUtilidadesLayout(doc);
+  const { pageWidth, startX, drawDocumentHeader, drawEvidenceGallery } =
+    construirUtilidadesLayout(doc);
 
   const categoriaTexto = valorSeguro(registro.categoria_nombre, 'No registrada');
   const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
@@ -660,9 +738,20 @@ export const generarBajaPdf = ({
   const tiempoUsoTexto =
     textoOpcional(detalles?.tiempoUso) || textoOpcional(registro.tiempo_uso) || 'No registrado';
 
-  const descripcionGrafica = valorSeguro(
-    registro.diagnostico_evidencia,
-    'No se proporcionó descripción gráfica para esta baja.'
+  const tieneEvidenciasTemporales =
+    Array.isArray(evidenciaImagenes) && evidenciaImagenes.length > 0;
+  const descripcionGrafica = tieneEvidenciasTemporales
+    ? valorSeguro(
+        registro.diagnostico_evidencia,
+        'Se adjuntaron evidencias temporales para esta baja.'
+      )
+    : valorSeguro(
+        registro.diagnostico_evidencia,
+        'No se proporcionó descripción gráfica para esta baja.'
+      );
+  const diagnosticoTecnico = valorSeguro(
+    registro.diagnostico_tecnico,
+    'No se registró un diagnóstico técnico para esta baja.'
   );
   const diagnosticoTecnico = valorSeguro(
     registro.diagnostico_tecnico,
@@ -969,6 +1058,11 @@ export const generarBajaPdf = ({
   ]);
 
   drawNarrativeBox('Descripción Gráfica', descripcionGrafica, 180);
+  if (tieneEvidenciasTemporales) {
+    doc.moveDown(0.3);
+    drawEvidenceGallery(evidenciaImagenes);
+    doc.moveDown(0.6);
+  }
   drawNarrativeBox('Diagnóstico Técnico', diagnosticoTecnico, 160);
 
     doc.moveDown(0.6);

@@ -1,6 +1,12 @@
 import Joi from 'joi';
 import { pool } from '../db.js';
 import { generarBajaPdf, generarDiagnosticoPdf } from '../services/reportesPdf.service.js';
+import {
+  EVIDENCIA_TEMPORAL_CONFIG,
+  guardarEvidenciasTemporales,
+  obtenerEvidenciasTemporales,
+  parseImagenesTemporales
+} from '../services/evidenciasTemporales.service.js';
 
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
 const ESTADOS = ['ABIERTA', 'EN_PROCESO', 'CERRADA', 'CANCELADA'];
@@ -319,6 +325,20 @@ const normalizarValoresDiagnostico = (datos = {}, tecnicoActual = '') => ({
   observaciones_baja: datos.observaciones_baja ?? '',
   evidencia_url: datos.evidencia_url ?? ''
 });
+
+const construirConfigVistaEvidencias = () => {
+  const maxPeso = (EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes / (1024 * 1024)).toFixed(1);
+  const maxPesoMB = maxPeso.endsWith('.0') ? maxPeso.slice(0, -2) : maxPeso;
+  return {
+    maxImagenes: EVIDENCIA_TEMPORAL_CONFIG.maxImagenes,
+    maxPesoBytes: EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes,
+    maxPesoMB,
+    formatos: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos,
+    formatosTexto: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos
+      .map((tipo) => tipo.replace('image/', '').toUpperCase())
+      .join(', ')
+  };
+};
 
 const formatearFecha = (valor) => {
   if (!valor) return '';
@@ -1298,6 +1318,7 @@ export const getDiagnosticoIncidencia = async (req, res) => {
     const pageTitle = 'Diagnóstico de incidencia';
 
     const permiteDiagnostico = incidencia.estado !== 'CERRADA';
+    const evidenciaConfig = construirConfigVistaEvidencias();
 
     return res.render('incidencias/diagnostico', {
       incidencia,
@@ -1314,7 +1335,8 @@ export const getDiagnosticoIncidencia = async (req, res) => {
       estados: ESTADOS,
       permiteDiagnostico,
       estadoActualizado: req.query.estadoOk === '1',
-      estadoError: req.query.estadoError === '1'
+      estadoError: req.query.estadoError === '1',
+      evidenciaConfig
     });
   } catch (error) {
     console.error('Error al cargar formulario de diagnóstico:', error);
@@ -1400,6 +1422,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     .filter(Boolean)
     .join(' ');
   const permiteDiagnostico = incidencia.estado !== 'CERRADA';
+  const evidenciaConfig = construirConfigVistaEvidencias();
 
   if (!permiteDiagnostico) {
     try {
@@ -1416,7 +1439,8 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         estados: ESTADOS,
         permiteDiagnostico,
         estadoActualizado: false,
-        estadoError: false
+        estadoError: false,
+        evidenciaConfig
       });
     } catch (diagnosticoError) {
       console.error('Error al recuperar diagnósticos en incidencia cerrada:', diagnosticoError);
@@ -1446,7 +1470,8 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         estados: ESTADOS,
         permiteDiagnostico,
         estadoActualizado: false,
-        estadoError: false
+        estadoError: false,
+        evidenciaConfig
       });
     } catch (diagnosticoError) {
       console.error('Error al recuperar diagnósticos:', diagnosticoError);
@@ -1469,6 +1494,9 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     evidencia_url,
     tiempo_uso
   } = value;
+  const evidenciasTemporalesProcesadas = parseImagenesTemporales(
+    req.body.evidencia_imagenes
+  );
 
   let connection;
 
@@ -1571,6 +1599,12 @@ export const postDiagnosticoIncidencia = async (req, res) => {
 
     await connection.commit();
 
+    try {
+      await guardarEvidenciasTemporales(diagnosticoId, evidenciasTemporalesProcesadas);
+    } catch (evidenciaError) {
+      console.error('No se pudieron guardar las evidencias temporales:', evidenciaError);
+    }
+
     if (!req.session.diagnosticSignatures) {
       req.session.diagnosticSignatures = {};
     }
@@ -1617,7 +1651,8 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         estados: ESTADOS,
         permiteDiagnostico,
         estadoActualizado: false,
-        estadoError: false
+        estadoError: false,
+        evidenciaConfig
       });
     } catch (diagnosticoError) {
       console.error('Error adicional al recuperar diagnósticos:', diagnosticoError);
@@ -1711,6 +1746,7 @@ export const getDiagnosticoPdf = async (req, res) => {
       'No registrado';
     const tipoContacto = obtenerTextoPlano(registro.tipo_contacto_externo) || 'No aplica';
     const datosContacto = obtenerTextoPlano(registro.datos_contacto_externo) || 'No registrados';
+    const evidenciaImagenes = await obtenerEvidenciasTemporales(idDiagnostico);
 
     const firmasSesion = req.session.diagnosticSignatures || {};
     const firmaSesion = firmasSesion[String(idDiagnostico)];
@@ -1734,7 +1770,8 @@ export const getDiagnosticoPdf = async (req, res) => {
       datosContacto,
       firma,
       esDescarga,
-      formatearFechaLarga
+      formatearFechaLarga,
+      evidenciaImagenes
     });
   } catch (error) {
     console.error('Error al generar PDF:', error);
@@ -1829,6 +1866,7 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
       .trim()
       .toLowerCase();
     const esDescarga = ['1', 'true', 'si', 'yes'].includes(solicitarDescarga);
+    const evidenciaImagenes = await obtenerEvidenciasTemporales(idDiagnostico);
 
     generarBajaPdf({
       res,
@@ -1838,7 +1876,8 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
       tipoContacto,
       datosContacto,
       esDescarga,
-      formatearFechaLarga
+      formatearFechaLarga,
+      evidenciaImagenes
     });
   } catch (error) {
     console.error('Error al generar PDF de baja:', error);

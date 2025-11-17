@@ -62,6 +62,12 @@
       const multilinea = (texto = '') =>
         escapeHtml(texto).replace(/\r?\n/g, '<br>');
 
+      const configEvidencia = evidenciaConfig || {};
+      const evidenciaMaxImagenes = Number(configEvidencia.maxImagenes) || 0;
+      const evidenciaMaxPesoBytes = Number(configEvidencia.maxPesoBytes) || 0;
+      const evidenciaMaxPesoMB = escapeHtml(configEvidencia.maxPesoMB || '0');
+      const evidenciaFormatos = escapeHtml(configEvidencia.formatosTexto || 'JPG, PNG');
+
       const opcionesEstado = Array.isArray(estados)
         ? estados
             .map((estado) => {
@@ -135,6 +141,8 @@
           action="/incidencias/${incidencia.id_incidencia}/diagnostico"
           class="form-diagnostico"
           data-form-diagnostico
+          data-max-evidencias="${evidenciaMaxImagenes}"
+          data-max-evidencia-size="${evidenciaMaxPesoBytes}"
         >
           <div class="campo">
             <label for="fecha_diagnostico">Fecha de diagnóstico</label>
@@ -234,6 +242,25 @@
             >
           </div>
 
+          <div class="campo campo-archivos">
+            <label for="evidencia_archivos">Evidencia en imágenes (opcional)</label>
+            <input
+              type="file"
+              id="evidencia_archivos"
+              accept="image/*"
+              multiple
+            >
+            <small class="campo-ayuda">
+              Puedes adjuntar hasta ${evidenciaMaxImagenes || 0} imágenes (${evidenciaMaxPesoMB} MB c/u).
+            </small>
+            <small class="campo-ayuda">
+              Formatos permitidos: ${evidenciaFormatos}. Las imágenes solo se utilizan para el PDF y no se guardan en la base de datos.
+            </small>
+            <p class="campo-error" data-evidencia-error hidden></p>
+          </div>
+
+          <input type="hidden" name="evidencia_imagenes" id="evidencia_imagenes" value="">
+
           <div class="campo">
             <label for="firma_tecnico">Firma del técnico</label>
             <input
@@ -322,6 +349,85 @@
             });
 
             toggleContainer();
+
+            const archivosInput = form.querySelector('#evidencia_archivos');
+            const hiddenInput = form.querySelector('#evidencia_imagenes');
+            const errorTarget = form.querySelector('[data-evidencia-error]');
+            const maxFiles = Number(form.dataset.maxEvidencias || '0');
+            const maxFileSize = Number(form.dataset.maxEvidenciaSize || '0');
+            const maxFileSizeLabel = maxFileSize
+              ? `${Math.round((maxFileSize / (1024 * 1024)) * 10) / 10} MB`
+              : '';
+
+            const limpiarMensaje = () => {
+              if (!errorTarget) return;
+              errorTarget.textContent = '';
+              errorTarget.setAttribute('hidden', '');
+            };
+
+            const leerArchivo = (archivo) =>
+              new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('No se pudo leer una de las evidencias.'));
+                reader.readAsDataURL(archivo);
+              });
+
+            const prepararImagenes = async () => {
+              if (!archivosInput?.files?.length) {
+                if (hiddenInput) hiddenInput.value = '';
+                return [];
+              }
+
+              const archivos = Array.from(archivosInput.files);
+              const seleccionados = maxFiles > 0 ? archivos.slice(0, maxFiles) : archivos;
+              const imagenes = [];
+
+              for (const archivo of seleccionados) {
+                if (!archivo.type.startsWith('image/')) {
+                  throw new Error('Solo se permiten archivos de imagen en la evidencia.');
+                }
+                if (maxFileSize > 0 && archivo.size > maxFileSize) {
+                  const mensajeLimite = maxFileSizeLabel
+                    ? `Cada imagen debe pesar menos de ${maxFileSizeLabel}.`
+                    : 'Reduce el peso de la evidencia antes de enviarla.';
+                  throw new Error(mensajeLimite);
+                }
+                const dataUrl = await leerArchivo(archivo);
+                imagenes.push(dataUrl);
+              }
+
+              return imagenes;
+            };
+
+            if (archivosInput) {
+              archivosInput.addEventListener('change', () => {
+                limpiarMensaje();
+                if (hiddenInput) hiddenInput.value = '';
+              });
+            }
+
+            form.addEventListener('submit', async (event) => {
+              if (!archivosInput || !hiddenInput) return;
+              if (!archivosInput.files || !archivosInput.files.length) {
+                hiddenInput.value = '';
+                return;
+              }
+
+              event.preventDefault();
+              limpiarMensaje();
+
+              try {
+                const imagenes = await prepararImagenes();
+                hiddenInput.value = imagenes.length ? JSON.stringify(imagenes) : '';
+                form.submit();
+              } catch (error) {
+                if (errorTarget) {
+                  errorTarget.textContent = error.message || 'No se pudieron preparar las evidencias gráficas.';
+                  errorTarget.removeAttribute('hidden');
+                }
+              }
+            });
           })();
         </script>
       `;
