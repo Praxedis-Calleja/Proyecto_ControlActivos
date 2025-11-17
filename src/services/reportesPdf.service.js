@@ -31,6 +31,7 @@ const agregarPaginaDescripcionGraficaYFirma = ({
   doc.y = doc.page.margins.top;
   drawDocumentHeader(encabezado);
 
+  drawSectionTitle(tituloDescripcion);
   drawLabeledBox(tituloDescripcion, contenidoDescripcion, { height: 150 });
 
   doc.moveDown(1.1);
