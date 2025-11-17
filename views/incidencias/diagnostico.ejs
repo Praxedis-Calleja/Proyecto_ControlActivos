@@ -144,6 +144,19 @@
             <textarea id="descripcion_trabajo" name="descripcion_trabajo" rows="4" required>${escapeHtml(values.descripcion_trabajo || '')}</textarea>
           </div>
 
+          <div class="campo">
+            <label for="tiempo_uso">Tiempo de uso</label>
+            <input
+              type="text"
+              id="tiempo_uso"
+              name="tiempo_uso"
+              value="${escapeAttr(values.tiempo_uso || '')}"
+              maxlength="150"
+              placeholder="Ej. 2 años 4 meses"
+            >
+            <small>Describe el tiempo aproximado de uso del equipo.</small>
+          </div>
+
           <div class="campo campo-flex">
             <div>
               <label for="procesador">Procesador diagnosticado</label>

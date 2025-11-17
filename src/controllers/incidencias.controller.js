@@ -102,6 +102,13 @@ const esquemaDiagnostico = Joi.object({
   procesador: Joi.string().trim().allow(''),
   memoria_ram: Joi.string().trim().allow(''),
   almacenamiento: Joi.string().trim().allow(''),
+  tiempo_uso: Joi.string()
+    .trim()
+    .max(150)
+    .allow('')
+    .messages({
+      'string.max': 'El tiempo de uso no puede superar los 150 caracteres.'
+    }),
   requiere_baja: Joi.string()
     .valid('SI', 'NO')
     .default('NO'),
@@ -133,8 +140,7 @@ const esquemaDiagnostico = Joi.object({
   evidencia_url: Joi.string()
     .uri()
     .allow('', null)
-    .optional(),
-  tiempo_uso: Joi.string().allow('').trim().optional()
+    .optional()
 });
 
 const esquemaIncidencia = Joi.object({
@@ -306,6 +312,7 @@ const normalizarValoresDiagnostico = (datos = {}, tecnicoActual = '') => ({
   procesador: datos.procesador ?? '',
   memoria_ram: datos.memoria_ram ?? '',
   almacenamiento: datos.almacenamiento ?? '',
+  tiempo_uso: datos.tiempo_uso ?? '',
   requiere_baja: datos.requiere_baja ?? 'NO',
   motivo_baja: datos.motivo_baja ?? '',
   autorizado_por: datos.autorizado_por ?? '',
@@ -1224,7 +1231,8 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     motivo_baja,
     autorizado_por,
     observaciones_baja,
-    evidencia_url
+    evidencia_url,
+    tiempo_uso
   } = value;
 
   let connection;
@@ -1237,6 +1245,10 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     const evidenciaTexto = (evidencia_url || '').trim();
 
     const segmentosTiempoUso = [];
+    const tiempoUsoLibre = String(tiempo_uso ?? '').trim();
+    if (tiempoUsoLibre) {
+      segmentosTiempoUso.push(`Tiempo de uso: ${tiempoUsoLibre}`);
+    }
     if (descripcion_trabajo?.trim()) {
       segmentosTiempoUso.push(descripcion_trabajo.trim());
     }
@@ -1402,7 +1414,12 @@ export const getDiagnosticoPdf = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.estado,
-         i.nombre_contacto_externo,
+        COALESCE(
+          NULLIF(i.nombre_contacto_externo, ''),
+          NULLIF(a.propietario_nombre_completo, ''),
+          CONCAT_WS(' ', u.nombre, u.apellido)
+        ) AS nombre_propietario_externo,
+        i.nombre_contacto_externo,
          i.tipo_contacto_externo,
          i.datos_contacto_externo,
          i.creada_en AS incidencia_creada_en,
@@ -1508,7 +1525,12 @@ export const getDiagnosticoBajaPdf = async (req, res) => {
          i.origen_incidencia,
          i.prioridad,
          i.estado,
-         i.nombre_contacto_externo,
+        COALESCE(
+          NULLIF(i.nombre_contacto_externo, ''),
+          NULLIF(a.propietario_nombre_completo, ''),
+          CONCAT_WS(' ', u.nombre, u.apellido)
+        ) AS nombre_propietario_externo,
+        i.nombre_contacto_externo,
          i.tipo_contacto_externo,
          i.datos_contacto_externo,
          a.marca,
