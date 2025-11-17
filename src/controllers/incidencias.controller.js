@@ -346,6 +346,20 @@ const construirConfigVistaEvidencias = () => {
   };
 };
 
+const construirConfigVistaEvidencias = () => {
+  const maxPeso = (EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes / (1024 * 1024)).toFixed(1);
+  const maxPesoMB = maxPeso.endsWith('.0') ? maxPeso.slice(0, -2) : maxPeso;
+  return {
+    maxImagenes: EVIDENCIA_TEMPORAL_CONFIG.maxImagenes,
+    maxPesoBytes: EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes,
+    maxPesoMB,
+    formatos: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos,
+    formatosTexto: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos
+      .map((tipo) => tipo.replace('image/', '').toUpperCase())
+      .join(', ')
+  };
+};
+
 const formatearFecha = (valor) => {
   if (!valor) return '';
   try {
