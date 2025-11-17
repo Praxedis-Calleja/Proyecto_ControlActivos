@@ -332,21 +332,7 @@ const normalizarValoresDiagnostico = (datos = {}, tecnicoActual = '') => {
   };
 };
 
-const construirConfigVistaEvidencias = () => {
-  const maxPeso = (EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes / (1024 * 1024)).toFixed(1);
-  const maxPesoMB = maxPeso.endsWith('.0') ? maxPeso.slice(0, -2) : maxPeso;
-  return {
-    maxImagenes: EVIDENCIA_TEMPORAL_CONFIG.maxImagenes,
-    maxPesoBytes: EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes,
-    maxPesoMB,
-    formatos: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos,
-    formatosTexto: EVIDENCIA_TEMPORAL_CONFIG.formatosPermitidos
-      .map((tipo) => tipo.replace('image/', '').toUpperCase())
-      .join(', ')
-  };
-};
-
-const construirConfigVistaEvidencias = () => {
+const obtenerConfigVistaEvidencias = () => {
   const maxPeso = (EVIDENCIA_TEMPORAL_CONFIG.maxPesoBytes / (1024 * 1024)).toFixed(1);
   const maxPesoMB = maxPeso.endsWith('.0') ? maxPeso.slice(0, -2) : maxPeso;
   return {
@@ -1342,7 +1328,7 @@ export const getDiagnosticoIncidencia = async (req, res) => {
     const pageTitle = 'Diagnóstico de incidencia';
 
     const permiteDiagnostico = incidencia.estado !== 'CERRADA';
-    const evidenciaConfig = construirConfigVistaEvidencias();
+    const evidenciaConfig = obtenerConfigVistaEvidencias();
 
     return res.render('incidencias/diagnostico', {
       incidencia,
@@ -1446,7 +1432,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     .filter(Boolean)
     .join(' ');
   const permiteDiagnostico = incidencia.estado !== 'CERRADA';
-  const evidenciaConfig = construirConfigVistaEvidencias();
+  const evidenciaConfig = obtenerConfigVistaEvidencias();
 
   if (!permiteDiagnostico) {
     try {
