@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const LOGO_PATH = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
-const PUESTO_TECNICO_DEFAULT = 'Ingeniero de Soporte HXA – Sistemas';
+const PUESTO_TECNICO_DEFAULT = 'Ingieniero de Soporte de Hoteles';
 const DEPARTAMENTO_TECNICO_DEFAULT = 'Departamente de sistemas';
 const DIRECCION_HOTEL_XCARET_ARTE =
   'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
@@ -600,7 +600,12 @@ export const generarBajaPdf = ({
     asunto: 'Formato de baja de equipo de cómputo'
   });
 
-  const { pageWidth, startX, drawDocumentHeader } = construirUtilidadesLayout(doc);
+  const {
+    pageWidth,
+    startX,
+    drawLabeledBox,
+    drawDocumentHeader
+  } = construirUtilidadesLayout(doc);
 
   const categoriaTexto = valorSeguro(registro.categoria_nombre, 'No registrada');
   const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
@@ -676,128 +681,28 @@ export const generarBajaPdf = ({
     tagline: 'SISTEMAS - SOPORTE TÉCNICO'
   });
 
-  const drawSectionBanner = (titulo) => {
-    const bannerHeight = 22;
-    const bannerY = doc.y;
-    doc.save();
-    doc
-      .lineWidth(1)
-      .fillColor(COLOR_ACCENT)
-      .rect(startX, bannerY, pageWidth, bannerHeight)
-      .fill();
-    doc.restore();
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(11)
-      .fillColor('#ffffff')
-      .text(titulo, startX + 8, bannerY + 5, { width: pageWidth - 16 });
-    doc.fillColor('#000000');
-    doc.y = bannerY + bannerHeight + 8;
-  };
-
-  const drawInfoGrid = (items, { columns = 2, minRowHeight = 38 } = {}) => {
-    const columnWidth = pageWidth / columns;
-    let index = 0;
-    let currentY = doc.y;
-    const padding = 8;
-
-    while (index < items.length) {
-      const rowItems = [];
-      for (let col = 0; col < columns; col += 1) {
-        rowItems.push(items[index] ?? null);
-        index += 1;
-      }
-
-      let rowHeight = minRowHeight;
-      rowItems.forEach((item) => {
-        if (!item) return;
-        const valueText = textoOpcional(item.value) || 'No registrado';
-        const labelHeight = item.label ? 11 : 0;
-        doc.font('Helvetica').fontSize(10);
-        const valueHeight = doc.heightOfString(valueText, {
-          width: columnWidth - padding * 2,
-          lineGap: 1.4
-        });
-        const heightNecesaria = padding * 2 + labelHeight + valueHeight + 4;
-        rowHeight = Math.max(rowHeight, heightNecesaria);
-      });
-
-      rowItems.forEach((item, colIndex) => {
-        const cellX = startX + colIndex * columnWidth;
-        doc
-          .lineWidth(1)
-          .strokeColor(COLOR_ACCENT)
-          .rect(cellX, currentY, columnWidth, rowHeight)
-          .stroke();
-
-        if (!item) return;
-
-        const labelY = currentY + padding;
-        if (item.label) {
-          doc
-            .font('Helvetica-Bold')
-            .fontSize(8)
-            .fillColor(COLOR_ACCENT)
-            .text(item.label.toUpperCase(), cellX + padding, labelY, {
-              width: columnWidth - padding * 2
-            });
-        }
-
-        const valueY = item.label ? labelY + 11 : labelY;
-        doc
-          .font('Helvetica')
-          .fontSize(10)
-          .fillColor('#000000')
-          .text(textoOpcional(item.value) || 'No registrado', cellX + padding, valueY, {
-            width: columnWidth - padding * 2,
-            lineGap: 1.5
-          });
-      });
-
-      currentY += rowHeight;
-    }
-
-    doc.strokeColor('#000000');
-    doc.y = currentY + 10;
-    doc.fillColor('#000000');
-  };
-
-  const drawContentBox = (titulo, contenido, opciones = {}) => {
-    const padding = 12;
-    const minHeight = opciones.minHeight ?? 140;
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(10)
-      .fillColor(COLOR_ACCENT)
-      .text(titulo, startX, doc.y);
-    doc.fillColor('#000000');
-
-    const boxTop = doc.y + 4;
-    doc.font('Helvetica').fontSize(10);
-    const texto = valorSeguro(contenido, 'No registrado');
-    const textHeight = doc.heightOfString(texto, {
-      width: pageWidth - padding * 2,
-      lineGap: 2
+  const escribirCampoBloque = (label, valor) => {
+    const texto = textoOpcional(valor) || 'No registrado';
+    const lineas = texto.split(/\r?\n/).filter((linea, indice) => indice === 0 || linea.trim().length);
+    doc.font('Helvetica-Bold').fontSize(10).text(`${label}:`, startX, doc.y);
+    doc.moveDown(0.08);
+    lineas.forEach((linea, index) => {
+      const contenido = index === 0 && linea.trim().length === 0 ? 'No registrado' : linea;
+      doc.font('Helvetica').fontSize(10).text(contenido || 'No registrado', startX + 12);
     });
-    const boxHeight = Math.max(minHeight, textHeight + padding * 2);
-
-    doc
-      .lineWidth(1)
-      .strokeColor(COLOR_ACCENT)
-      .rect(startX, boxTop, pageWidth, boxHeight)
-      .stroke();
-
-    doc
-      .fillColor('#000000')
-      .text(texto, startX + padding, boxTop + padding, {
-        width: pageWidth - padding * 2,
-        lineGap: 2
-      });
-
-    doc.y = boxTop + boxHeight + 12;
+    if (!lineas.length) {
+      doc.font('Helvetica').fontSize(10).text('No registrado', startX + 12);
+    }
+    doc.moveDown(0.2);
   };
 
-  const resumenBaja = [
+  const escribirTituloSeccion = (titulo) => {
+    doc.moveDown(0.45);
+    doc.font('Helvetica-Bold').fontSize(11).text(titulo, startX);
+    doc.moveDown(0.15);
+  };
+
+  const camposPrincipales = [
     { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
     { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
     { label: 'Usuario que reporta', value: valorSeguro(contactoReporte, 'No registrado') },
@@ -807,76 +712,75 @@ export const generarBajaPdf = ({
       value: fechaSegura(registro.baja_fecha_reimpresion, 'No registrada')
     }
   ];
+  camposPrincipales.forEach((campo) => escribirCampoBloque(campo.label, campo.value));
 
-  drawInfoGrid(resumenBaja, { columns: 2, minRowHeight: 44 });
-
-  drawSectionBanner('Datos del Equipo');
-  const datosEquipo = [
+  escribirTituloSeccion('Datos del Equipo');
+  [
     { label: 'Equipo', value: categoriaTexto },
     { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
     { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
     { label: 'Placa de AF', value: valorSeguro(registro.placa_activo, 'No registrada') },
     { label: 'S/N', value: valorSeguro(registro.numero_serie, 'No registrado') },
-    { label: 'Tiempo total de uso', value: tiempoUsoTexto }
-  ];
-  drawInfoGrid(datosEquipo, { columns: 2, minRowHeight: 46 });
-  drawInfoGrid([{ label: 'Nombre de Equipo', value: nombreEquipo }], {
-    columns: 1,
-    minRowHeight: 40
-  });
+    { label: 'Tiempo total de uso', value: tiempoUsoTexto },
+    { label: 'Nombre de Equipo', value: nombreEquipo }
+  ].forEach((campo) => escribirCampoBloque(campo.label, campo.value));
 
-  drawSectionBanner('Datos Específicos');
-  drawInfoGrid(
-    [
-      { label: 'Procesador', value: especificaciones.procesador },
-      { label: 'Almacenamiento', value: especificaciones.almacenamiento },
-      { label: 'Memoria RAM', value: especificaciones.memoria_ram },
-      { label: 'Vigencia de garantía', value: vigenciaGarantiaTexto }
-    ],
-    { columns: 4, minRowHeight: 60 }
-  );
+  escribirTituloSeccion('Datos Específicos');
+  [
+    { label: 'Procesador', value: especificaciones.procesador },
+    { label: 'Almacenamiento', value: especificaciones.almacenamiento },
+    { label: 'Memoria RAM', value: especificaciones.memoria_ram },
+    { label: 'Vigencia de garantía', value: vigenciaGarantiaTexto }
+  ].forEach((campo) => escribirCampoBloque(campo.label, campo.value));
 
-  drawContentBox('Descripción Gráfica', descripcionGrafica, { minHeight: 180 });
-  drawContentBox('Diagnóstico Técnico', diagnosticoTecnico, { minHeight: 160 });
+  escribirTituloSeccion('Descripción Gráfica');
+  drawLabeledBox('Descripción Gráfica', descripcionGrafica, { height: 120 });
 
-  doc.moveDown(0.6);
+  escribirTituloSeccion('Diagnóstico Técnico');
+  drawLabeledBox('Diagnóstico Técnico', diagnosticoTecnico, { height: 140 });
+
+  doc.moveDown(0.8);
   doc
     .font('Helvetica-Bold')
     .fontSize(10)
-    .fillColor('#000000')
     .text('Espacio para firma del técnico responsable', startX);
-  doc.moveDown(0.4);
-  const firmaLineWidth = Math.min(pageWidth * 0.65, 340);
+
+  doc.moveDown(0.6);
+  const firmaLineWidth = Math.min(pageWidth * 0.65, 320);
   const firmaLineY = doc.y;
   doc
-    .lineWidth(1.2)
-    .strokeColor(COLOR_ACCENT)
     .moveTo(startX, firmaLineY)
     .lineTo(startX + firmaLineWidth, firmaLineY)
+    .lineWidth(0.9)
+    .strokeColor('#000000')
     .stroke();
   doc
     .font('Helvetica')
     .fontSize(9)
-    .fillColor('#000000')
     .text('Firma del técnico', startX, firmaLineY + 4, {
       width: firmaLineWidth,
       align: 'center'
     });
 
-  doc.moveDown(1.3);
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(11)
-    .text(nombreTecnico, startX, doc.y, { width: pageWidth });
-  doc
-    .font('Helvetica')
-    .fontSize(10)
-    .text(PUESTO_TECNICO_DEFAULT, startX, doc.y, { width: pageWidth });
-  doc.text(`Departamento: ${departamentoTecnico}`, startX, doc.y, { width: pageWidth });
-  doc.text(`Correo: ${correoTecnico}`, startX, doc.y, { width: pageWidth });
-  doc.text(`Dirección: ${DIRECCION_HOTEL_XCARET_ARTE}`, startX, doc.y, { width: pageWidth });
+  doc.moveDown(2);
 
-  doc.moveDown(0.9);
+  const infoFirma = [
+    `Nombre del técnico: ${nombreTecnico}`,
+    `Departamento: ${departamentoTecnico}`,
+    PUESTO_TECNICO_DEFAULT,
+    `Correo: ${correoTecnico}`,
+    `Dirección: ${DIRECCION_HOTEL_XCARET_ARTE}`
+  ];
+
+  infoFirma.forEach((linea) => {
+    doc.font('Helvetica').fontSize(10).text(linea, startX, doc.y, {
+      width: pageWidth,
+      lineGap: 2
+    });
+    doc.moveDown(0.15);
+  });
+
+  doc.moveDown(0.5);
   doc
     .font('Helvetica')
     .fontSize(9)
