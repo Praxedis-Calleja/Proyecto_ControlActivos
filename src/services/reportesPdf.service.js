@@ -753,6 +753,10 @@ export const generarBajaPdf = ({
     registro.diagnostico_tecnico,
     'No se registró un diagnóstico técnico para esta baja.'
   );
+  const diagnosticoTecnico = valorSeguro(
+    registro.diagnostico_tecnico,
+    'No se registró un diagnóstico técnico para esta baja.'
+  );
 
   const nombreTecnico = valorSeguro(
     registro.nombre_tecnico,
