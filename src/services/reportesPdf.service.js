@@ -749,11 +749,7 @@ export const generarBajaPdf = ({
         registro.diagnostico_evidencia,
         'No se proporcionó descripción gráfica para esta baja.'
       );
-  const diagnosticoTecnico = valorSeguro(
-    registro.diagnostico_tecnico,
-    'No se registró un diagnóstico técnico para esta baja.'
-  );
-  const diagnosticoTecnico = valorSeguro(
+  const diagnosticoTecnicoTexto = valorSeguro(
     registro.diagnostico_tecnico,
     'No se registró un diagnóstico técnico para esta baja.'
   );
@@ -1063,7 +1059,7 @@ export const generarBajaPdf = ({
     drawEvidenceGallery(evidenciaImagenes);
     doc.moveDown(0.6);
   }
-  drawNarrativeBox('Diagnóstico Técnico', diagnosticoTecnico, 160);
+  drawNarrativeBox('Diagnóstico Técnico', diagnosticoTecnicoTexto, 160);
 
     doc.moveDown(0.6);
     doc
