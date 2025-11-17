@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const LOGO_PATH = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
-const PUESTO_TECNICO_DEFAULT = 'Ingeniero de Soporte HXA – Sistemas';
+const PUESTO_TECNICO_DEFAULT = 'Ingieniero de Soporte de Hoteles';
 const DEPARTAMENTO_TECNICO_DEFAULT = 'Departamente de sistemas';
 const DIRECCION_HOTEL_XCARET_ARTE =
   'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
