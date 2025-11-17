@@ -3,25 +3,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const LOGO_PATH = path.join(process.cwd(), 'public', 'img', 'logo_reporte.png');
-const PUESTO_TECNICO_DEFAULT = 'Ingieniero de Soporte de Hoteles';
+const PUESTO_TECNICO_DEFAULT = 'Ingeniero de Soporte HXA – Sistemas';
+const DEPARTAMENTO_TECNICO_DEFAULT = 'Departamente de sistemas';
 const DIRECCION_HOTEL_XCARET_ARTE =
   'Hotel Xcaret Arte · Carretera Chetumal - Puerto Juárez Km. 282, Solidaridad, Q.Roo';
+const COLOR_ACCENT = '#a0192f';
 
 const agregarPaginaDescripcionGraficaYFirma = ({
   doc,
   drawDocumentHeader,
   drawSectionTitle,
   drawLabeledBox,
+  drawEvidenceGallery,
   startX,
   pageWidth,
   encabezado,
   tituloDescripcion,
   contenidoDescripcion,
-  datosTecnico = {}
+  imagenesEvidencia = [],
+  datosTecnico = {},
+  opcionesEncabezado = {}
 }) => {
   const {
     nombreTecnico = 'Nombre del técnico no registrado',
-    departamentoTecnico = 'Departamento no registrado',
+    departamentoTecnico = DEPARTAMENTO_TECNICO_DEFAULT,
     correoTecnico = 'Correo no registrado',
     puestoTecnico = PUESTO_TECNICO_DEFAULT,
     direccionHotel = DIRECCION_HOTEL_XCARET_ARTE
@@ -29,10 +34,20 @@ const agregarPaginaDescripcionGraficaYFirma = ({
 
   doc.addPage();
   doc.y = doc.page.margins.top;
-  drawDocumentHeader(encabezado);
+  drawDocumentHeader(encabezado, opcionesEncabezado);
 
   drawSectionTitle(tituloDescripcion);
   drawLabeledBox(tituloDescripcion, contenidoDescripcion, { height: 150 });
+
+  if (
+    Array.isArray(imagenesEvidencia) &&
+    imagenesEvidencia.length &&
+    typeof drawEvidenceGallery === 'function'
+  ) {
+    doc.moveDown(0.4);
+    drawEvidenceGallery(imagenesEvidencia);
+    doc.moveDown(0.6);
+  }
 
   doc.moveDown(1.1);
   doc
@@ -85,6 +100,12 @@ const valorSeguro = (valor, reemplazo = 'No registrado') => {
 
   const texto = String(valor).trim();
   return texto.length > 0 ? texto : reemplazo;
+};
+
+const textoOpcional = (valor) => {
+  if (valor === undefined || valor === null) return null;
+  const texto = String(valor).trim();
+  return texto.length ? texto : null;
 };
 
 const crearDocumentoBase = ({ res, nombreArchivo, esDescarga, titulo, asunto }) => {
@@ -251,7 +272,68 @@ const construirUtilidadesLayout = (doc) => {
     doc.y = contentY + boxHeight + 14;
   };
 
-  const drawDocumentHeader = (titulo) => {
+  const drawEvidenceGallery = (imagenes = []) => {
+    if (!Array.isArray(imagenes) || !imagenes.length) {
+      return;
+    }
+
+    const gap = 14;
+    const columnas = imagenes.length >= 3 ? 3 : 2;
+    const cellWidth = (pageWidth - gap * (columnas - 1)) / columnas;
+    const cellHeight = 120;
+    const maxY = doc.page.height - doc.page.margins.bottom;
+    let currentX = startX;
+    let currentY = doc.y;
+
+    imagenes.forEach((imagen, index) => {
+      if (currentY + cellHeight > maxY) {
+        doc.addPage();
+        currentY = doc.page.margins.top;
+        doc.y = currentY;
+      }
+
+      doc
+        .lineWidth(0.8)
+        .strokeColor('#d0d0d0')
+        .rect(currentX, currentY, cellWidth, cellHeight)
+        .stroke();
+
+      try {
+        const fuente = imagen?.buffer ?? imagen;
+        doc.image(fuente, currentX + 6, currentY + 6, {
+          fit: [cellWidth - 12, cellHeight - 12],
+          align: 'center',
+          valign: 'center'
+        });
+      } catch (error) {
+        console.warn('No se pudo renderizar una evidencia temporal:', error);
+      }
+
+      const esUltimaColumna = (index + 1) % columnas === 0;
+      if (esUltimaColumna) {
+        currentX = startX;
+        currentY += cellHeight + gap;
+      } else {
+        currentX += cellWidth + gap;
+      }
+    });
+
+    if (imagenes.length % columnas !== 0) {
+      currentY += cellHeight + gap;
+    }
+
+    doc.y = currentY;
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
+  };
+
+  const drawDocumentHeader = (titulo, opciones = {}) => {
+    const {
+      mostrarNombreHotel = false,
+      direccionTitulo = 'DIRECCIÓN DE TECNOLOGÍA',
+      tagline = 'SISTEMAS - SOPORTE TÉCNICO',
+      alinearCentro = false
+    } = opciones;
     const initialY = doc.y;
     let headerX = startX;
     let availableWidth = pageWidth;
@@ -267,21 +349,36 @@ const construirUtilidadesLayout = (doc) => {
 
         doc.image(logoImage, startX, initialY, { width: logoWidth });
 
-        headerX = startX + logoWidth + espacioLogoTitulos;
-        availableWidth = Math.max(pageWidth - (headerX - startX), pageWidth * 0.45);
+        if (!alinearCentro) {
+          headerX = startX + logoWidth + espacioLogoTitulos;
+          availableWidth = Math.max(pageWidth - (headerX - startX), pageWidth * 0.45);
+        }
         headerBottom = Math.max(headerBottom, initialY + logoHeight);
       } catch (logoError) {
         console.error('No se pudo cargar el logo del reporte:', logoError);
       }
     }
 
-    const headerTextOptions = { width: availableWidth, align: 'left' };
+    const headerTextOptions = {
+      width: alinearCentro ? pageWidth : availableWidth,
+      align: alinearCentro ? 'center' : 'left'
+    };
+    const textX = alinearCentro ? startX : headerX;
+
+    if (mostrarNombreHotel) {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(12)
+        .fillColor('#1f1f1f');
+      doc.text('Hotel Xcaret Arte', textX, initialY, headerTextOptions);
+      doc.moveDown(0.15);
+    }
 
     doc
       .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor('#1f1f1f');
-    doc.text('DIRECCIÓN DE TECNOLOGÍA', headerX, initialY, {
+    doc.text(direccionTitulo, textX, doc.y, {
       ...headerTextOptions,
       lineGap: 1
     });
@@ -291,7 +388,7 @@ const construirUtilidadesLayout = (doc) => {
       .font('Helvetica')
       .fontSize(10)
       .fillColor('#1f1f1f');
-    doc.text('SISTEMAS · SOPORTE TÉCNICO', headerX, doc.y, {
+    doc.text(tagline, textX, doc.y, {
       ...headerTextOptions,
       lineGap: 1
     });
@@ -301,7 +398,7 @@ const construirUtilidadesLayout = (doc) => {
       .font('Helvetica-Bold')
       .fontSize(15)
       .fillColor('#000000');
-    doc.text(titulo, headerX, doc.y, headerTextOptions);
+    doc.text(titulo, textX, doc.y, headerTextOptions);
 
     headerBottom = Math.max(headerBottom, doc.y);
     doc.y = headerBottom + 10;
@@ -318,6 +415,7 @@ const construirUtilidadesLayout = (doc) => {
     drawSectionTitle,
     drawKeyValueTable,
     drawLabeledBox,
+    drawEvidenceGallery,
     drawDocumentHeader
   };
 };
@@ -332,7 +430,8 @@ export const generarDiagnosticoPdf = ({
   datosContacto,
   firma,
   esDescarga,
-  formatearFechaLarga
+  formatearFechaLarga,
+  evidenciaImagenes = []
 }) => {
   const nombreArchivo = `diagnostico_incidencia_${registro.id_incidencia}.pdf`;
   const doc = crearDocumentoBase({
@@ -353,6 +452,7 @@ export const generarDiagnosticoPdf = ({
     drawSectionTitle,
     drawKeyValueTable,
     drawLabeledBox,
+    drawEvidenceGallery,
     drawDocumentHeader
   } = construirUtilidadesLayout(doc);
 
@@ -387,6 +487,8 @@ export const generarDiagnosticoPdf = ({
       };
 
   const garantiaTexto = formatearFechaLarga?.(registro.fecha_garantia) || 'No registrada';
+  const tieneEvidenciasTemporales =
+    Array.isArray(evidenciaImagenes) && evidenciaImagenes.length > 0;
 
   const propietario = valorSeguro(
     registro.propietario_nombre_completo,
@@ -479,7 +581,9 @@ export const generarDiagnosticoPdf = ({
   // ==== DESCRIPCIÓN GRÁFICA (caja grande tipo formato) ====
   const evidenciaTexto = registro.diagnostico_evidencia
     ? `Evidencia: ${registro.diagnostico_evidencia}`
-    : 'No se proporcionó evidencia gráfica para este diagnóstico.';
+    : tieneEvidenciasTemporales
+      ? 'Se adjuntaron evidencias gráficas temporales para este diagnóstico.'
+      : 'No se proporcionó evidencia gráfica para este diagnóstico.';
 
   // ==== DIAGNÓSTICO TÉCNICO (caja grande) ====
   const partesDiagnostico = [];
@@ -521,7 +625,11 @@ export const generarDiagnosticoPdf = ({
   );
   const departamentoTecnico = valorSeguro(
     registro.departamento_nombre,
-    'Departamento no registrado'
+    DEPARTAMENTO_TECNICO_DEFAULT
+  );
+  const puestoTecnico = valorSeguro(
+    registro.puesto_tecnico,
+    PUESTO_TECNICO_DEFAULT
   );
 
   agregarPaginaDescripcionGraficaYFirma({
@@ -529,11 +637,13 @@ export const generarDiagnosticoPdf = ({
     drawDocumentHeader,
     drawSectionTitle,
     drawLabeledBox,
+    drawEvidenceGallery,
     startX,
     pageWidth,
     encabezado: 'Formato de Diagnóstico de Equipo de Cómputo',
     tituloDescripcion: 'Descripción gráfica',
     contenidoDescripcion: evidenciaTexto,
+    imagenesEvidencia: evidenciaImagenes,
     datosTecnico: {
       nombreTecnico,
       departamentoTecnico,
@@ -566,7 +676,8 @@ export const generarBajaPdf = ({
   tipoContacto,
   datosContacto,
   esDescarga,
-  formatearFechaLarga
+  formatearFechaLarga,
+  evidenciaImagenes = []
 }) => {
   const nombreArchivo = `baja_activo_${registro.id_incidencia}_${registro.baja_id}.pdf`;
   const doc = crearDocumentoBase({
@@ -577,25 +688,21 @@ export const generarBajaPdf = ({
     asunto: 'Formato de baja de equipo de cómputo'
   });
 
-  const {
-    pageWidth,
-    startX,
-    columnWidthsThree,
-    columnWidthsFour,
-    columnWidthsEspecificos,
-    drawSectionTitle,
-    drawKeyValueTable,
-    drawLabeledBox,
-    drawDocumentHeader
-  } = construirUtilidadesLayout(doc);
+  const { pageWidth, startX, drawDocumentHeader, drawEvidenceGallery } =
+    construirUtilidadesLayout(doc);
 
-  const categoriaTexto = registro.categoria_nombre || 'No registrada';
+  const categoriaTexto = valorSeguro(registro.categoria_nombre, 'No registrada');
   const esEquipoComputo = /cpu|laptop|pc/i.test(categoriaTexto || '');
   const especificaciones = esEquipoComputo
     ? {
-        procesador: registro.diagnostico_procesador || registro.activo_procesador || 'N/A',
-        memoria_ram: registro.diagnostico_memoria_ram || registro.activo_memoria_ram || 'N/A',
-        almacenamiento: registro.diagnostico_almacenamiento || registro.activo_almacenamiento || 'N/A'
+        procesador:
+          registro.diagnostico_procesador || registro.activo_procesador || 'No registrado',
+        memoria_ram:
+          registro.diagnostico_memoria_ram || registro.activo_memoria_ram || 'No registrada',
+        almacenamiento:
+          registro.diagnostico_almacenamiento ||
+          registro.activo_almacenamiento ||
+          'No registrado'
       }
     : {
         procesador: 'No aplica',
@@ -603,114 +710,48 @@ export const generarBajaPdf = ({
         almacenamiento: 'No aplica'
       };
 
-  const propietario = valorSeguro(registro.propietario_nombre_completo, 'No registrado');
-  const contactoPropietario = valorSeguro(registro.propietario_contacto, 'No registrado');
-  const fechaSegura = (valor, reemplazo = 'No registrada') => formatearFechaLarga?.(valor) || reemplazo;
-  const tiempoUsoTexto = valorSeguro(detalles?.tiempoUso, 'No registrado');
-
-  const nombreEquipo = (() => {
-    const combinado = [registro.marca, registro.modelo]
-      .map((texto) => String(texto ?? '').trim())
-      .filter(Boolean)
-      .join(' ');
-    if (combinado) return combinado;
-    return valorSeguro(registro.categoria_nombre, 'No registrado');
-  })();
-
-  drawDocumentHeader('Formato de Baja de Equipo de Cómputo');
-
-  drawSectionTitle('Datos generales');
-  drawKeyValueTable(
-    [
-      [
-        { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
-        { label: 'Categoría', value: valorSeguro(registro.categoria_nombre, 'No registrada') },
-        {
-          label: 'Fecha de baja',
-          value: fechaSegura(registro.baja_fecha, 'Sin fecha registrada')
-        }
-      ],
-      [
-        { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
-        { label: 'Encargado de la categoría o activo', value: propietario },
-        { label: 'Folio de incidencia', value: valorSeguro(registro.id_incidencia, 'Sin folio') }
-      ],
-      [
-        { label: 'Prioridad', value: valorSeguro(registro.prioridad, 'Sin prioridad') },
-        { label: 'Estado', value: valorSeguro(registro.estado, 'Sin estado') },
-        { label: 'Origen', value: valorSeguro(registro.origen_incidencia, 'Sin origen') }
-      ],
-      [
-        { label: 'Reportada por', value: valorSeguro(contactoReporte, 'No registrado') },
-        { label: 'Tipo contacto externo', value: valorSeguro(tipoContacto, 'No aplica') },
-        { label: 'Datos contacto externo', value: valorSeguro(datosContacto, 'No registrados') }
-      ],
-      [
-        { label: 'ID de baja', value: valorSeguro(registro.baja_id, 'Sin ID') },
-        {
-          label: 'Fecha de reimpresión',
-          value: fechaSegura(registro.baja_fecha_reimpresion, 'Sin fecha registrada')
-        },
-        { label: 'Tiempo de uso', value: tiempoUsoTexto }
-      ]
-    ],
-    columnWidthsThree
+  const nombreEquipoCalculado = [registro.marca, registro.modelo]
+    .map((texto) => String(texto ?? '').trim())
+    .filter(Boolean)
+    .join(' ');
+  const nombreEquipo = valorSeguro(
+    registro.nombre_equipo || registro.nombre_activo || nombreEquipoCalculado,
+    'N/A'
   );
 
-  drawSectionTitle('Datos del equipo');
-  drawKeyValueTable(
-    [
-      [
-        { label: 'Equipo', value: valorSeguro(registro.categoria_nombre, 'No registrado') },
-        { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
-        { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
-        { label: 'Número de serie', value: valorSeguro(registro.numero_serie, 'No registrado') }
-      ],
-      [
-        { label: 'Placa', value: valorSeguro(registro.placa_activo, 'No registrada') },
-        { label: 'Propietario', value: propietario },
-        { label: 'Contacto del propietario', value: contactoPropietario },
-        { label: 'Nombre de equipo', value: nombreEquipo }
-      ]
-    ],
-    columnWidthsFour
-  );
-
-  drawSectionTitle('Datos específicos');
-  drawKeyValueTable(
-    [
-      [
-        { label: 'Procesador', value: especificaciones.procesador },
-        { label: 'Memoria RAM', value: especificaciones.memoria_ram },
-        { label: 'Almacenamiento', value: especificaciones.almacenamiento },
-        { label: 'Garantía', value: fechaSegura(registro.fecha_garantia, 'No registrada') }
-      ]
-    ],
-    columnWidthsEspecificos
-  );
-
-  drawSectionTitle('Diagnóstico técnico');
-
-  const escribirBloqueDiagnostico = (etiqueta, contenido) => {
-    const texto = String(contenido ?? '').trim();
-    if (!texto) return;
-
-    doc.font('Helvetica-Bold').fontSize(10).text(`${etiqueta}:`);
-    doc.font('Helvetica').fontSize(10).text(texto, {
-      width: pageWidth,
-      lineGap: 3
-    });
-    doc.moveDown(0.4);
+  const formatearFechaOpcional = (valor) => {
+    if (!valor) return null;
+    return formatearFechaLarga?.(valor) || null;
   };
 
-  escribirBloqueDiagnostico('Diagnóstico', registro.diagnostico_tecnico);
-  escribirBloqueDiagnostico('Motivo de baja', detalles.motivo);
-  escribirBloqueDiagnostico('Observaciones', detalles.observaciones);
-  escribirBloqueDiagnostico('Autorizado por', detalles.autorizado_por);
+  const fechaSegura = (valor, reemplazo = 'No registrada') =>
+    formatearFechaOpcional(valor) || reemplazo;
 
-  const descripcionGrafica = valorSeguro(
-    registro.diagnostico_evidencia,
-    'No se proporcionó descripción gráfica para esta baja.'
+  const vigenciaGarantiaTexto = (() => {
+    const lineas = [
+      formatearFechaOpcional(registro.fecha_compra),
+      formatearFechaOpcional(registro.fecha_garantia)
+    ].filter(Boolean);
+    return lineas.length ? lineas.join('\n') : 'No registrada';
+  })();
+
+  const tiempoUsoTexto =
+    textoOpcional(detalles?.tiempoUso) || textoOpcional(registro.tiempo_uso) || 'No registrado';
+
+  const tieneEvidenciasTemporales =
+    Array.isArray(evidenciaImagenes) && evidenciaImagenes.length > 0;
+  const descripcionGrafica = tieneEvidenciasTemporales
+    ? valorSeguro(
+        registro.diagnostico_evidencia,
+        'Se adjuntaron evidencias temporales para esta baja.'
+      )
+    : valorSeguro(
+        registro.diagnostico_evidencia,
+        'No se proporcionó descripción gráfica para esta baja.'
+      );
+  const diagnosticoTecnico = valorSeguro(
+    registro.diagnostico_tecnico,
+    'No se registró un diagnóstico técnico para esta baja.'
   );
 
   const nombreTecnico = valorSeguro(
@@ -723,32 +764,351 @@ export const generarBajaPdf = ({
   );
   const departamentoTecnico = valorSeguro(
     registro.departamento_nombre,
-    'Departamento no registrado'
+    DEPARTAMENTO_TECNICO_DEFAULT
+  );
+  const puestoTecnico = valorSeguro(
+    registro.puesto_tecnico,
+    PUESTO_TECNICO_DEFAULT
   );
 
-  agregarPaginaDescripcionGraficaYFirma({
-    doc,
-    drawDocumentHeader,
-    drawSectionTitle,
-    drawLabeledBox,
-    startX,
-    pageWidth,
-    encabezado: 'Formato de Baja de Equipo de Cómputo',
-    tituloDescripcion: 'Descripción gráfica',
-    contenidoDescripcion: descripcionGrafica,
-    datosTecnico: {
-      nombreTecnico,
-      departamentoTecnico,
-      correoTecnico
-    }
+  drawDocumentHeader('Formato de Baja de Equipo de Cómputo', {
+    mostrarNombreHotel: true,
+    tagline: 'SISTEMAS - SOPORTE TÉCNICO',
+    alinearCentro: true
   });
 
-  doc.font('Helvetica').fontSize(9).fillColor('#555555').text(
-    'Documento generado automáticamente por el Sistema de Control de Activos.',
-    startX,
-    doc.y,
-    { width: pageWidth, align: 'center' }
-  );
+  const drawSectionHeading = (texto) => {
+    const headingHeight = 24;
+    const headingY = doc.y;
+    doc
+      .save()
+      .fillColor('#f3f3f3')
+      .rect(startX, headingY, pageWidth, headingHeight)
+      .fill()
+      .restore();
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .fillColor('#000000')
+      .text(texto, startX + 8, headingY + 6, { width: pageWidth - 16 });
+    doc.fillColor('#000000');
+    doc.y = headingY + headingHeight + 6;
+  };
+
+  const drawSummaryTable = (rows) => {
+    const labelWidth = Math.round(pageWidth * 0.32);
+    const valueWidth = pageWidth - labelWidth;
+    const padding = 8;
+    let currentY = doc.y;
+
+    rows.forEach((row, index) => {
+      const valueText = valorSeguro(row.value, 'No registrado');
+      doc.font('Helvetica').fontSize(10);
+      const textHeight = doc.heightOfString(valueText, {
+        width: valueWidth - padding * 2,
+        lineGap: 1.3
+      });
+      const rowHeight = Math.max(30, textHeight + padding * 2);
+
+      doc
+        .lineWidth(index === 0 ? 1.1 : 0.8)
+        .strokeColor('#d0d0d0')
+        .rect(startX, currentY, pageWidth, rowHeight)
+        .stroke();
+
+      doc
+        .lineWidth(0.8)
+        .moveTo(startX + labelWidth, currentY)
+        .lineTo(startX + labelWidth, currentY + rowHeight)
+        .stroke();
+
+      const labelText = valorSeguro(row.label, 'Dato');
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .fillColor('#444444')
+        .text(labelText.toUpperCase(), startX + padding, currentY + padding, {
+          width: labelWidth - padding * 2
+        });
+
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#000000')
+        .text(valueText, startX + labelWidth + padding, currentY + padding, {
+          width: valueWidth - padding * 2,
+          lineGap: 1.3
+        });
+
+      currentY += rowHeight;
+    });
+
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
+    doc.y = currentY + 14;
+  };
+
+  const drawDataGrid = (items) => {
+    const padding = 8;
+    const columnWidth = pageWidth / 2;
+    let currentY = doc.y;
+
+    const drawCell = (cell, x, width, height) => {
+      const label = valorSeguro(cell?.label, '').toUpperCase();
+      const value = valorSeguro(cell?.value, 'No registrado');
+      doc
+        .lineWidth(0.8)
+        .strokeColor('#d0d0d0')
+        .rect(x, currentY, width, height)
+        .stroke();
+
+      let textY = currentY + padding;
+      if (label) {
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555');
+        doc.text(label, x + padding, textY, { width: width - padding * 2 });
+        textY += 10;
+      }
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#000000')
+        .text(value, x + padding, textY, { width: width - padding * 2, lineGap: 1.4 });
+    };
+
+    const calcularAltura = (cell, width) => {
+      if (!cell) return 34;
+      doc.font('Helvetica').fontSize(10);
+      const valueHeight = doc.heightOfString(valorSeguro(cell.value, 'No registrado'), {
+        width: width - padding * 2,
+        lineGap: 1.4
+      });
+      return Math.max(34, padding * 2 + valueHeight + 6);
+    };
+
+    for (let index = 0; index < items.length; index += 2) {
+      const cellA = items[index];
+      const cellB = items[index + 1];
+      if (cellA?.fullWidth) {
+        const cellHeight = calcularAltura(cellA, pageWidth);
+        drawCell(cellA, startX, pageWidth, cellHeight);
+        currentY += cellHeight;
+        continue;
+      }
+
+      const cellHeight = Math.max(
+        calcularAltura(cellA, columnWidth),
+        cellB ? calcularAltura(cellB, columnWidth) : 34
+      );
+
+      drawCell(cellA, startX, columnWidth, cellHeight);
+      if (cellB) {
+        drawCell(cellB, startX + columnWidth, columnWidth, cellHeight);
+      } else {
+        doc
+          .lineWidth(0.8)
+          .strokeColor('#d0d0d0')
+          .rect(startX + columnWidth, currentY, columnWidth, cellHeight)
+          .stroke();
+      }
+      currentY += cellHeight;
+    }
+
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
+    doc.y = currentY + 12;
+  };
+
+  const drawSpecsTable = (items) => {
+    const columnWidth = pageWidth / items.length;
+    const headerHeight = 26;
+    const valueHeight = 40;
+    const startY = doc.y;
+
+    doc
+      .save()
+      .lineWidth(1)
+      .strokeColor('#d0d0d0')
+      .rect(startX, startY, pageWidth, headerHeight + valueHeight)
+      .stroke();
+
+    items.forEach((item, index) => {
+      const x = startX + index * columnWidth;
+      if (index > 0) {
+        doc
+          .moveTo(x, startY)
+          .lineTo(x, startY + headerHeight + valueHeight)
+          .stroke();
+      }
+      doc
+        .save()
+        .fillColor('#f5f5f5')
+        .rect(x, startY, columnWidth, headerHeight)
+        .fill()
+        .restore();
+
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .fillColor('#333333')
+        .text(item.label.toUpperCase(), x + 6, startY + 7, {
+          width: columnWidth - 12,
+          align: 'center'
+        });
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .fillColor('#000000')
+        .text(valorSeguro(item.value, 'No registrado'), x + 6, startY + headerHeight + 8, {
+          width: columnWidth - 12,
+          align: 'center',
+          lineGap: 1.3
+        });
+    });
+
+    doc.y = startY + headerHeight + valueHeight + 14;
+    doc.strokeColor('#000000');
+    doc.fillColor('#000000');
+  };
+
+  const drawNarrativeBox = (titulo, contenido, minHeight = 140) => {
+    const padding = 12;
+    const texto = valorSeguro(contenido, 'No registrado');
+    const maxY = doc.page.height - doc.page.margins.bottom;
+    const medirAltura = () => {
+      doc.font('Helvetica-Bold').fontSize(10);
+      const tituloHeight = doc.heightOfString(titulo, { width: pageWidth - padding * 2 });
+
+      doc.font('Helvetica').fontSize(10);
+      const textHeight = doc.heightOfString(texto, {
+        width: pageWidth - padding * 2,
+        lineGap: 2
+      });
+
+      const boxHeight = Math.max(minHeight, padding * 2 + textHeight + 8);
+      return { tituloHeight, boxHeight };
+    };
+
+    let startY = doc.y;
+    const { tituloHeight, boxHeight } = medirAltura();
+    const espacioNecesario = tituloHeight + boxHeight + 14;
+
+    if (startY + espacioNecesario > maxY) {
+      doc.addPage();
+      startY = doc.page.margins.top;
+      doc.y = startY;
+    }
+
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .fillColor(COLOR_ACCENT)
+      .text(titulo, startX + padding, startY, { width: pageWidth - padding * 2 });
+
+    const contenidoY = doc.y + 4;
+
+    doc
+      .lineWidth(1)
+      .strokeColor('#d0d0d0')
+      .rect(startX, contenidoY, pageWidth, boxHeight)
+      .stroke();
+
+    doc
+      .font('Helvetica')
+      .fontSize(10)
+      .fillColor('#000000')
+      .text(texto, startX + padding, contenidoY + padding, {
+        width: pageWidth - padding * 2,
+        lineGap: 2
+      });
+
+    doc.y = contenidoY + boxHeight + 14;
+  };
+
+  drawSectionHeading('Formato de Baja de Equipo de Cómputo');
+  drawSummaryTable([
+    { label: 'Área', value: valorSeguro(registro.area_nombre, 'No registrada') },
+    { label: 'Departamento', value: valorSeguro(registro.departamento_nombre, 'No registrado') },
+    { label: 'Usuario', value: valorSeguro(contactoReporte, 'No registrado') },
+    { label: 'Fecha de Diagnóstico', value: fechaSegura(registro.fecha_diagnostico) },
+    { label: 'Fecha de Reimpresión', value: fechaSegura(registro.baja_fecha_reimpresion, 'No registrada') }
+  ]);
+
+  drawSectionHeading('Datos del Equipo');
+  const datosEquipo = [
+    { label: 'Equipo', value: categoriaTexto },
+    { label: 'Marca', value: valorSeguro(registro.marca, 'No registrada') },
+    { label: 'Modelo', value: valorSeguro(registro.modelo, 'No registrado') },
+    { label: 'Placa de AF', value: valorSeguro(registro.placa_activo, 'No registrada') },
+    { label: 'S/N', value: valorSeguro(registro.numero_serie, 'No registrado') },
+    { label: 'Tiempo total de uso', value: tiempoUsoTexto },
+    { label: 'Nombre de Equipo', value: nombreEquipo, fullWidth: true }
+  ];
+  drawDataGrid(datosEquipo);
+
+  drawSectionHeading('Datos Específicos');
+  drawSpecsTable([
+    { label: 'Procesador', value: especificaciones.procesador },
+    { label: 'Almacenamiento', value: especificaciones.almacenamiento },
+    { label: 'Memoria RAM', value: especificaciones.memoria_ram },
+    { label: 'Vigencia de garantía', value: vigenciaGarantiaTexto }
+  ]);
+
+  drawNarrativeBox('Descripción Gráfica', descripcionGrafica, 180);
+  if (tieneEvidenciasTemporales) {
+    doc.moveDown(0.3);
+    drawEvidenceGallery(evidenciaImagenes);
+    doc.moveDown(0.6);
+  }
+  drawNarrativeBox('Diagnóstico Técnico', diagnosticoTecnico, 160);
+
+    doc.moveDown(0.6);
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .fillColor('#000000')
+      .text('Espacio para firma del técnico responsable', startX);
+    doc.moveDown(0.4);
+    const firmaLineWidth = Math.min(pageWidth * 0.65, 360);
+    const firmaLineY = doc.y;
+    doc
+      .lineWidth(1.2)
+      .strokeColor(COLOR_ACCENT)
+      .moveTo(startX, firmaLineY)
+      .lineTo(startX + firmaLineWidth, firmaLineY)
+      .stroke();
+    doc
+      .font('Helvetica')
+      .fontSize(9)
+      .fillColor('#000000')
+      .text('Firma del técnico', startX, firmaLineY + 4, {
+        width: firmaLineWidth,
+        align: 'center'
+      });
+
+    doc.moveDown(1.3);
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .text(nombreTecnico, startX, doc.y, { width: pageWidth });
+    doc
+      .font('Helvetica')
+      .fontSize(10)
+      .text(puestoTecnico, startX, doc.y, { width: pageWidth });
+    doc.text(`Departamento: ${departamentoTecnico}`, startX, doc.y, { width: pageWidth });
+    doc.text(`Correo: ${correoTecnico}`, startX, doc.y, { width: pageWidth });
+    doc.text(`Dirección: ${DIRECCION_HOTEL_XCARET_ARTE}`, startX, doc.y, { width: pageWidth });
+
+  doc.moveDown(0.9);
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor('#555555')
+    .text(
+      'Documento generado automáticamente por el Sistema de Control de Activos.',
+      startX,
+      doc.y,
+      { width: pageWidth, align: 'center' }
+    );
   doc.fillColor('#000000');
 
   doc.end();
