@@ -887,33 +887,56 @@ export const generarBajaPdf = ({
 
   const drawNarrativeBox = (titulo, contenido, minHeight = 140) => {
     const padding = 12;
-    const startY = doc.y;
     const texto = valorSeguro(contenido, 'No registrado');
+    const maxY = doc.page.height - doc.page.margins.bottom;
+    const medirAltura = () => {
+      doc.font('Helvetica-Bold').fontSize(10);
+      const tituloHeight = doc.heightOfString(titulo, { width: pageWidth - padding * 2 });
+
+      doc.font('Helvetica').fontSize(10);
+      const textHeight = doc.heightOfString(texto, {
+        width: pageWidth - padding * 2,
+        lineGap: 2
+      });
+
+      const boxHeight = Math.max(minHeight, padding * 2 + textHeight + 8);
+      return { tituloHeight, boxHeight };
+    };
+
+    let startY = doc.y;
+    const { tituloHeight, boxHeight } = medirAltura();
+    const espacioNecesario = tituloHeight + boxHeight + 14;
+
+    if (startY + espacioNecesario > maxY) {
+      doc.addPage();
+      startY = doc.page.margins.top;
+      doc.y = startY;
+    }
 
     doc
       .font('Helvetica-Bold')
       .fontSize(10)
       .fillColor(COLOR_ACCENT)
-      .text(titulo, startX + padding, startY);
+      .text(titulo, startX + padding, startY, { width: pageWidth - padding * 2 });
 
-    doc.font('Helvetica').fontSize(10).fillColor('#000000');
-    const textHeight = doc.heightOfString(texto, {
-      width: pageWidth - padding * 2,
-      lineGap: 2
-    });
-    const boxHeight = Math.max(minHeight, padding * 2 + textHeight + 8);
+    const contenidoY = doc.y + 4;
 
     doc
       .lineWidth(1)
       .strokeColor('#d0d0d0')
-      .rect(startX, startY, pageWidth, boxHeight)
+      .rect(startX, contenidoY, pageWidth, boxHeight)
       .stroke();
 
-    doc.text(texto, startX + padding, startY + padding + 10, {
-      width: pageWidth - padding * 2,
-      lineGap: 2
-    });
-    doc.y = startY + boxHeight + 14;
+    doc
+      .font('Helvetica')
+      .fontSize(10)
+      .fillColor('#000000')
+      .text(texto, startX + padding, contenidoY + padding, {
+        width: pageWidth - padding * 2,
+        lineGap: 2
+      });
+
+    doc.y = contenidoY + boxHeight + 14;
   };
 
   drawSectionHeading('Formato de Baja de Equipo de Cómputo');
