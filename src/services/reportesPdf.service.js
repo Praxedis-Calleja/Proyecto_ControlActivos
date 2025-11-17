@@ -404,16 +404,7 @@ export const generarDiagnosticoPdf = ({
     formatearFechaLarga?.(registro.incidencia_creada_en) || 'No registrada';
 
   // Tiempo de uso (opcional) para que se parezca al formato
-  const tiempoUsoTexto = (() => {
-    if (detalles?.tiempoUso) return detalles.tiempoUso;
-
-    const linea = String(registro.tiempo_uso ?? '')
-      .split(/\r?\n/)
-      .map((p) => p.trim())
-      .find(Boolean);
-
-    return valorSeguro(linea, 'No registrado');
-  })();
+  const tiempoUsoTexto = valorSeguro(detalles?.tiempoUso, 'No registrado');
 
   // ==== ENCABEZADO ====
   drawDocumentHeader('Formato de Diagnóstico de Equipo de Cómputo');
@@ -615,18 +606,7 @@ export const generarBajaPdf = ({
   const propietario = valorSeguro(registro.propietario_nombre_completo, 'No registrado');
   const contactoPropietario = valorSeguro(registro.propietario_contacto, 'No registrado');
   const fechaSegura = (valor, reemplazo = 'No registrada') => formatearFechaLarga?.(valor) || reemplazo;
-  const tiempoUsoTexto = (() => {
-    if (detalles.tiempoUso) {
-      return detalles.tiempoUso;
-    }
-
-    const linea = String(registro.tiempo_uso ?? '')
-      .split(/\r?\n/)
-      .map((parte) => parte.trim())
-      .find(Boolean);
-
-    return valorSeguro(linea, 'No registrado');
-  })();
+  const tiempoUsoTexto = valorSeguro(detalles?.tiempoUso, 'No registrado');
 
   const nombreEquipo = (() => {
     const combinado = [registro.marca, registro.modelo]
