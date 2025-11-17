@@ -14,6 +14,14 @@
         </div>`
       : ''}
 
+    ${reporteBajaCreado
+      ? `<div class="ok">
+          Reporte de baja generado correctamente${reporteBajaCreado.id ? ` (#${reporteBajaCreado.id})` : ''}.
+          <a class="btn-secundario" href="${reporteBajaCreado.url}" target="_blank" rel="noopener">Ver reporte</a>
+          <a class="btn" href="${reporteBajaCreado.url}?descargar=1" download>Descargar PDF</a>
+        </div>`
+      : ''}
+
     ${estadoActualizado
       ? '<div class="ok">Estado de la incidencia actualizado correctamente.</div>'
       : ''}
@@ -53,6 +61,12 @@
 
       const multilinea = (texto = '') =>
         escapeHtml(texto).replace(/\r?\n/g, '<br>');
+
+      const configEvidencia = evidenciaConfig || {};
+      const evidenciaMaxImagenes = Number(configEvidencia.maxImagenes) || 0;
+      const evidenciaMaxPesoBytes = Number(configEvidencia.maxPesoBytes) || 0;
+      const evidenciaMaxPesoMB = escapeHtml(configEvidencia.maxPesoMB || '0');
+      const evidenciaFormatos = escapeHtml(configEvidencia.formatosTexto || 'JPG, PNG');
 
       const opcionesEstado = Array.isArray(estados)
         ? estados
@@ -127,6 +141,8 @@
           action="/incidencias/${incidencia.id_incidencia}/diagnostico"
           class="form-diagnostico"
           data-form-diagnostico
+          data-max-evidencias="${evidenciaMaxImagenes}"
+          data-max-evidencia-size="${evidenciaMaxPesoBytes}"
         >
           <div class="campo">
             <label for="fecha_diagnostico">Fecha de diagnóstico</label>
@@ -192,26 +208,34 @@
           </fieldset>
 
           <div class="grupo-baja" data-baja-extra ${values.requiere_baja === 'SI' ? '' : 'hidden'}>
-            <p class="campo-nota">Completa la siguiente información únicamente si el activo será dado de baja.</p>
+            <p class="campo-nota">Completa las fechas que se registrarán en el formato de baja.</p>
 
             <div class="campo">
-              <label for="motivo_baja">Motivo de baja <small>(requerido si aplica)</small></label>
-              <textarea id="motivo_baja" name="motivo_baja" rows="3">${escapeHtml(values.motivo_baja || '')}</textarea>
-            </div>
-
-            <div class="campo">
-              <label for="autorizado_por">Autorizado por <small>(requerido si aplica)</small></label>
+              <label for="fecha_baja">Fecha de baja</label>
               <input
-                type="text"
-                id="autorizado_por"
-                name="autorizado_por"
-                value="${escapeAttr(values.autorizado_por || '')}"
+                type="date"
+                id="fecha_baja"
+                name="fecha_baja"
+                value="${escapeAttr(values.fecha_baja || '')}"
+                ${values.requiere_baja === 'SI' ? '' : 'disabled'}
+                data-baja-campo
+                data-baja-required
               >
+              <small>Esta fecha se utilizará como referencia oficial del reporte de baja.</small>
             </div>
 
             <div class="campo">
-              <label for="observaciones_baja">Observaciones adicionales</label>
-              <textarea id="observaciones_baja" name="observaciones_baja" rows="3">${escapeHtml(values.observaciones_baja || '')}</textarea>
+              <label for="fecha_reimpresion">Fecha de reimpresión <small>(opcional)</small></label>
+              <input
+                type="date"
+                id="fecha_reimpresion"
+                name="fecha_reimpresion"
+                value="${escapeAttr(values.fecha_reimpresion || '')}"
+                ${values.requiere_baja === 'SI' ? '' : 'disabled'}
+                data-baja-campo
+                data-reset-on-hide
+              >
+              <small>Déjala en blanco si aún no existe una reimpresión del formato.</small>
             </div>
           </div>
 
@@ -225,6 +249,25 @@
               placeholder="https://..."
             >
           </div>
+
+          <div class="campo campo-archivos">
+            <label for="evidencia_archivos">Evidencia en imágenes (opcional)</label>
+            <input
+              type="file"
+              id="evidencia_archivos"
+              accept="image/*"
+              multiple
+            >
+            <small class="campo-ayuda">
+              Puedes adjuntar hasta ${evidenciaMaxImagenes || 0} imágenes (${evidenciaMaxPesoMB} MB c/u).
+            </small>
+            <small class="campo-ayuda">
+              Formatos permitidos: ${evidenciaFormatos}. Las imágenes solo se utilizan para el PDF y no se guardan en la base de datos.
+            </small>
+            <p class="campo-error" data-evidencia-error hidden></p>
+          </div>
+
+          <input type="hidden" name="evidencia_imagenes" id="evidencia_imagenes" value="">
 
           <div class="campo">
             <label for="firma_tecnico">Firma del técnico</label>
@@ -297,15 +340,34 @@
           (() => {
             const form = document.querySelector('[data-form-diagnostico]');
             if (!form) return;
+            const contenedor = form.querySelector('[data-baja-extra]');
+            const fechaDiagnosticoInput = form.querySelector('#fecha_diagnostico');
+            const fechaBajaInput = form.querySelector('#fecha_baja');
+
             const toggleContainer = () => {
               const seleccionado = form.querySelector('input[name="requiere_baja"]:checked');
               const requiereBaja = seleccionado && seleccionado.value === 'SI';
-              const contenedor = form.querySelector('[data-baja-extra]');
               if (!contenedor) return;
+
               if (requiereBaja) {
                 contenedor.removeAttribute('hidden');
               } else {
                 contenedor.setAttribute('hidden', '');
+              }
+
+              const campos = contenedor.querySelectorAll('[data-baja-campo]');
+              campos.forEach((campo) => {
+                campo.disabled = !requiereBaja;
+                if (campo.hasAttribute('data-baja-required')) {
+                  campo.required = requiereBaja;
+                }
+                if (!requiereBaja && campo.hasAttribute('data-reset-on-hide')) {
+                  campo.value = '';
+                }
+              });
+
+              if (requiereBaja && fechaBajaInput && fechaDiagnosticoInput && !fechaBajaInput.value) {
+                fechaBajaInput.value = fechaDiagnosticoInput.value || '';
               }
             };
 
@@ -313,7 +375,97 @@
               radio.addEventListener('change', toggleContainer);
             });
 
+            if (fechaDiagnosticoInput && fechaBajaInput) {
+              fechaDiagnosticoInput.addEventListener('change', () => {
+                const seleccionado = form.querySelector('input[name="requiere_baja"]:checked');
+                const requiereBaja = seleccionado && seleccionado.value === 'SI';
+                if (!requiereBaja) return;
+                if (!fechaBajaInput.value) {
+                  fechaBajaInput.value = fechaDiagnosticoInput.value || '';
+                }
+              });
+            }
+
             toggleContainer();
+
+            const archivosInput = form.querySelector('#evidencia_archivos');
+            const hiddenInput = form.querySelector('#evidencia_imagenes');
+            const errorTarget = form.querySelector('[data-evidencia-error]');
+            const maxFiles = Number(form.dataset.maxEvidencias || '0');
+            const maxFileSize = Number(form.dataset.maxEvidenciaSize || '0');
+            const maxFileSizeLabel = maxFileSize
+              ? `${Math.round((maxFileSize / (1024 * 1024)) * 10) / 10} MB`
+              : '';
+
+            const limpiarMensaje = () => {
+              if (!errorTarget) return;
+              errorTarget.textContent = '';
+              errorTarget.setAttribute('hidden', '');
+            };
+
+            const leerArchivo = (archivo) =>
+              new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('No se pudo leer una de las evidencias.'));
+                reader.readAsDataURL(archivo);
+              });
+
+            const prepararImagenes = async () => {
+              if (!archivosInput?.files?.length) {
+                if (hiddenInput) hiddenInput.value = '';
+                return [];
+              }
+
+              const archivos = Array.from(archivosInput.files);
+              const seleccionados = maxFiles > 0 ? archivos.slice(0, maxFiles) : archivos;
+              const imagenes = [];
+
+              for (const archivo of seleccionados) {
+                if (!archivo.type.startsWith('image/')) {
+                  throw new Error('Solo se permiten archivos de imagen en la evidencia.');
+                }
+                if (maxFileSize > 0 && archivo.size > maxFileSize) {
+                  const mensajeLimite = maxFileSizeLabel
+                    ? `Cada imagen debe pesar menos de ${maxFileSizeLabel}.`
+                    : 'Reduce el peso de la evidencia antes de enviarla.';
+                  throw new Error(mensajeLimite);
+                }
+                const dataUrl = await leerArchivo(archivo);
+                imagenes.push(dataUrl);
+              }
+
+              return imagenes;
+            };
+
+            if (archivosInput) {
+              archivosInput.addEventListener('change', () => {
+                limpiarMensaje();
+                if (hiddenInput) hiddenInput.value = '';
+              });
+            }
+
+            form.addEventListener('submit', async (event) => {
+              if (!archivosInput || !hiddenInput) return;
+              if (!archivosInput.files || !archivosInput.files.length) {
+                hiddenInput.value = '';
+                return;
+              }
+
+              event.preventDefault();
+              limpiarMensaje();
+
+              try {
+                const imagenes = await prepararImagenes();
+                hiddenInput.value = imagenes.length ? JSON.stringify(imagenes) : '';
+                form.submit();
+              } catch (error) {
+                if (errorTarget) {
+                  errorTarget.textContent = error.message || 'No se pudieron preparar las evidencias gráficas.';
+                  errorTarget.removeAttribute('hidden');
+                }
+              }
+            });
           })();
         </script>
       `;
