@@ -22,7 +22,8 @@ const agregarPaginaDescripcionGraficaYFirma = ({
   contenidoDescripcion,
   imagenesEvidencia = [],
   datosTecnico = {},
-  opcionesEncabezado = {}
+  opcionesEncabezado = {},
+  mantenerMismaPagina = false
 }) => {
   const {
     nombreTecnico = 'Nombre del técnico no registrado',
@@ -32,9 +33,21 @@ const agregarPaginaDescripcionGraficaYFirma = ({
     direccionHotel = DIRECCION_HOTEL_XCARET_ARTE
   } = datosTecnico;
 
-  doc.addPage();
-  doc.y = doc.page.margins.top;
-  drawDocumentHeader(encabezado, opcionesEncabezado);
+  const alturaDescripcion = 150;
+  const alturaFirma = 180;
+  const alturaEvidencias =
+    Array.isArray(imagenesEvidencia) && imagenesEvidencia.length ? 140 : 0;
+  const alturaEstimadaseccion = alturaDescripcion + alturaFirma + alturaEvidencias + 40;
+  const espacioDisponible = doc.page.height - doc.page.margins.bottom - doc.y;
+  let requiereNuevaPagina = !mantenerMismaPagina || espacioDisponible < alturaEstimadaseccion;
+
+  if (requiereNuevaPagina) {
+    doc.addPage();
+    doc.y = doc.page.margins.top;
+    drawDocumentHeader(encabezado, opcionesEncabezado);
+  } else {
+    doc.moveDown(0.6);
+  }
 
   drawSectionTitle(tituloDescripcion);
   drawLabeledBox(tituloDescripcion, contenidoDescripcion, { height: 150 });
@@ -495,7 +508,7 @@ export const generarDiagnosticoPdf = ({
     'No registrado'
   );
   const usuarioIncidencia = valorSeguro(
-    registro.nombre_propietario_externo || contactoReporte || propietario,
+    registro.nombre_contacto_externo || contactoReporte || propietario,
     'No registrado'
   );
   const contactoPropietario = valorSeguro(
@@ -623,10 +636,7 @@ export const generarDiagnosticoPdf = ({
     registro.correo_tecnico,
     'Correo no registrado'
   );
-  const departamentoTecnico = valorSeguro(
-    registro.departamento_nombre,
-    DEPARTAMENTO_TECNICO_DEFAULT
-  );
+  const departamentoTecnico = 'Tecnología';
   const puestoTecnico = valorSeguro(
     registro.puesto_tecnico,
     PUESTO_TECNICO_DEFAULT
@@ -648,7 +658,8 @@ export const generarDiagnosticoPdf = ({
       nombreTecnico,
       departamentoTecnico,
       correoTecnico
-    }
+    },
+    mantenerMismaPagina: true
   });
 
   doc.moveDown(1.2);
