@@ -132,10 +132,6 @@ const esquemaDiagnostico = Joi.object({
   }),
   fecha_reimpresion: Joi.alternatives()
     .try(Joi.date(), Joi.valid(null), Joi.string().allow(''))
-    .optional(),
-  evidencia_url: Joi.string()
-    .uri()
-    .allow('', null)
     .optional()
 });
 
@@ -327,8 +323,7 @@ const normalizarValoresDiagnostico = (datos = {}, tecnicoActual = '') => {
     tiempo_uso: datos.tiempo_uso ?? '',
     requiere_baja: datos.requiere_baja ?? 'NO',
     fecha_baja: fechaBaja,
-    fecha_reimpresion: fechaReimpresion,
-    evidencia_url: datos.evidencia_url ?? ''
+    fecha_reimpresion: fechaReimpresion
   };
 };
 
@@ -1500,7 +1495,6 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     requiere_baja,
     fecha_baja,
     fecha_reimpresion,
-    evidencia_url,
     tiempo_uso
   } = value;
   const evidenciasTemporalesProcesadas = parseImagenesTemporales(
@@ -1516,7 +1510,6 @@ export const postDiagnosticoIncidencia = async (req, res) => {
     const procesadorTexto = (procesador || incidencia.procesador || '').trim();
     const memoriaTexto = (memoria_ram || incidencia.memoria_ram || '').trim();
     const almacenamientoTexto = (almacenamiento || incidencia.almacenamiento || '').trim();
-    const evidenciaTexto = (evidencia_url || '').trim();
 
     const segmentosTiempoUso = [];
     const tiempoUsoLibre = String(tiempo_uso ?? '').trim();
@@ -1555,7 +1548,7 @@ export const postDiagnosticoIncidencia = async (req, res) => {
         procesadorTexto,
         memoriaTexto,
         almacenamientoTexto,
-        evidenciaTexto
+        null
       ]
     );
 
