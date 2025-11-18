@@ -1,14 +1,19 @@
 <%- include('../layouts/base', { body: `
   <section>
-    <h2>Registrar usuario</h2>
-    <p class="section-description">
-      Crea cuentas para tu equipo de soporte y define el rol con el que administrarán el sistema.
-    </p>
+    <div class="usuarios-header">
+      <div>
+        <h2>Registrar usuario</h2>
+        <p class="section-description">
+          Crea cuentas para tu equipo y asigna el rol exacto que necesitan dentro del panel.
+        </p>
+      </div>
+      <a href="/usuarios" class="btn-secundario btn-regresar">Volver al listado</a>
+    </div>
 
     ${ok ? `<div class="ok">Usuario creado correctamente</div>` : '' }
     ${error ? `<div class="alert">${error}</div>` : '' }
 
-    <form method="post" action="/usuarios/registro" novalidate>
+    <form method="post" action="/usuarios/registro" novalidate class="formulario-usuario">
       <label>Nombre</label>
       <input name="nombre" value="${(values && values.nombre) || ''}" required>
 
@@ -20,8 +25,8 @@
 
       <label>Rol</label>
       <select name="rol" required>
-        ${['Administrador','Tecnico','Colaborador'].map(r => `
-          <option value="${r}" ${(values && values.rol === r) ? 'selected' : ''}>${r}</option>
+        ${(roles || []).map(r => `
+          <option value="${r.value}" ${(values && values.rol === r.value) ? 'selected' : ''}>${r.label}</option>
         `).join('')}
       </select>
 
