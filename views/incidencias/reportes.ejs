@@ -185,22 +185,29 @@
               ${diagnosticos
                 .map((reporte) => {
                   const evidencia = reporte.evidencia
-                    ? `<p><strong>Evidencia:</strong> ${escapeHtml(reporte.evidencia)}</p>`
-                    : '';
-
-                  const accionesBaja = reporte.reporteBaja
                     ? `
-                          <a class="btn-secundario" href="${escapeAttr(reporte.reporteBaja.url)}" target="_blank" rel="noopener">Ver PDF de baja</a>
-                          <a class="btn" href="${escapeAttr(reporte.reporteBaja.url)}?descargar=1" download>Descargar PDF de baja</a>
+                          <div class="diagnostico-card__bloque diagnostico-card__bloque--texto">
+                            <h4>Evidencia registrada</h4>
+                            <p>${multilinea(reporte.evidencia)}</p>
+                          </div>
                         `
                     : '';
 
                   const resumenBaja = reporte.reporteBaja
                     ? `
-                          <div class="reporte-diagnostico-card__texto">
-                            <h5>Reporte de baja asociado</h5>
-                            <p><strong>Identificador:</strong> #${escapeHtml(reporte.reporteBaja.id)}</p>
-                            <p><strong>Fecha:</strong> ${escapeHtml(reporte.reporteBaja.fecha)}</p>
+                          <div class="diagnostico-card__bloque diagnostico-card__bloque--texto">
+                            <h4>Reporte de baja asociado</h4>
+                            <dl class="diagnostico-card__datos">
+                              <div>
+                                <dt>Identificador</dt>
+                                <dd>#${escapeHtml(reporte.reporteBaja.id)}</dd>
+                              </div>
+                              <div>
+                                <dt>Fecha</dt>
+                                <dd>${escapeHtml(reporte.reporteBaja.fecha)}</dd>
+                              </div>
+                            </dl>
+                            <p class="diagnostico-card__nota">Consulta el PDF y el detalle desde la pestaña «Bajas».</p>
                           </div>
                         `
                     : '';
@@ -209,27 +216,55 @@
                     ? '<span class="reporte-chip">Reciente</span>'
                     : '';
 
+                  const incidenciaReferencia = reporte.incidencia && reporte.incidencia.id
+                    ? `#${escapeHtml(reporte.incidencia.id)}`
+                    : 'Sin referencia';
+                  const incidenciaEstado = reporte.incidencia && reporte.incidencia.estado
+                    ? escapeHtml(reporte.incidencia.estado)
+                    : 'Sin estado';
+                  const incidenciaPrioridad = reporte.incidencia && reporte.incidencia.prioridad
+                    ? escapeHtml(reporte.incidencia.prioridad)
+                    : 'Sin prioridad';
+
+                  const pdfDiagnostico = reporte.pdfUrl
+                    ? `
+                          <div class="diagnostico-card__acciones">
+                            <a class="btn-secundario" href="${escapeAttr(reporte.pdfUrl)}" target="_blank" rel="noopener">Ver PDF diagnóstico</a>
+                            <a class="btn" href="${escapeAttr(reporte.pdfUrl)}?descargar=1" download>Descargar PDF diagnóstico</a>
+                          </div>
+                        `
+                    : '';
+
                   return `
-                    <article class="reporte-diagnostico-card">
-                      <header class="reporte-diagnostico-card__header">
-                        <div>
-                          <h3>Diagnóstico ${badgeReciente}</h3>
-                          <p class="reporte-diagnostico-card__subtitulo">
-                            Incidencia · ${escapeHtml(reporte.fechaDiagnostico)}
-                          </p>
+                    <article class="diagnostico-card">
+                      <header class="diagnostico-card__header">
+                        <div class="diagnostico-card__encabezado">
+                          <p class="diagnostico-card__etiqueta">Diagnóstico</p>
+                          <h3>Reporte #${escapeHtml(reporte.id)} ${badgeReciente}</h3>
+                          <p class="diagnostico-card__subtitulo">Registrado el ${escapeHtml(reporte.creadoEn)}</p>
+                          <p class="diagnostico-card__subtitulo">Fecha del diagnóstico: ${escapeHtml(reporte.fechaDiagnostico)}</p>
+                          <p class="diagnostico-card__subtitulo">Técnico responsable: ${escapeHtml(reporte.tecnico)}</p>
                         </div>
-                        <div class="reporte-diagnostico-card__acciones">
-                          <a class="btn-secundario" href="/incidencias/${escapeAttr(reporte.incidenciaId)}/diagnostico" rel="noopener">Ver incidencia</a>
-                          <a class="btn-secundario" href="${escapeAttr(reporte.pdfUrl)}" target="_blank" rel="noopener">Ver PDF diagnóstico</a>
-                          <a class="btn" href="${escapeAttr(reporte.pdfUrl)}?descargar=1" download>Descargar PDF diagnóstico</a>
-                          ${accionesBaja}
-                        </div>
+                        <dl class="diagnostico-card__resumen-lista">
+                          <div>
+                            <dt>Incidencia</dt>
+                            <dd>${incidenciaReferencia}</dd>
+                          </div>
+                          <div>
+                            <dt>Estado</dt>
+                            <dd>${incidenciaEstado}</dd>
+                          </div>
+                          <div>
+                            <dt>Prioridad</dt>
+                            <dd>${incidenciaPrioridad}</dd>
+                          </div>
+                        </dl>
                       </header>
 
-                      <section class="reporte-diagnostico-card__contenido">
-                        <div class="reporte-diagnostico-card__bloque">
-                          <h4>Activo diagnosticado</h4>
-                          <dl>
+                      <section class="diagnostico-card__contenido">
+                        <div class="diagnostico-card__bloque">
+                          <h4>Detalle del activo</h4>
+                          <dl class="diagnostico-card__datos">
                             <div>
                               <dt>Activo</dt>
                               <dd>${escapeHtml(reporte.activo.nombre)}</dd>
@@ -245,24 +280,21 @@
                           </dl>
                         </div>
 
-                        <div class="reporte-diagnostico-card__bloque">
-                          <h4>Detalle del diagnóstico</h4>
-                          <p><strong>Registrado:</strong> ${escapeHtml(reporte.creadoEn)}</p>
-                          <p><strong>Técnico:</strong> ${escapeHtml(reporte.tecnico)}</p>
-                          <p><strong>Estado de la incidencia:</strong> ${escapeHtml(reporte.incidencia.estado)}</p>
-                          <p><strong>Prioridad:</strong> ${escapeHtml(reporte.incidencia.prioridad)}</p>
-                          <div class="reporte-diagnostico-card__texto">
-                            <h5>Descripción reportada</h5>
-                            <p>${multilinea(reporte.descripcionProblema || 'Sin descripción registrada.')}</p>
-                          </div>
-                          <div class="reporte-diagnostico-card__texto">
-                            <h5>Diagnóstico técnico</h5>
-                            <p>${multilinea(reporte.diagnostico || 'Sin diagnóstico registrado.')}</p>
-                          </div>
-                          ${resumenBaja}
-                          ${evidencia}
+                        <div class="diagnostico-card__bloque diagnostico-card__bloque--texto">
+                          <h4>Descripción reportada</h4>
+                          <p>${multilinea(reporte.descripcionProblema || 'Sin descripción registrada.')}</p>
                         </div>
+
+                        <div class="diagnostico-card__bloque diagnostico-card__bloque--texto">
+                          <h4>Diagnóstico técnico</h4>
+                          <p>${multilinea(reporte.diagnostico || 'Sin diagnóstico registrado.')}</p>
+                        </div>
+
+                        ${resumenBaja}
+                        ${evidencia}
                       </section>
+
+                      ${pdfDiagnostico}
                     </article>
                   `;
                 })
