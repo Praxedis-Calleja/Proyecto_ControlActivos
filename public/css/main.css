@@ -1351,6 +1351,53 @@ textarea {
   gap: 0.75rem;
 }
 
+.acciones-incidencia__estado-resumen {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.12));
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: var(--radius-medium);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.acciones-incidencia__estado-label {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.acciones-incidencia__estado-ayuda {
+  margin: 0;
+  max-width: 360px;
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.estado-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--color-primary);
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.01em;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.estado-pill span:first-child {
+  font-size: 0.65rem;
+}
+
 .acciones-incidencia__form label {
   font-weight: 600;
   color: var(--color-text);
@@ -1359,12 +1406,71 @@ textarea {
 .acciones-incidencia__controles {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.75rem;
   align-items: center;
 }
 
-.acciones-incidencia__controles select {
-  min-width: 180px;
+.acciones-incidencia__selector {
+  position: relative;
+  min-width: 220px;
+  flex: 1;
+}
+
+.acciones-incidencia__selector::before {
+  content: '\26A1';
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-primary);
+  pointer-events: none;
+  font-size: 0.9rem;
+}
+
+.acciones-incidencia__selector::after {
+  content: '\25BC';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  pointer-events: none;
+  font-size: 0.8rem;
+}
+
+.acciones-incidencia__selector select {
+  appearance: none;
+  width: 100%;
+  border-radius: var(--radius-medium);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(219, 234, 254, 0.8));
+  padding: 0.85rem 2.75rem 0.85rem 2.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  box-shadow: 0 15px 30px rgba(37, 99, 235, 0.12);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.acciones-incidencia__selector select:focus,
+.acciones-incidencia__selector select:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.acciones-incidencia__submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-inline: 1.5rem;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 18px 30px rgba(37, 99, 235, 0.35);
+}
+
+.acciones-incidencia__submit span::after {
+  content: '↻';
+  margin-left: 0.35rem;
+  font-size: 0.9rem;
 }
 
 .form-diagnostico--bloqueada {
@@ -1614,6 +1720,40 @@ textarea {
   display: flex;
   gap: 1.25rem;
   align-items: center;
+}
+
+.grupo-baja {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-medium);
+  padding: 1rem 1.2rem;
+  margin-top: 1rem;
+  background: rgba(37, 99, 235, 0.04);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.grupo-baja__fechas {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .grupo-baja__fechas {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+}
+
+.grupo-baja__ayuda {
+  color: var(--color-muted);
+}
+
+.grupo-baja--inactiva {
+  opacity: 0.6;
+}
+
+.grupo-baja--inactiva input {
+  cursor: not-allowed;
 }
 
 .baja-card__acciones {
