@@ -64,7 +64,16 @@ app.use(session({
 }));
 
 // CSRF (aplicar después de sesiones)
-app.use(csurf());
+const csrfValue = (req) => {
+  if (req.body) {
+    if (req.body.csrfToken) return req.body.csrfToken;
+    if (req.body._csrf) return req.body._csrf;
+  }
+  if (req.query && req.query._csrf) return req.query._csrf;
+  return req.headers['csrf-token'];
+};
+
+app.use(csurf({ value: csrfValue }));
 
 // Variable global para vistas (token CSRF y usuario)
 app.use((req, res, next) => {
