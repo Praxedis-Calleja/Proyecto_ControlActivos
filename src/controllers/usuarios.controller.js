@@ -1,5 +1,11 @@
 import { pool } from '../db.js';
 import Joi from 'joi';
+import {
+  ROLE_OPTIONS,
+  getRoleLabel,
+  roleFromDbValue,
+  roleToDbValue
+} from '../utils/roles.js';
 
 // Validación básica
 const esquemaUsuario = Joi.object({
@@ -11,12 +17,70 @@ const esquemaUsuario = Joi.object({
   confirmar: Joi.string().required()
 });
 
+const formatDateTime = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat('es-MX', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(date);
+  } catch (error) {
+    return date.toISOString();
+  }
+};
+
+export const getUsuarios = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id_usuario, nombre, apellido, correo, rol, creado_en
+       FROM Usuarios
+       ORDER BY creado_en DESC, nombre ASC`
+    );
+
+    const usuarios = rows.map((usuario) => {
+      const rolApp = roleFromDbValue(usuario.rol);
+      return {
+        id_usuario: usuario.id_usuario,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        correo: usuario.correo,
+        rol: rolApp,
+        rolEtiqueta: getRoleLabel(rolApp),
+        creadoEnTexto: formatDateTime(usuario.creado_en)
+      };
+    });
+
+    res.render('usuarios/index', {
+      pageTitle: 'Usuarios',
+      subtitle: 'Controla qué cuentas tienen acceso al panel administrativo.',
+      usuarios,
+      roles: ROLE_OPTIONS,
+      ok: req.query.ok === '1',
+      error: null
+    });
+  } catch (error) {
+    console.error('getUsuarios error:', error);
+    res.status(500).render('usuarios/index', {
+      pageTitle: 'Usuarios',
+      subtitle: 'Controla qué cuentas tienen acceso al panel administrativo.',
+      usuarios: [],
+      roles: ROLE_OPTIONS,
+      ok: false,
+      error: 'No fue posible cargar el listado de usuarios'
+    });
+  }
+};
+
 export const getRegistro = (req, res) => {
   res.render('usuarios/registro', {
     error: null,
     values: {},
     ok: req.query.ok === '1',
-    pageTitle: 'Registrar usuario'
+    roles: ROLE_OPTIONS,
+    pageTitle: 'Registrar usuario',
+    subtitle: 'Da de alta cuentas operativas con permisos específicos.'
   });
 };
 
@@ -28,7 +92,9 @@ export const postRegistro = async (req, res) => {
         error: error.message,
         values: req.body,
         ok: false,
-        pageTitle: 'Registrar usuario'
+        roles: ROLE_OPTIONS,
+        pageTitle: 'Registrar usuario',
+        subtitle: 'Da de alta cuentas operativas con permisos específicos.'
       });
     }
 
@@ -38,7 +104,9 @@ export const postRegistro = async (req, res) => {
         error: 'Las contraseñas no coinciden',
         values: req.body,
         ok: false,
-        pageTitle: 'Registrar usuario'
+        roles: ROLE_OPTIONS,
+        pageTitle: 'Registrar usuario',
+        subtitle: 'Da de alta cuentas operativas con permisos específicos.'
       });
     }
 
@@ -52,25 +120,36 @@ export const postRegistro = async (req, res) => {
         error: 'El correo ya está registrado',
         values: req.body,
         ok: false,
-        pageTitle: 'Registrar usuario'
+        roles: ROLE_OPTIONS,
+        pageTitle: 'Registrar usuario',
+        subtitle: 'Da de alta cuentas operativas con permisos específicos.'
       });
     }
 
-    // Inserta en texto plano (según tu decisión)
+    const rolDbValue = roleToDbValue(rol);
+
     await pool.query(
       `INSERT INTO Usuarios (Nombre, Apellido, Correo, Rol, contrasena)
        VALUES (?, ?, ?, ?, ?)`,
-      [nombre.trim(), apellido?.trim() || '', correo.trim().toLowerCase(), rol, contrasena]
+      [
+        nombre.trim(),
+        apellido?.trim() || '',
+        correo.trim().toLowerCase(),
+        rolDbValue,
+        contrasena
+      ]
     );
 
-    return res.redirect('/usuarios/registro?ok=1');
+    return res.redirect('/usuarios?ok=1');
   } catch (e) {
     console.error('postRegistro error:', e);
     return res.status(500).render('usuarios/registro', {
       error: 'Error interno',
       values: req.body,
       ok: false,
-      pageTitle: 'Registrar usuario'
+      roles: ROLE_OPTIONS,
+      pageTitle: 'Registrar usuario',
+      subtitle: 'Da de alta cuentas operativas con permisos específicos.'
     });
   }
 };

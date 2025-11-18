@@ -1,0 +1,90 @@
+<% const usuariosLista = Array.isArray(usuarios) ? usuarios : []; %>
+<% const totalUsuarios = usuariosLista.length; %>
+<% const totalAdministradores = usuariosLista.filter((u) => u.rol === 'Administrador').length; %>
+<% const totalTecnicos = usuariosLista.filter((u) => u.rol === 'Tecnico').length; %>
+<% const totalColaboradores = usuariosLista.filter((u) => u.rol === 'Colaborador').length; %>
+<% const obtenerClaseRol = (rol) => {
+     if (rol === 'Administrador') return 'rol-tag rol-tag--admin';
+     if (rol === 'Tecnico') return 'rol-tag rol-tag--tech';
+     return 'rol-tag rol-tag--colab';
+   };
+%>
+<section class="usuarios-panel">
+  <div class="usuarios-header">
+    <div>
+      <h2>Usuarios del sistema</h2>
+      <p class="section-description">
+        Revisa las cuentas activas y asigna nuevos accesos administrativos, técnicos o de colaboración.
+      </p>
+    </div>
+    <a href="/usuarios/registro" class="btn">Registrar usuario</a>
+  </div>
+
+  <div class="resumen-activos resumen-usuarios">
+    <article class="resumen-card">
+      <h3>Total de usuarios</h3>
+      <strong><%= totalUsuarios %></strong>
+      <p class="resumen-card__detalle">Cuentas con acceso al sistema</p>
+    </article>
+    <article class="resumen-card">
+      <h3>Administradores</h3>
+      <strong><%= totalAdministradores %></strong>
+      <p class="resumen-card__detalle">Gestionan configuraciones y usuarios</p>
+    </article>
+    <article class="resumen-card">
+      <h3>Técnicos</h3>
+      <strong><%= totalTecnicos %></strong>
+      <p class="resumen-card__detalle">Atención operativa y diagnósticos</p>
+    </article>
+    <article class="resumen-card">
+      <h3>Colaboradores</h3>
+      <strong><%= totalColaboradores %></strong>
+      <p class="resumen-card__detalle">Reportan y dan seguimiento</p>
+    </article>
+  </div>
+
+  <% if (ok) { %>
+    <div class="ok">Usuario creado correctamente</div>
+  <% } %>
+
+  <% if (error) { %>
+    <div class="alert"><%= error %></div>
+  <% } %>
+
+  <% if (usuariosLista.length) { %>
+    <div class="tabla-contenedor">
+      <table class="tabla-activos tabla-usuarios">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Fecha de alta</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% usuariosLista.forEach((usuario, index) => { %>
+            <tr>
+              <td><%= index + 1 %></td>
+              <td>
+                <strong><%= [usuario.nombre, usuario.apellido].filter(Boolean).join(' ') || usuario.nombre %></strong>
+              </td>
+              <td>
+                <span class="usuario-correo"><%= usuario.correo %></span>
+              </td>
+              <td>
+                <span class="<%= obtenerClaseRol(usuario.rol) %>"><%= usuario.rolEtiqueta %></span>
+              </td>
+              <td><%= usuario.creadoEnTexto || '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <p class="usuarios-empty">
+      Aún no hay usuarios dados de alta desde el panel. Usa el botón <strong>Registrar usuario</strong> para comenzar.
+    </p>
+  <% } %>
+</section>

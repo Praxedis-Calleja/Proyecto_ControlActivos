@@ -1,4 +1,5 @@
 import { pool } from '../db.js';
+import { getRoleLabel, roleFromDbValue } from '../utils/roles.js';
 
 export const getLogin = (req, res) => {
   if (req.session.user) return res.redirect('/');
@@ -64,12 +65,14 @@ export const postLogin = async (req, res) => {
       });
     }
 
+    const appRole = roleFromDbValue(user.rol);
     req.session.user = {
       id_usuario: user.id_usuario,
       nombre: user.nombre,
       apellido: user.apellido,
       correo: user.correo,
-      rol: user.rol
+      rol: appRole,
+      rolEtiqueta: getRoleLabel(appRole)
     };
 
     return res.redirect('/');
