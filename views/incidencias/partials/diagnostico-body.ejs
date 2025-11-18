@@ -117,19 +117,36 @@
       <div class="acciones-incidencia">
         <a class="btn-secundario" href="/incidencias/<%= incidencia.id_incidencia %>/editar">Editar datos de la incidencia</a>
         <form method="post" action="/incidencias/<%= incidencia.id_incidencia %>/diagnostico/estado" class="acciones-incidencia__form">
-          <label for="estado-incidencia">Cambiar estado</label>
+          <div class="acciones-incidencia__estado-resumen">
+            <div>
+              <p class="acciones-incidencia__estado-label">Estado actual</p>
+              <p class="estado-pill">
+                <span aria-hidden="true">●</span>
+                <span><%= incidencia.estado || 'Sin estado' %></span>
+              </p>
+            </div>
+            <p class="acciones-incidencia__estado-ayuda">
+              Selecciona el estado que mejor describa el avance de la incidencia para que el equipo de seguimiento tenga
+              contexto inmediato.
+            </p>
+          </div>
+          <label for="estado-incidencia">Selecciona el nuevo estado</label>
           <div class="acciones-incidencia__controles">
-            <select id="estado-incidencia" name="estado">
-              <% if (Array.isArray(estados)) { %>
-                <% estados.forEach((estado) => { %>
-                  <option value="<%= estado %>" <%= incidencia.estado === estado ? 'selected' : '' %>>
-                    <%= estado.replace(/_/g, ' ') %>
-                  </option>
-                <% }) %>
-              <% } %>
-            </select>
+            <div class="acciones-incidencia__selector">
+              <select id="estado-incidencia" name="estado">
+                <% if (Array.isArray(estados)) { %>
+                  <% estados.forEach((estado) => { %>
+                    <option value="<%= estado %>" <%= incidencia.estado === estado ? 'selected' : '' %>>
+                      <%= estado.replace(/_/g, ' ') %>
+                    </option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="btn">Actualizar estado</button>
+            <button type="submit" class="btn acciones-incidencia__submit">
+              <span>Actualizar estado</span>
+            </button>
           </div>
         </form>
       </div>
