@@ -484,6 +484,25 @@ textarea {
   font-size: 1.65rem;
 }
 
+.usuarios-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.usuarios-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.usuarios-header h2 {
+  margin: 0;
+  font-size: 1.65rem;
+}
+
 .resumen-activos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -558,6 +577,53 @@ textarea {
   min-width: 760px;
 }
 
+.tabla-usuarios {
+  min-width: 520px;
+}
+
+.tabla-usuarios td strong {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.usuario-correo {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  word-break: break-all;
+}
+
+.usuarios-empty {
+  margin: 1.25rem 0 0;
+  color: var(--color-muted);
+}
+
+.rol-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.rol-tag--admin {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--color-primary);
+}
+
+.rol-tag--tech {
+  background: rgba(14, 165, 233, 0.18);
+  color: #0284c7;
+}
+
+.rol-tag--colab {
+  background: rgba(16, 185, 129, 0.18);
+  color: #047857;
+}
+
 .tabla-activos th,
 .tabla-activos td {
   padding: 0.75rem;
@@ -605,7 +671,8 @@ textarea {
 #panelFormularioActivos form,
 .formulario-activo,
 .form-incidencia,
-.form-diagnostico {
+.form-diagnostico,
+.formulario-usuario {
   background: var(--color-surface-alt);
   padding: 1.5rem;
   border-radius: var(--radius-medium);
@@ -615,9 +682,25 @@ textarea {
 
 .formulario-activo button,
 .form-incidencia button,
-.form-diagnostico button {
+.form-diagnostico button,
+.formulario-usuario button {
   margin-top: 1.5rem;
   align-self: flex-start;
+}
+
+.formulario-usuario {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 520px;
+}
+
+.formulario-usuario label {
+  font-weight: 600;
+}
+
+.formulario-usuario input,
+.formulario-usuario select {
+  width: 100%;
 }
 
 .detalle-activo {
@@ -1087,8 +1170,7 @@ textarea {
 .incidencia-card,
 .baja-card,
 .diagnostico-card,
-.resumen-incidencia,
-.reporte-diagnostico-card {
+.resumen-incidencia {
   background: var(--color-surface-alt);
   border-radius: var(--radius-medium);
   border: 1px solid var(--color-border);
@@ -1333,35 +1415,17 @@ textarea {
   white-space: nowrap;
 }
 
-.reporte-diagnostico-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
 
-.reporte-diagnostico-card__header > div:first-child {
-  flex: 1 1 220px;
-  min-width: 220px;
-}
-
-.reporte-diagnostico-card__subtitulo {
-  margin: 0.35rem 0 0;
-  color: var(--color-muted);
-  font-size: 0.95rem;
-}
-
-.reporte-diagnostico-card__acciones {
+.baja-card__acciones--diagnostico {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0.85rem;
   margin-left: auto;
-  width: min(100%, 420px);
+  width: min(100%, 460px);
 }
 
-.reporte-diagnostico-card__acciones .btn,
-.reporte-diagnostico-card__acciones .btn-secundario {
+.baja-card__acciones--diagnostico .btn,
+.baja-card__acciones--diagnostico .btn-secundario {
   white-space: nowrap;
   width: 100%;
   display: inline-flex;
@@ -1369,52 +1433,21 @@ textarea {
   justify-content: center;
 }
 
-.reporte-diagnostico-card__contenido {
-  display: grid;
+.baja-card--diagnostico .baja-card__contenido {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.2rem;
 }
 
-.reporte-diagnostico-card__bloque h4 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.reporte-diagnostico-card__bloque dl {
-  margin: 0.75rem 0 0;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.reporte-diagnostico-card__bloque dl div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.reporte-diagnostico-card__bloque dt {
-  margin: 0;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-muted);
-}
-
-.reporte-diagnostico-card__bloque dd {
-  margin: 0;
-  font-weight: 600;
-}
-
-.reporte-diagnostico-card__texto {
+.baja-card__texto {
   margin-top: 0.85rem;
 }
 
-.reporte-diagnostico-card__texto h5 {
+.baja-card__texto h5 {
   margin: 0;
   font-size: 0.95rem;
 }
 
-.reporte-diagnostico-card__texto p {
+.baja-card__texto p {
   margin: 0.35rem 0 0;
   color: var(--color-text);
 }

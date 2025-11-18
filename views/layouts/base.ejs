@@ -10,6 +10,7 @@
         '/incidencias/reportes': 'Buscador de reportes',
         '/bajas': 'Reportes de baja',
         '/usuarios': 'Usuarios',
+        '/usuarios/registro': 'Registrar usuario',
         '/login': 'Iniciar sesión'
       };
       const normalizedPath = typeof currentPath === 'string' ? currentPath.split('?')[0] : '';
@@ -20,7 +21,8 @@
       const displayName = user
         ? [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.nombre || 'Cuenta'
         : '';
-      const userRole = user?.rol || 'Sin rol';
+      const userRole = user ? user.rolEtiqueta || user.rol || 'Sin rol' : 'Sin rol';
+      const isAdmin = user?.rol === 'Administrador';
     %>
     <title><%= pageDocumentTitle %></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -59,6 +61,15 @@
               <span aria-hidden="true">📄</span>
               <span>Reportes</span>
             </a>
+            <% if (isAdmin) { %>
+              <a
+                href="/usuarios"
+                class="app-sidebar__link <%= currentSection === '/usuarios' ? 'is-active' : '' %>"
+              >
+                <span aria-hidden="true">👥</span>
+                <span>Usuarios</span>
+              </a>
+            <% } %>
           </nav>
           <div class="app-sidebar__footer">
             <form action="/logout" method="post" class="app-sidebar__logout-form">
