@@ -206,35 +206,45 @@
           </div>
         </fieldset>
 
-        <div class="grupo-baja" data-baja-extra <%= requiereBajaSeleccionada ? '' : 'hidden' %>>
-          <p class="campo-nota">Completa las fechas que se registrarán en el formato de baja.</p>
-
-          <div class="campo">
-            <label for="fecha_baja">Fecha de baja</label>
-            <input
-              type="date"
-              id="fecha_baja"
-              name="fecha_baja"
-              value="<%= values.fecha_baja || '' %>"
-              <%= requiereBajaSeleccionada ? '' : 'disabled' %>
-              data-baja-campo
-              data-baja-required
-            >
-            <small>Esta fecha se utilizará como referencia oficial del reporte de baja.</small>
+        <div
+          class="grupo-baja <%= requiereBajaSeleccionada ? '' : 'grupo-baja--inactiva' %>"
+          data-baja-extra
+          aria-live="polite"
+          aria-disabled="<%= requiereBajaSeleccionada ? 'false' : 'true' %>"
+        >
+          <div class="grupo-baja__encabezado">
+            <p class="campo-nota">Completa las fechas que se registrarán en el formato de baja.</p>
+            <small class="grupo-baja__ayuda">Activa “Sí” en la opción anterior para habilitar estos campos.</small>
           </div>
 
-          <div class="campo">
-            <label for="fecha_reimpresion">Fecha de reimpresión <small>(opcional)</small></label>
-            <input
-              type="date"
-              id="fecha_reimpresion"
-              name="fecha_reimpresion"
-              value="<%= values.fecha_reimpresion || '' %>"
-              <%= requiereBajaSeleccionada ? '' : 'disabled' %>
-              data-baja-campo
-              data-reset-on-hide
-            >
-            <small>Déjala en blanco si aún no existe una reimpresión del formato.</small>
+          <div class="grupo-baja__fechas">
+            <div class="campo">
+              <label for="fecha_baja">Fecha de baja</label>
+              <input
+                type="date"
+                id="fecha_baja"
+                name="fecha_baja"
+                value="<%= values.fecha_baja || '' %>"
+                <%= requiereBajaSeleccionada ? '' : 'disabled' %>
+                data-baja-campo
+                data-baja-required
+              >
+              <small>Esta fecha se utilizará como referencia oficial del reporte de baja.</small>
+            </div>
+
+            <div class="campo">
+              <label for="fecha_reimpresion">Fecha de reimpresión <small>(opcional)</small></label>
+              <input
+                type="date"
+                id="fecha_reimpresion"
+                name="fecha_reimpresion"
+                value="<%= values.fecha_reimpresion || '' %>"
+                <%= requiereBajaSeleccionada ? '' : 'disabled' %>
+                data-baja-campo
+                data-reset-on-hide
+              >
+              <small>Déjala en blanco si aún no existe una reimpresión del formato.</small>
+            </div>
           </div>
         </div>
 
@@ -299,11 +309,8 @@
         const requiereBaja = seleccionado && seleccionado.value === 'SI';
         if (!contenedor) return;
 
-        if (requiereBaja) {
-          contenedor.removeAttribute('hidden');
-        } else {
-          contenedor.setAttribute('hidden', '');
-        }
+        contenedor.classList.toggle('grupo-baja--inactiva', !requiereBaja);
+        contenedor.setAttribute('aria-disabled', requiereBaja ? 'false' : 'true');
 
         const campos = contenedor.querySelectorAll('[data-baja-campo]');
         campos.forEach((campo) => {

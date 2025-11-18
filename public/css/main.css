@@ -1616,6 +1616,40 @@ textarea {
   align-items: center;
 }
 
+.grupo-baja {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-medium);
+  padding: 1rem 1.2rem;
+  margin-top: 1rem;
+  background: rgba(37, 99, 235, 0.04);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.grupo-baja__fechas {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .grupo-baja__fechas {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+}
+
+.grupo-baja__ayuda {
+  color: var(--color-muted);
+}
+
+.grupo-baja--inactiva {
+  opacity: 0.6;
+}
+
+.grupo-baja--inactiva input {
+  cursor: not-allowed;
+}
+
 .baja-card__acciones {
   display: flex;
   flex-wrap: wrap;

@@ -223,6 +223,7 @@ ALTER TABLE `reportesbaja`
   ADD PRIMARY KEY (`ID_Baja`),
   ADD UNIQUE KEY `ID_Activo` (`ID_Activo`),
   ADD KEY `idx_baja_fecha` (`Fecha_Baja`),
+  ADD KEY `idx_baja_reimpresion` (`Fecha_Reimpresion`),
   ADD KEY `fk_diagnostico` (`id_diagnostico`);
 
 --
