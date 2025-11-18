@@ -7,6 +7,23 @@ import {
   roleToDbValue
 } from '../utils/roles.js';
 
+const usuariosCsrfField = process.env.USUARIOS_CSRF_FIELD || 'tokenUsuario';
+const extraCsrfFields = (process.env.CSRF_BODY_FIELDS || '')
+  .split(',')
+  .map((field) => field.trim())
+  .filter(Boolean);
+const csrfBodyFields = [usuariosCsrfField, 'csrfToken', '_csrf', ...extraCsrfFields]
+  .filter((field, index, self) => self.indexOf(field) === index);
+
+const stripCsrfFields = (payload = {}) => {
+  if (!payload || typeof payload !== 'object') return payload;
+  const sanitized = { ...payload };
+  for (const field of csrfBodyFields) {
+    if (field in sanitized) delete sanitized[field];
+  }
+  return sanitized;
+};
+
 // Validación básica
 const esquemaUsuario = Joi.object({
   nombre: Joi.string().trim().min(2).max(100).required(),
@@ -86,11 +103,12 @@ export const getRegistro = (req, res) => {
 
 export const postRegistro = async (req, res) => {
   try {
-    const { error, value } = esquemaUsuario.validate(req.body);
+    const formData = stripCsrfFields(req.body);
+    const { error, value } = esquemaUsuario.validate(formData);
     if (error) {
       return res.status(400).render('usuarios/registro', {
         error: error.message,
-        values: req.body,
+        values: formData,
         ok: false,
         roles: ROLE_OPTIONS,
         pageTitle: 'Registrar usuario',
@@ -102,7 +120,7 @@ export const postRegistro = async (req, res) => {
     if (contrasena !== confirmar) {
       return res.status(400).render('usuarios/registro', {
         error: 'Las contraseñas no coinciden',
-        values: req.body,
+        values: formData,
         ok: false,
         roles: ROLE_OPTIONS,
         pageTitle: 'Registrar usuario',
@@ -118,7 +136,7 @@ export const postRegistro = async (req, res) => {
     if (existe.length) {
       return res.status(409).render('usuarios/registro', {
         error: 'El correo ya está registrado',
-        values: req.body,
+        values: formData,
         ok: false,
         roles: ROLE_OPTIONS,
         pageTitle: 'Registrar usuario',
@@ -145,7 +163,7 @@ export const postRegistro = async (req, res) => {
     console.error('postRegistro error:', e);
     return res.status(500).render('usuarios/registro', {
       error: 'Error interno',
-      values: req.body,
+      values: stripCsrfFields(req.body),
       ok: false,
       roles: ROLE_OPTIONS,
       pageTitle: 'Registrar usuario',
