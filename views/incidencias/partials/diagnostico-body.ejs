@@ -284,42 +284,7 @@
       </div>
     <% } %>
   </div>
-  <section class="diagnosticos-reportes" id="diagnosticos-reportes">
-    <h3>Reportes de diagnóstico</h3>
-    <% if (diagnosticos && diagnosticos.length) { %>
-      <ul class="diagnosticos-reportes-lista">
-        <% diagnosticos.forEach((registro) => { %>
-          <li class="diagnosticos-reporte-item">
-            <div>
-              <strong>Diagnóstico</strong>
-              <span> · <%= registro.fecha_diagnostico_fmt %></span>
-              <small class="diagnosticos-reporte-item__detalle">Referencia: <%= registro.id_diagnostico %></small>
-              <% if (registro.reporte_baja) { %>
-                <small class="diagnosticos-reporte-item__detalle">
-                  Reporte de baja #<%= registro.reporte_baja.id %> · Fecha: <%= registro.reporte_baja.fecha_baja_fmt %>
-                </small>
-              <% } else { %>
-                <small class="diagnosticos-reporte-item__detalle diagnosticos-reporte-item__detalle--sin">Sin reporte de baja</small>
-              <% } %>
-            </div>
-            <div class="acciones">
-              <a
-                class="btn-secundario"
-                href="/incidencias/<%= incidencia.id_incidencia %>/diagnostico/pdf/<%= registro.id_diagnostico %>"
-                target="_blank"
-                rel="noopener"
-              >Reporte de diagnóstico</a>
-              <% if (registro.reporte_baja) { %>
-                <a class="btn-secundario" href="<%= registro.reporte_baja.url %>" target="_blank" rel="noopener">Reporte de baja</a>
-              <% } %>
-            </div>
-          </li>
-        <% }) %>
-      </ul>
-    <% } else { %>
-      <p>No se han generado reportes de diagnóstico.</p>
-    <% } %>
-  </section>
+  
 
   <script>
     (() => {
