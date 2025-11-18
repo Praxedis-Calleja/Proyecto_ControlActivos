@@ -1064,11 +1064,18 @@ export const generarBajaPdf = ({
     { label: 'Vigencia de garantía', value: vigenciaGarantiaTexto }
   ]);
 
-  drawNarrativeBox('Descripción Gráfica', descripcionGrafica, 180);
   if (tieneEvidenciasTemporales) {
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .fillColor(COLOR_ACCENT)
+      .text('Evidencias gráficas', startX, doc.y, { width: pageWidth });
     doc.moveDown(0.3);
     drawEvidenceGallery(evidenciaImagenes);
     doc.moveDown(0.6);
+    doc.fillColor('#000000');
+  } else {
+    drawNarrativeBox('Descripción Gráfica', descripcionGrafica, 180);
   }
   drawNarrativeBox('Diagnóstico Técnico', diagnosticoTecnicoTexto, 160);
 
