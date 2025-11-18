@@ -64,10 +64,19 @@ app.use(session({
 }));
 
 // CSRF (aplicar después de sesiones)
+const usuariosCsrfField = process.env.USUARIOS_CSRF_FIELD || 'tokenUsuario';
+const extraCsrfFields = (process.env.CSRF_BODY_FIELDS || '')
+  .split(',')
+  .map((field) => field.trim())
+  .filter(Boolean);
+const csrfBodyFields = [usuariosCsrfField, 'csrfToken', '_csrf', ...extraCsrfFields]
+  .filter((field, index, self) => self.indexOf(field) === index);
+
 const csrfValue = (req) => {
   if (req.body) {
-    if (req.body.csrfToken) return req.body.csrfToken;
-    if (req.body._csrf) return req.body._csrf;
+    for (const field of csrfBodyFields) {
+      if (req.body[field]) return req.body[field];
+    }
   }
   if (req.query && req.query._csrf) return req.query._csrf;
   return req.headers['csrf-token'];
@@ -78,6 +87,7 @@ app.use(csurf({ value: csrfValue }));
 // Variable global para vistas (token CSRF y usuario)
 app.use((req, res, next) => {
   res.locals.csrfToken = req.csrfToken();
+  res.locals.usuariosCsrfField = usuariosCsrfField;
   res.locals.user = req.session.user || null;
   const path = req.path || '/';
   const segments = path.split('/').filter(Boolean);
