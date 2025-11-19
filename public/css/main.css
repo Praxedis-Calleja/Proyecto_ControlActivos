@@ -1414,17 +1414,21 @@ textarea {
   position: relative;
   min-width: 220px;
   flex: 1;
+  border-radius: var(--radius-medium);
+  background: var(--color-surface);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
 }
 
 .acciones-incidencia__selector::before {
   content: '\26A1';
   position: absolute;
-  left: 0.9rem;
+  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
   color: var(--color-primary);
   pointer-events: none;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .acciones-incidencia__selector::after {
@@ -1435,42 +1439,62 @@ textarea {
   transform: translateY(-50%);
   color: var(--color-muted);
   pointer-events: none;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 .acciones-incidencia__selector select {
   appearance: none;
   width: 100%;
-  border-radius: var(--radius-medium);
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(219, 234, 254, 0.8));
-  padding: 0.85rem 2.75rem 0.85rem 2.5rem;
+  border-radius: inherit;
+  border: none;
+  background: transparent;
+  padding: 0.9rem 3rem 0.9rem 3rem;
   font-weight: 600;
+  font-size: 0.95rem;
   color: var(--color-text);
-  box-shadow: 0 15px 30px rgba(37, 99, 235, 0.12);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  line-height: 1.4;
+  box-shadow: none;
 }
 
 .acciones-incidencia__selector select:focus,
 .acciones-incidencia__selector select:focus-visible {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  border-radius: inherit;
+}
+
+.acciones-incidencia__selector select option {
+  padding: 0.85rem 1rem;
+  color: var(--color-text);
+  background: #f8fafc;
+  font-weight: 500;
+  text-transform: capitalize;
 }
 
 .acciones-incidencia__submit {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding-inline: 1.5rem;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 18px 30px rgba(37, 99, 235, 0.35);
+  padding: 0.85rem 1.65rem;
+  border-radius: var(--radius-medium);
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: linear-gradient(135deg, #1d4ed8, #4338ca);
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.acciones-incidencia__submit:hover,
+.acciones-incidencia__submit:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(59, 130, 246, 0.4);
 }
 
 .acciones-incidencia__submit span::after {
-  content: '↻';
-  margin-left: 0.35rem;
-  font-size: 0.9rem;
+  content: '⇆';
+  margin-left: 0.45rem;
+  font-size: 0.95rem;
 }
 
 .form-diagnostico--bloqueada {
